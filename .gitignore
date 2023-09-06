@@ -1,10 +1,4 @@
 /data/ena_results_objects.txt
 /data/ena_study_searchable_fields.txt
-/.idea/modules.xml
-/.idea/inspectionProfiles/profiles_settings.xml
-/.idea/inspectionProfiles/Project_Default.xml
-/.idea/vcs.xml
-/data/ena_study_barcoding_fields.txt
-/data/ena_study_edna_fields.txt
-/data/ena_study_environment_fields.txt
-/data/ena_study_metabarcoding_fields.txt
+/.idea/
+/data/
