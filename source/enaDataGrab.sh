@@ -2,7 +2,7 @@
 echo "Script to mine ena for environmental terms"
 # Author: woollard@ebi.ac.uk
 # Date: 20230906
-datadir="../data"
+datadir="../data/ena_in"
 tmpfile=$datadir"/tmpfile.txt"
 
 
