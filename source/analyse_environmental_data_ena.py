@@ -102,7 +102,7 @@ def add_info_to_object_list(with_obj_type, obj_dict, data):
             data_by_id[dict_row['sample_accession']] = dict_row
     # ic(data_by_id)
 
-    ic("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+    #ic("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
     for id in obj_dict:
         obj = obj_dict[id]
         if with_obj_type == "sample":
@@ -112,7 +112,8 @@ def add_info_to_object_list(with_obj_type, obj_dict, data):
                if 'study_accession' in data_by_id[obj.sample_accession]:
                   obj.study_accession = data_by_id[obj.sample_accession]['study_accession']
             else:
-                ic(f"Warning: {obj.sample_accession} not being found in hits")
+                #ic(f"Warning: {obj.sample_accession} not being found in hits")
+                pass
             # print(obj.print_values())
 
     ic()
@@ -131,15 +132,15 @@ def annotate_sample_objs(sample_list, with_obj_type, sample_collection_obj):
     API_pre = "https://www.ebi.ac.uk/ena/portal/api/search?result="
 
     iterator = iter(sample_list)
-    chunk_size = 10
+    chunk_size = 1000
 
     sample_obj_dict = sample_collection_obj.sample_obj_dict
     # ic(sample_obj_dict)
     while chunk := list(islice(iterator, chunk_size)):
-        ic("++++++++++++++++++++++++++++++++++++++++++++++++++++")
+        #ic("++++++++++++++++++++++++++++++++++++++++++++++++++++")
         chunk_sample_id_list = []
         for sample in chunk:
-            ic(sample.sample_accession)
+            # ic(sample.sample_accession)
             chunk_sample_id_list.append(sample.sample_accession)
             sample_obj_dict[sample.sample_accession] = sample
             # ic(sample_obj_dict[sample.sample_accession].sample_accession)
@@ -168,8 +169,8 @@ def sample_analysis(sample_collection_obj):
     infile = ena_data_dir + "/" + "ena_expt_searchable_EnvironmentalSample_summarised.txt"
     sample_env_df = pd.read_csv(infile, sep = '\t')
     # ic(sample_env_df.head())
-    env_sample_list = sample_env_df['sample_accession'].head(10).to_list()
-    ic(env_sample_list)
+    env_sample_list = sample_env_df['sample_accession'].head(50).to_list()
+    ic(len(env_sample_list))
     count = 0
     sample_set = set()
     for sample_accession in env_sample_list:
@@ -187,12 +188,13 @@ def sample_analysis(sample_collection_obj):
     sample_collection_obj.put_sample_set(sample_set)
     annotate_sample_objs(list(sample_set), "sample", sample_collection_obj)
 
+    sample_collection_obj.get_sample_collection_stats()
     print(sample_collection_obj.print_summary())
 
     # for sample_obj in sample_set:
     #     print(sample_obj.print_values())
 
-    return sample_collection_obj.sample_set
+    return sample_collection_obj
 
 
 def main():

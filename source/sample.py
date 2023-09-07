@@ -34,10 +34,10 @@ class Sample:
 
 
     def print_values(self):
-        out_string = f"sample_accession: {self.sample_accession}\n"
-        out_string += f"environmental_sample: {self.environmental_sample}\n"
-        out_string += f"study_accession: {self.study_accession}\n"
-        out_string += f"description: {self.description}\n"
+        out_string = f"    sample_accession: {self.sample_accession}\n"
+        out_string += f"    environmental_sample: {self.environmental_sample}\n"
+        out_string += f"    study_accession: {self.study_accession}\n"
+        out_string += f"    description: {self.description}\n"
         return out_string
 
 
