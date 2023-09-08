@@ -12,11 +12,12 @@ from icecream import ic
 import os
 import argparse
 import pandas as pd
-import requests
-import json
+
 from itertools import islice
 from sample_collection import SampleCollection
 from sample import Sample
+from geography import Geography
+from ena_portal_api import ena_portal_api_call
 
 ena_data_dir = "/Users/woollard/projects/eDNAaquaPlan/eDNAAqua-Plan/data/ena_in"
 # Define the ENA API URL
@@ -32,7 +33,8 @@ def encode_accession_list(id_list):
     return '%2C%20%20'.join(id_list)
 
 
-def do_portal_api_call(result_object_type, query_accession_ids, return_fields):
+
+def do_portal_api_sample_call(result_object_type, query_accession_ids, return_fields):
     """
 
     :param result_object_type:
@@ -51,6 +53,7 @@ def do_portal_api_call(result_object_type, query_accession_ids, return_fields):
 ic| len(data): 3
 
     """
+
     result_object_type
     ena_search_url = f"{ena_api_url}/search"
     # Define the query parameters
@@ -66,22 +69,8 @@ ic| len(data): 3
     my_url = ena_search_url + '?includeAccessions=' + sample_accessions
     # Make a GET request to the ENA API
     # ic(my_url)
-    response = requests.get(my_url, params)
+    (data, response) = ena_portal_api_call(my_url, params, result_object_type, query_accession_ids)
 
-    # Check if the request was successful (status code 200)
-    data = []
-    if response.status_code == 200:
-        # Parse the JSON response
-        #ic(response)
-        #ic(response.text)
-        data = json.loads(response.text)
-        #ic(data)
-
-        # check if any hits
-        if len(data) <= 0:
-           print(f"WARNING: {result_object_type} {query_accession_ids} no results found")
-    else:
-        print(f"Error: Unable to fetch data for {result_object_type} {query_accession_ids}")
     return data
 
 def add_info_to_object_list(with_obj_type, obj_dict, data):
@@ -101,6 +90,7 @@ def add_info_to_object_list(with_obj_type, obj_dict, data):
             #ic(dict_row)
             data_by_id[dict_row['sample_accession']] = dict_row
     # ic(data_by_id)
+    geography = Geography()
 
     #ic("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
     for id in obj_dict:
@@ -114,34 +104,27 @@ def add_info_to_object_list(with_obj_type, obj_dict, data):
                if 'environment_biome' in data_by_id[obj.sample_accession]:
                    obj.environment_biome = data_by_id[obj.sample_accession]['environment_biome']
                if 'taxonomic_identity_marker' in data_by_id[obj.sample_accession]:
-                   obj.taxonomic_identity_marker = data_by_id[obj.sample_accession]['taxonomic_identity_marker']
+                   if data_by_id[obj.sample_accession]['taxonomic_identity_marker'] != "":
+                      obj.taxonomic_identity_marker = data_by_id[obj.sample_accession]['taxonomic_identity_marker']
                if 'tax_id' in data_by_id[obj.sample_accession]:
                    obj.tax_id = data_by_id[obj.sample_accession]['tax_id']
-                   #ic(f"yippe found obj.tax_id {obj.tax_id}")
-                   #sys.exit()
+
                if 'country' in data_by_id[obj.sample_accession]:
                    obj.country = data_by_id[obj.sample_accession]['country']
-                   ic(f"yippe found {obj.country}")
-
+                   obj.country_clean = geography.clean_insdc_country_term(obj.country)
+                   if obj.country_clean != "":
+                       obj.country_is_european = geography.is_insdc_country_in_europe(obj.country_clean)
                if 'location_start' in data_by_id[obj.sample_accession]:
-                     obj.location_start = data_by_id[obj.sample_accession]['location_start']
-                     ic(f"yippe found {obj.location_start}")
+                   obj.location_start = data_by_id[obj.sample_accession]['location_start']
                if 'location_end' in data_by_id[obj.sample_accession]:
-                     obj.location_end = data_by_id[obj.sample_accession]['location_end']
-                     ic(f"yippe found {obj.location_end}")
-                     #sys.exit()
+                   obj.location_end = data_by_id[obj.sample_accession]['location_end']
 
-
-            #         self.taxonomic_identity_marker = ""
-            #         self.country = ""
             else:
                 #ic(f"Warning: {obj.sample_accession} not being found in hits")
                 pass
             # print(obj.print_values())
 
     ic()
-
-
 
 def annotate_sample_objs(sample_list, with_obj_type, sample_collection_obj):
     """
@@ -152,7 +135,7 @@ def annotate_sample_objs(sample_list, with_obj_type, sample_collection_obj):
     """
     ic()
     sample_rtn_fields = ','.join(sample_collection_obj.sample_fields)
-    ic(','.join(sample_collection_obj.sample_fields))
+    #ic(','.join(sample_collection_obj.sample_fields))
 
     API_pre = "https://www.ebi.ac.uk/ena/portal/api/search?result="
 
@@ -180,12 +163,11 @@ def annotate_sample_objs(sample_list, with_obj_type, sample_collection_obj):
             #ic(with_obj_type)
             #return_fields = "sample_accession,description,study_accession,environment_biome,tax_id,'country locality of sample isolation'"
             return_fields = sample_rtn_fields
-            data = do_portal_api_call(with_obj_type, chunk_sample_id_list, return_fields)
+            data = do_portal_api_sample_call(with_obj_type, chunk_sample_id_list, return_fields)
             add_info_to_object_list(with_obj_type, sample_obj_dict, data)
     if with_obj_type == "sample":
        sample_collection_obj.get_sample_collection_stats()
-       ic(sample_collection_obj.environmental_study_accession_set)
-       ic(len(sample_collection_obj.environmental_study_accession_set))
+
     return
 
 
@@ -219,10 +201,17 @@ def sample_analysis(sample_collection_obj):
     annotate_sample_objs(list(sample_set), "sample", sample_collection_obj)
 
     sample_collection_obj.get_sample_collection_stats()
-    print(sample_collection_obj.print_summary())
 
     # for sample_obj in sample_set:
     #     print(sample_obj.print_values())
+
+    print("\n+++++++++++++++++++++++++++++++++++")
+    print("************** Summary of the ENA samples **************\n")
+    print(sample_collection_obj.print_summary())
+    print("+++++++++++++++++++++++++++++++++++")
+    sys.exit()
+    ic(sample_collection_obj.environmental_study_accession_set)
+    ic(len(sample_collection_obj.environmental_study_accession_set))
 
     return sample_collection_obj
 
