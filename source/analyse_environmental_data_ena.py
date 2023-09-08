@@ -111,6 +111,10 @@ def add_info_to_object_list(with_obj_type, obj_dict, data):
                   obj.description = data_by_id[obj.sample_accession]['description']
                if 'study_accession' in data_by_id[obj.sample_accession]:
                   obj.study_accession = data_by_id[obj.sample_accession]['study_accession']
+               if 'environment_biome' in data_by_id[obj.sample_accession]:
+                   obj.environment_biome = data_by_id[obj.sample_accession]['environment_biome']
+               if 'tax_id' in data_by_id[obj.sample_accession]:
+                   obj.tax_id = data_by_id[obj.sample_accession]['tax_id']
             else:
                 #ic(f"Warning: {obj.sample_accession} not being found in hits")
                 pass
@@ -153,8 +157,8 @@ def annotate_sample_objs(sample_list, with_obj_type, sample_collection_obj):
             pass
         elif with_obj_type == "sample":
             #ic(with_obj_type)
-            return_fields = "sample_accession,description,study_accession"
-
+            #return_fields = "sample_accession,description,study_accession,environment_biome,tax_id,'country locality of sample isolation'"
+            return_fields = "sample_accession,description,study_accession,environment_biome,tax_id"
             data = do_portal_api_call(with_obj_type, chunk_sample_id_list, return_fields)
             add_info_to_object_list(with_obj_type, sample_obj_dict, data)
     if with_obj_type == "sample":
@@ -166,15 +170,15 @@ def annotate_sample_objs(sample_list, with_obj_type, sample_collection_obj):
 
 def sample_analysis(sample_collection_obj):
     """ sample_analysis
-    all from the ena_expt_searchable_EnvironmentalSample_summarised are EnvironmentalSample tagged in the ENA artchive!
+    all from the ena_expt_searchable_EnvironmentalSample_summarised are EnvironmentalSample tagged in the ENA archive!
     """
     ic()
     infile = ena_data_dir + "/" + "ena_expt_searchable_EnvironmentalSample_summarised.txt"
     sample_env_df = pd.read_csv(infile, sep = '\t')
     # ic(sample_env_df.head())
     env_sample_list = sample_env_df['sample_accession'].to_list()
-    # limit_length=3000
-    # env_sample_list = env_sample_list[0:limit_length]
+    limit_length=3000
+    env_sample_list = env_sample_list[0:limit_length]
     ic(len(env_sample_list))
     count = 0
     sample_set = set()

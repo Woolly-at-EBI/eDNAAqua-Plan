@@ -23,6 +23,8 @@ class Sample:
         self.sample_accession = sample_accession
         self.study_accession = ""
         self.description = ""
+        self.tax_id = ""
+        self.environment_biome = ""
 
     def setEnvironmentalSample(self, boolean_flag):
         """
@@ -38,6 +40,8 @@ class Sample:
         out_string += f"    environmental_sample: {self.environmental_sample}\n"
         out_string += f"    study_accession: {self.study_accession}\n"
         out_string += f"    description: {self.description}\n"
+        out_string += f"    tax_id: {self.tax_id}\n"
+        out_string += f"    environment_biome: {self.environment_biome}\n"
         return out_string
 
 

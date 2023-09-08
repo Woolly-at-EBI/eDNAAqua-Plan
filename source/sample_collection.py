@@ -21,10 +21,12 @@ class SampleCollection:
         self.sample_obj_dict = {}
         self.environmental_sample_set = set()
         self.environmental_study_accession_set = set()
+        self.sample_fields = ['sample_accession', 'description', 'study_accession', 'environment_biome', 'tax_id']
 
 
     def put_sample_set(self, sample_set):
         self.sample_set = sample_set
+
 
 
     def print_summary(self):
