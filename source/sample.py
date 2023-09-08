@@ -24,31 +24,52 @@ class Sample:
         self.study_accession = ""
         self.description = ""
         self.tax_id = ""
+        self.is_environmental_sample = False
         self.environment_biome = ""
         self.taxonomic_identity_marker = ""
         self.country = ""  # country	locality of sample isolation
         self.location_start = ""
         self.location_end = ""
+        self.country_clean = ""
+        self.country_is_european = ""
 
     def setEnvironmentalSample(self, boolean_flag):
         """
-        this is what is tagged in ENA archive uner experiment.environmental_sample
+        this is what is tagged in ENA archive uner experiment.is_environmental_sample
         :param boolean_flag:
         :return:
         """
-        self.environmental_sample = boolean_flag
+        self.is_environmental_sample = boolean_flag
 
+    
+    def get_summary_dict(self):
+        if hasattr(self, 'sample_summary_dict'):
+            return self.sample_summary_dict
+        else:
+            self.sample_summary_dict  ={
+               "sample_accession": self.sample_accession,
+               "is_environmental_sample": self.is_environmental_sample,
+               "study_accession": self.study_accession,
+               "description": self.description,
+               "tax_id": self.tax_id,
+               "environment_biome": self.environment_biome,
+               "taxonomic_identity_marker": self.taxonomic_identity_marker,
+               "country": self.country,
+               "country_clean": self.country_clean,
+               "country_is_european": self.country_is_european,
+               "location_start": self.location_start,
+               "location_end": self.location_end
+             }
+            return self.sample_summary_dict
+        
+        
     def print_values(self):
-        out_string = f"    sample_accession: {self.sample_accession}\n"
-        out_string += f"    environmental_sample: {self.environmental_sample}\n"
-        out_string += f"    study_accession: {self.study_accession}\n"
-        out_string += f"    description: {self.description}\n"
-        out_string += f"    tax_id: {self.tax_id}\n"
-        out_string += f"    environment_biome: {self.environment_biome}\n"
-        out_string += f"    taxonomic_identity_marker: {self.taxonomic_identity_marker}\n"
-        out_string += f"    country: {self.country}\n"
-        out_string += f"    location_start: {self.location_start}\n"
-        out_string += f"    location_end: {self.location_end}\n"
+        out_string = ""
+        summary_dict = self.get_summary_dict()
+
+        for field in sorted(summary_dict.keys()):
+            out_string += f"{field.ljust(30)}: {summary_dict[field]}\n"
+
         return out_string
 
 
