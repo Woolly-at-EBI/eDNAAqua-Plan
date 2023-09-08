@@ -26,7 +26,7 @@ class Sample:
 
     def setEnvironmentalSample(self, boolean_flag):
         """
-
+        this is what is tagged in ENA archive uner experiment.environmental_sample
         :param boolean_flag:
         :return:
         """

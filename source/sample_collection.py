@@ -20,6 +20,7 @@ class SampleCollection:
     def __init__(self):
         self.sample_obj_dict = {}
         self.environmental_sample_set = set()
+        self.environmental_study_accession_set = set()
 
 
     def put_sample_set(self, sample_set):
@@ -32,6 +33,7 @@ class SampleCollection:
         sample_obj = random.choice(list(self.sample_set))
         outstring += f"Random sample: {sample_obj.print_values()}\n"
         outstring += f"environmental_sample_total: {len(self.get_environmental_sample_list())}\n"
+        outstring += f"environmental_study_total: {len(self.get_environmental_study_accession_list())}\n"
         return outstring
 
     def get_sample_collection_stats(self):
@@ -53,8 +55,13 @@ class SampleCollection:
                     print(".", end="")
                     self.environmental_sample_set.add(sample_obj)
                 if sample_obj.study_accession != "":
-                    sample_collection_stats_dict['by_study_id'][sample_obj.study_accession] = { 'sample_id': { sample_obj.sample_accession : sample_collection_stats_dict['by_sample_id'][sample_obj.sample_accession]} }
-                    # ic(sample_collection_stats_dict['by_study_id'])
+                    for study_accession in sample_obj.study_accession.split(';'):
+                      sample_collection_stats_dict['by_study_id'][study_accession] = {'sample_id': { sample_obj.sample_accession : sample_collection_stats_dict['by_sample_id'][sample_obj.sample_accession]} }
+
+                      if sample_obj.environmental_sample:
+                            self.environmental_study_accession_set.add(study_accession)
+
+                # ic(sample_collection_stats_dict['by_study_id'])
                 self.sample_collection_stats_dict = sample_collection_stats_dict
             self.sample_count = len(sample_collection_stats_dict['by_sample_id'])
             # ic(self.sample_collection_stats_dict)
@@ -67,6 +74,9 @@ class SampleCollection:
         :return:
         """
         return list(self.environmental_sample_set)
+
+    def get_environmental_study_accession_list(self):
+        return list(self.environmental_study_accession_set)
 def main():
     pass
 

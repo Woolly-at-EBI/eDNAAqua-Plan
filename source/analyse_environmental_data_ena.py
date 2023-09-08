@@ -61,7 +61,7 @@ ic| len(data): 3
         "result": result_object_type,
         "format": "json",
         "fields": return_fields,
-        "limit": 10
+        "limit": 0
     }
     my_url = ena_search_url + '?includeAccessions=' + sample_accessions
     # Make a GET request to the ENA API
@@ -132,7 +132,7 @@ def annotate_sample_objs(sample_list, with_obj_type, sample_collection_obj):
     API_pre = "https://www.ebi.ac.uk/ena/portal/api/search?result="
 
     iterator = iter(sample_list)
-    chunk_size = 1000
+    chunk_size = 500
 
     sample_obj_dict = sample_collection_obj.sample_obj_dict
     # ic(sample_obj_dict)
@@ -157,7 +157,10 @@ def annotate_sample_objs(sample_list, with_obj_type, sample_collection_obj):
 
             data = do_portal_api_call(with_obj_type, chunk_sample_id_list, return_fields)
             add_info_to_object_list(with_obj_type, sample_obj_dict, data)
-
+    if with_obj_type == "sample":
+       sample_collection_obj.get_sample_collection_stats()
+       ic(sample_collection_obj.environmental_study_accession_set)
+       ic(len(sample_collection_obj.environmental_study_accession_set))
     return
 
 
@@ -169,7 +172,9 @@ def sample_analysis(sample_collection_obj):
     infile = ena_data_dir + "/" + "ena_expt_searchable_EnvironmentalSample_summarised.txt"
     sample_env_df = pd.read_csv(infile, sep = '\t')
     # ic(sample_env_df.head())
-    env_sample_list = sample_env_df['sample_accession'].head(50).to_list()
+    env_sample_list = sample_env_df['sample_accession'].to_list()
+    # limit_length=3000
+    # env_sample_list = env_sample_list[0:limit_length]
     ic(len(env_sample_list))
     count = 0
     sample_set = set()
