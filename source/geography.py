@@ -123,8 +123,6 @@ class Geography:
      self.ocean_sea_set = ocean_sea_set
      self.country_set = country_set
 
-     for term in insdc_full_list:
-        pass
 
   def print_summary(self):
 
