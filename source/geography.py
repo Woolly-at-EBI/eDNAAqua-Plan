@@ -74,11 +74,8 @@ class Geography:
               #simpler
               return string.capitalize()
 
-      clean_country = removeBefore(country,":")
+      clean_country = removeBefore(country, ":")
       clean_country = capitalise(clean_country)
-
-      ic(country)
-      ic(clean_country)
       return clean_country
 
 
@@ -96,7 +93,7 @@ class Geography:
      # print(eu_list)
 
 
-     noneu_euro_raw="Iceland,Liechtenstein,Norway,Switzerland,United Kingdom,Albania,Belarus,Gibraltar,Jersey,San Marino,Svalbard,Moldova,Isle of Man,Monaco,Cyprus,Bosnia and Herzegovina,North Macedonia,Serbia,Andorra,Russia,Guernsey,"
+     noneu_euro_raw="Iceland,Liechtenstein,Norway,Switzerland,United Kingdom,Albania,Belarus,Gibraltar,Jersey,Montenegro,San Marino,Svalbard,Moldova,Isle of Man,Monaco,Cyprus,Bosnia and Herzegovina,North Macedonia,Serbia,Andorra,Russia,Guernsey,"
      noneu_euro_list=noneu_euro_raw.split(',')
      europe_list = sorted(noneu_euro_list + eu_list)
      not_europe_set = set()
@@ -106,7 +103,6 @@ class Geography:
      for term in sorted(insdc_full_list):
         if re.search(r"Sea|Ocean", term):
              ocean_sea_set.add(term)
-             #ic(f"added {term}")
         else:
             country_set.add(term)
      #print("++++++++++++++++++++++++++++++++++++++++++++")
