@@ -21,8 +21,7 @@ class SampleCollection:
         self.sample_obj_dict = {}
         self.environmental_sample_set = set()
         self.environmental_study_accession_set = set()
-        self.sample_fields = ['sample_accession', 'description', 'study_accession', 'environment_biome', 'tax_id']
-
+        self.sample_fields = ['sample_accession', 'description', 'study_accession', 'environment_biome', 'tax_id', 'country', 'location_start', 'location_end']
 
     def put_sample_set(self, sample_set):
         self.sample_set = sample_set
@@ -36,6 +35,12 @@ class SampleCollection:
         outstring += f"Random sample: {sample_obj.print_values()}\n"
         outstring += f"environmental_sample_total: {len(self.get_environmental_sample_list())}\n"
         outstring += f"environmental_study_total: {len(self.get_environmental_study_accession_list())}\n"
+        print('#####################################')
+        sample_obj = random.choice(list(self.sample_set))
+        outstring += f"Random sample: {sample_obj.print_values()}\n"
+        print('#####################################')
+        sample_obj = random.choice(list(self.sample_set))
+        outstring += f"Random sample: {sample_obj.print_values()}\n"
         return outstring
 
     def get_sample_collection_stats(self):

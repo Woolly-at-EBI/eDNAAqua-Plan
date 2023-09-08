@@ -113,8 +113,27 @@ def add_info_to_object_list(with_obj_type, obj_dict, data):
                   obj.study_accession = data_by_id[obj.sample_accession]['study_accession']
                if 'environment_biome' in data_by_id[obj.sample_accession]:
                    obj.environment_biome = data_by_id[obj.sample_accession]['environment_biome']
+               if 'taxonomic_identity_marker' in data_by_id[obj.sample_accession]:
+                   obj.taxonomic_identity_marker = data_by_id[obj.sample_accession]['taxonomic_identity_marker']
                if 'tax_id' in data_by_id[obj.sample_accession]:
                    obj.tax_id = data_by_id[obj.sample_accession]['tax_id']
+                   #ic(f"yippe found obj.tax_id {obj.tax_id}")
+                   #sys.exit()
+               if 'country' in data_by_id[obj.sample_accession]:
+                   obj.country = data_by_id[obj.sample_accession]['country']
+                   ic(f"yippe found {obj.country}")
+
+               if 'location_start' in data_by_id[obj.sample_accession]:
+                     obj.location_start = data_by_id[obj.sample_accession]['location_start']
+                     ic(f"yippe found {obj.location_start}")
+               if 'location_end' in data_by_id[obj.sample_accession]:
+                     obj.location_end = data_by_id[obj.sample_accession]['location_end']
+                     ic(f"yippe found {obj.location_end}")
+                     #sys.exit()
+
+
+            #         self.taxonomic_identity_marker = ""
+            #         self.country = ""
             else:
                 #ic(f"Warning: {obj.sample_accession} not being found in hits")
                 pass
@@ -132,6 +151,8 @@ def annotate_sample_objs(sample_list, with_obj_type, sample_collection_obj):
     :return:
     """
     ic()
+    sample_rtn_fields = ','.join(sample_collection_obj.sample_fields)
+    ic(','.join(sample_collection_obj.sample_fields))
 
     API_pre = "https://www.ebi.ac.uk/ena/portal/api/search?result="
 
@@ -158,7 +179,7 @@ def annotate_sample_objs(sample_list, with_obj_type, sample_collection_obj):
         elif with_obj_type == "sample":
             #ic(with_obj_type)
             #return_fields = "sample_accession,description,study_accession,environment_biome,tax_id,'country locality of sample isolation'"
-            return_fields = "sample_accession,description,study_accession,environment_biome,tax_id"
+            return_fields = sample_rtn_fields
             data = do_portal_api_call(with_obj_type, chunk_sample_id_list, return_fields)
             add_info_to_object_list(with_obj_type, sample_obj_dict, data)
     if with_obj_type == "sample":
@@ -177,7 +198,7 @@ def sample_analysis(sample_collection_obj):
     sample_env_df = pd.read_csv(infile, sep = '\t')
     # ic(sample_env_df.head())
     env_sample_list = sample_env_df['sample_accession'].to_list()
-    limit_length=3000
+    limit_length=1000
     env_sample_list = env_sample_list[0:limit_length]
     ic(len(env_sample_list))
     count = 0
