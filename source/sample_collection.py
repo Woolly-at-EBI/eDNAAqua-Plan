@@ -14,27 +14,45 @@ import os
 import argparse
 import random
 from sample import Sample
+from ena_portal_api import ena_portal_api_call
+from datetime import datetime
 
 class SampleCollection:
 
     def __init__(self):
+        self.type = "SampleCollection"
         self.sample_obj_dict = {}
         self.environmental_sample_set = set()
         self.environmental_study_accession_set = set()
-        self.sample_fields = ['sample_accession', 'description', 'study_accession', 'environment_biome', 'tax_id', 'country', 'location_start', 'location_end']
+        self.european_environmental_set = set()
+        self.european_sample_set = set()
+        self.sample_fields = ['sample_accession', 'description', 'study_accession', 'environment_biome', 'tax_id', 'taxonomic_identity_marker', 'country', 'location_start', 'location_end']
+        self.total_archive_sample_size = self.get_total_archive_sample_size()
 
     def put_sample_set(self, sample_set):
         self.sample_set = sample_set
 
-
+    def get_total_archive_sample_size(self):
+       url='https://www.ebi.ac.uk/ena/portal/api/count?result=sample&dataPortal=ena'
+       (total,response)= ena_portal_api_call(url, {}, "sample", "")
+       ic(total)
+       return total
 
     def print_summary(self):
-        outstring = f"sample set size={len(self.sample_set)}\n"
-        outstring += f"sample dict size={len(self.sample_obj_dict)}\n"
+        outstring = f"Run date={datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f%z')}\n"
+        outstring += f"sample_set_size={len(self.sample_set)}\n"
+        outstring += f"total_ena_sample_size={self.total_archive_sample_size}\n"
+        outstring += f"environmental_sample_total: {len(self.get_environmental_sample_list())}\n"
+        outstring += f"European_environmental_sample_total: {len(self.european_environmental_set)}\n"
+        outstring += f"European_sample_total: {len(self.european_sample_set)}\n"
+        outstring += f"environmental_study_total: {len(self.get_environmental_study_accession_list())}\n"
+
+
+        outstring += f"sample_dict_size={len(self.sample_obj_dict)}\n"
+        outstring +='#####################################\n'
         sample_obj = random.choice(list(self.sample_set))
         outstring += f"Random sample: {sample_obj.print_values()}\n"
-        outstring += f"environmental_sample_total: {len(self.get_environmental_sample_list())}\n"
-        outstring += f"environmental_study_total: {len(self.get_environmental_study_accession_list())}\n"
+
         print('#####################################')
         sample_obj = random.choice(list(self.sample_set))
         outstring += f"Random sample: {sample_obj.print_values()}\n"
@@ -56,23 +74,24 @@ class SampleCollection:
                     {
                         "sample_accession": sample_obj.sample_accession,
                          "study_accession": sample_obj.study_accession,
-                         "environmental_sample": sample_obj.environmental_sample
+                         "is_environmental_sample": sample_obj.is_environmental_sample
                       }
-                if sample_obj.environmental_sample:
+                if sample_obj.is_environmental_sample:
                     print(".", end="")
                     self.environmental_sample_set.add(sample_obj)
+                    if sample_obj.country_is_european:
+                        self.european_environmental_set.add(sample_obj)
+                if sample_obj.country_is_european:
+                        self.european_sample_set.add(sample_obj)
+                # ic(sample_collection_stats_dict['by_study_id'])
                 if sample_obj.study_accession != "":
                     for study_accession in sample_obj.study_accession.split(';'):
                       sample_collection_stats_dict['by_study_id'][study_accession] = {'sample_id': { sample_obj.sample_accession : sample_collection_stats_dict['by_sample_id'][sample_obj.sample_accession]} }
+                      self.environmental_study_accession_set.add(study_accession)
 
-                      if sample_obj.environmental_sample:
-                            self.environmental_study_accession_set.add(study_accession)
-
-                # ic(sample_collection_stats_dict['by_study_id'])
                 self.sample_collection_stats_dict = sample_collection_stats_dict
             self.sample_count = len(sample_collection_stats_dict['by_sample_id'])
             # ic(self.sample_collection_stats_dict)
-        print()
         return self.sample_collection_stats_dict
 
     def get_environmental_sample_list(self):
