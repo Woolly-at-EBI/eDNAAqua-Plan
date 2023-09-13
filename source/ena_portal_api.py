@@ -14,6 +14,9 @@ import argparse
 
 import requests
 import json
+
+def ena_portal_url():
+    return "https://www.ebi.ac.uk/ena/portal/api/"
 def ena_portal_api_call(url, params, result_object_type, query_accession_ids):
     """
 
@@ -23,12 +26,14 @@ def ena_portal_api_call(url, params, result_object_type, query_accession_ids):
     :param query_accession_ids:
     :return:
     """
+    ic()
     response = requests.get(url, params)
     #ic(url)
     #ic(params)
 
     data = []
-    if response.status_code == 200:
+    if response.status_code == 200:  # i.e. ok
+        #ic(response.status_code)
         # Parse the JSON response
         # ic(response)
         # ic(response.text)
@@ -37,11 +42,12 @@ def ena_portal_api_call(url, params, result_object_type, query_accession_ids):
 
         # check if any hits
         if type(data) is int:
+            int("data type is okay!")
             pass
         elif len(data) <= 0:
             print(f"WARNING: {result_object_type} {query_accession_ids} no results found")
     else:
-        print(f"Error: Unable to fetch data for {result_object_type} {query_accession_ids}")
+            print(f"Error: Unable to fetch data for {result_object_type} {query_accession_ids} because {response}")
     return data, response
 
 def main():
