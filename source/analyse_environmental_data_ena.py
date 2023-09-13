@@ -163,9 +163,11 @@ def annotate_sample_objs(sample_list, with_obj_type, sample_collection_obj):
             #ic(with_obj_type)
             #return_fields = "sample_accession,description,study_accession,environment_biome,tax_id,'country locality of sample isolation'"
             return_fields = sample_rtn_fields
-            data = do_portal_api_sample_call(with_obj_type, chunk_sample_id_list, return_fields)
-            add_info_to_object_list(with_obj_type, sample_obj_dict, data)
+            sample_ena_data = do_portal_api_sample_call(with_obj_type, chunk_sample_id_list, return_fields)
+            add_info_to_object_list(with_obj_type, sample_obj_dict, sample_ena_data)
+
     if with_obj_type == "sample":
+       sample_collection_obj.addTaxonomyAnnotation()
        sample_collection_obj.get_sample_collection_stats()
 
     return
@@ -209,9 +211,13 @@ def sample_analysis(sample_collection_obj):
     print("************** Summary of the ENA samples **************\n")
     print(sample_collection_obj.print_summary())
     print("+++++++++++++++++++++++++++++++++++")
-    sys.exit()
+    # sys.exit()
     ic(sample_collection_obj.environmental_study_accession_set)
     ic(len(sample_collection_obj.environmental_study_accession_set))
+
+    ic(sample_collection_obj.get_sample_coll_df())
+    ic("..............")
+    ic(sample_collection_obj.get_sample_coll_df())
 
     return sample_collection_obj
 
