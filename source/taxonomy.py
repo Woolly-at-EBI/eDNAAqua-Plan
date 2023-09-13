@@ -37,14 +37,15 @@ class taxon:
         self.isFreshwater = False
 
         """
-        if hit['tax_id'] == "": #ie. create a dummy
-            self.scientific_name = ''
-            self.tax_id = ''
-            self.tag_list = []
-        else:
+        if hit['tax_id'] != "":
             self.scientific_name = hit['scientific_name']
             self.tax_id = hit['tax_id']
             self.tag_list = sorted(hit['tag'].split(';'))
+        else: #ie. create a dummy {tax_id = ''}
+            self.scientific_name = ''
+            self.tax_id = ''
+            self.tag_list = []
+
 
            # 'coastal_brackish',
            # 'coastal_brackish_low_confidence',
