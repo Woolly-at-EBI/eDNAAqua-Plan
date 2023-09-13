@@ -78,7 +78,10 @@ class taxon_collection:
             self.tax_obj_list.append(taxon_obj)
 
     def get_taxon_obj_by_id(self, tax_id):
-        return self.tax_id_dict[tax_id]
+        if tax_id == "":
+            return None
+        else:
+            return self.tax_id_dict[tax_id]
 
     def get_all_taxon_obj_list(self):
         return self.tax_obj_list
@@ -105,6 +108,10 @@ def do_portal_api_tax_call(result_object_type, query_accession_ids, return_field
     ena_api_url = ena_portal_url()
     ena_search_url = f"{ena_api_url}search?"
     # Define the query parameters
+    #get rid of duplicates and blank
+    query_accession_id_set = set(query_accession_ids)
+    query_accession_id_set.discard("")
+    query_accession_ids = list(query_accession_id_set)
     #ic(query_accession_ids)
     tax_accessions_string = ','.join(query_accession_ids)
     # "query": f"accession={sample_accession}",
