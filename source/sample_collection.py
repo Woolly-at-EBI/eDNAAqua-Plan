@@ -93,12 +93,11 @@ class SampleCollection:
                 sample_obj.taxonomy_obj = taxon({'tax_id': ''})  # generates a dummy
 
 
-        sys.exit()
-
     def print_summary(self):
         outstring = f"Run date={datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f%z')}\n"
         outstring += f"sample_set_size={len(self.sample_set)}\n"
         outstring += f"total_ena_sample_size={self.total_archive_sample_size}\n"
+        outstring += f"total_ena_tax_id_count={len(self.tax_id_set)}\n"
         outstring += f"environmental_sample_total: {len(self.get_environmental_sample_list())}\n"
         outstring += f"European_environmental_sample_total: {len(self.european_environmental_set)}\n"
         outstring += f"European_sample_total: {len(self.european_sample_set)}\n"
