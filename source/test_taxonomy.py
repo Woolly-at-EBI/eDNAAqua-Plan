@@ -22,6 +22,7 @@ class Test(unittest.TestCase):
     def test_do_portal_api_tax_call(self):
         self.assertListEqual(self.portal_hit_hash, self.test_hash)
 
+
     def test_taxon_collection(self):
 
         taxon_collection_obj = taxon_collection(self.portal_hit_hash)
@@ -30,6 +31,10 @@ class Test(unittest.TestCase):
 
     def test_get_all_taxon_obj_list(self):
         taxon_collection_obj = taxon_collection(self.portal_hit_hash)
+        self.assertEqual(len(taxon_collection_obj.get_all_taxon_obj_list()), 3)
+
+    def test_generate_taxon_collection(self):
+        taxon_collection_obj = generate_taxon_collection(self.tax_id_list)
         self.assertEqual(len(taxon_collection_obj.get_all_taxon_obj_list()), 3)
 
     def test_scientific_name(self):

@@ -164,6 +164,12 @@ def create_taxonomy_hash(tax_list):
             combined_data += data
     return combined_data
 
+def generate_taxon_collection(tax_id_list):
+    combined_data = create_taxonomy_hash(tax_id_list)
+    taxon_collection_obj = taxon_collection(combined_data)
+    return taxon_collection_obj
+
+
 def main():
     tax_id_list = ['9606', '8860', '1']
     ic(tax_id_list)
