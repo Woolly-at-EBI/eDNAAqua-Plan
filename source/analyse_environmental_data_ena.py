@@ -211,7 +211,7 @@ def sample_analysis(sample_collection_obj):
     print("************** Summary of the ENA samples **************\n")
     print(sample_collection_obj.print_summary())
     print("+++++++++++++++++++++++++++++++++++")
-    # sys.exit()
+    sys.exit()
     ic(sample_collection_obj.environmental_study_accession_set)
     ic(len(sample_collection_obj.environmental_study_accession_set))
 

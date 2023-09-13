@@ -56,8 +56,7 @@ class SampleCollection:
         if hasattr(self, 'sample_df'):
             return self.sample_df
         else:
-
-            count =0
+            count = 0
             columns_list = []
             coll_dict = {}
             for sample_obj in self.sample_set:
@@ -74,11 +73,21 @@ class SampleCollection:
             return self.sample_df
     def addTaxonomyAnnotation(self):
         """
-
+        # creates these
+        self.tax_id_set - tax_id
+        self.tax_isMarine_set - sample_obj
+        self.tax_isTerrestrial_set - sample_obj
+        self.tax_isCoastal_set - sample_obj
+        self.tax_isFreshwater_set - sample_obj
         :return:
         """
         for sample_obj in self.sample_set:
             self.tax_id_set.add(sample_obj.tax_id)
+        self.tax_isMarine_set = set()
+        self.tax_isTerrestrial_set = set()
+        self.tax_isCoastal_set = set()
+        self.tax_isFreshwater_set = set()
+
         tax_id_list = sorted(self.tax_id_set)
         ic(tax_id_list)
         taxon_collection_obj = generate_taxon_collection(tax_id_list)
@@ -88,6 +97,14 @@ class SampleCollection:
             if taxonomy_obj and hasattr(taxonomy_obj, 'tax_id'):
                 sample_obj.taxonomy_obj = taxonomy_obj
                 ic(sample_obj.taxonomy_obj.tax_id)
+                if taxonomy_obj.isMarine:
+                    self.tax_isMarine_set.add(sample_obj)
+                if taxonomy_obj.isTerrestrial:
+                    self.tax_isTerrestrial_set.add(sample_obj)
+                if taxonomy_obj.isCoastal:
+                    self.tax_isCoastal_set.add(sample_obj)
+                if taxonomy_obj.isFreshwater:
+                    self.tax_isFreshwater_set.add(sample_obj)
             else:
                 ic(f"Warning: for {sample_obj.tax_id} generating a dummy")
                 sample_obj.taxonomy_obj = taxon({'tax_id': ''})  # generates a dummy
@@ -96,6 +113,7 @@ class SampleCollection:
     def print_summary(self):
         outstring = f"Run date={datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f%z')}\n"
         outstring += f"sample_set_size={len(self.sample_set)}\n"
+        outstring += f"sample_dict_size={len(self.sample_obj_dict)}\n"
         outstring += f"total_ena_sample_size={self.total_archive_sample_size}\n"
         outstring += f"total_ena_tax_id_count={len(self.tax_id_set)}\n"
         outstring += f"environmental_sample_total: {len(self.get_environmental_sample_list())}\n"
@@ -103,8 +121,15 @@ class SampleCollection:
         outstring += f"European_sample_total: {len(self.european_sample_set)}\n"
         outstring += f"environmental_study_total: {len(self.get_environmental_study_accession_list())}\n"
 
+        outstring += '#####################################\n'
+        outstring += f"The following information was derived the taxonomy tags\n"
+        outstring += f"  total_ena_tax_marine_count={len(self.tax_isMarine_set)}\n"
+        outstring += f"  total_ena_tax_terrestrial_count={len(self.tax_isTerrestrial_set)}\n"
+        outstring += f"  total_ena_tax_coastal_count={len(self.tax_isCoastal_set)}\n"
+        outstring += f"  total_ena_tax_freshwater_count={len(self.tax_isFreshwater_set)}\n"
 
-        outstring += f"sample_dict_size={len(self.sample_obj_dict)}\n"
+
+
         outstring +='#####################################\n'
         sample_obj1 = random.choice(list(self.sample_set))
         outstring += f"Random sample: {sample_obj1.print_values()}\n"
