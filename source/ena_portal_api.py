@@ -42,7 +42,7 @@ def ena_portal_api_call(url, params, result_object_type, query_accession_ids):
 
         # check if any hits
         if type(data) is int:
-            int("data type is okay!")
+            #ic("data type is okay!")
             pass
         elif len(data) <= 0:
             print(f"WARNING: {result_object_type} {query_accession_ids} no results found")
