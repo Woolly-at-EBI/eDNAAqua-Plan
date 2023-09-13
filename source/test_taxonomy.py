@@ -15,6 +15,8 @@ class Test(unittest.TestCase):
     portal_hit_hash = do_portal_api_tax_call("taxon", ['9606', '8860', '1'],
                                              ['tax_id', 'tax_division', 'tag', 'scientific_name'])
 
+    ic(portal_hit_hash)
+
     def test_create_taxonomy_hash(self):
         hit_hash = create_taxonomy_hash(self.tax_id_list)
         self.assertListEqual(hit_hash, self.test_hash)

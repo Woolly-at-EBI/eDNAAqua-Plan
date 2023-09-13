@@ -37,9 +37,14 @@ class taxon:
         self.isFreshwater = False
 
         """
-        self.scientific_name = hit['scientific_name']
-        self.tax_id = hit['tax_id']
-        self.tag_list = sorted(hit['tag'].split(';'))
+        if hit['tax_id'] == "": #ie. create a dummy
+            self.scientific_name = ''
+            self.tax_id = ''
+            self.tag_list = []
+        else:
+            self.scientific_name = hit['scientific_name']
+            self.tax_id = hit['tax_id']
+            self.tag_list = sorted(hit['tag'].split(';'))
 
            # 'coastal_brackish',
            # 'coastal_brackish_low_confidence',
@@ -78,13 +83,27 @@ class taxon_collection:
             self.tax_obj_list.append(taxon_obj)
 
     def get_taxon_obj_by_id(self, tax_id):
-        if tax_id == "":
+        """
+        N.B. copes with id="", as dummy created
+        :param tax_id:
+        :return:
+        """
+        ic()
+        if tax_id in self.tax_id_dict:
+           #ic(f"YIPPEE: {tax_id} found")
+           return self.tax_id_dict[tax_id]
+        elif tax_id == "":
+            ic(f"ERROR: '{tax_id}' not found as it was blank")
             return None
         else:
-            return self.tax_id_dict[tax_id]
+            ic(f"ERROR: '{tax_id}' not found")
+            return None
 
     def get_all_taxon_obj_list(self):
         return self.tax_obj_list
+
+    def get_dummy_taxon_obj(self):
+        return self.dummy_taxon_obj
 
 
 def do_portal_api_tax_call(result_object_type, query_accession_ids, return_fields):
@@ -155,6 +174,7 @@ def create_taxonomy_hash(tax_list):
                 'tax_division': 'HUM',
                 'tax_id': '9606'}]
     """
+    ic()
     iterator = iter(tax_list)
     chunk_size = 500
 
@@ -172,6 +192,7 @@ def create_taxonomy_hash(tax_list):
     return combined_data
 
 def generate_taxon_collection(tax_id_list):
+    ic()
     combined_data = create_taxonomy_hash(tax_id_list)
     taxon_collection_obj = taxon_collection(combined_data)
     return taxon_collection_obj
