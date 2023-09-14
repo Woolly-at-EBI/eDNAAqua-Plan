@@ -128,12 +128,13 @@ def add_info_to_object_list(with_obj_type, obj_dict, data):
 
 def annotate_sample_objs(sample_list, with_obj_type, sample_collection_obj):
     """
-
+     annotate all the sample objects
     :param sample_list:
     :param with_obj_type:
     :return:
     """
     ic()
+    ic(with_obj_type)
     sample_rtn_fields = ','.join(sample_collection_obj.sample_fields)
     #ic(','.join(sample_collection_obj.sample_fields))
 
@@ -165,10 +166,13 @@ def annotate_sample_objs(sample_list, with_obj_type, sample_collection_obj):
             return_fields = sample_rtn_fields
             sample_ena_data = do_portal_api_sample_call(with_obj_type, chunk_sample_id_list, return_fields)
             add_info_to_object_list(with_obj_type, sample_obj_dict, sample_ena_data)
-
+    ic()
     if with_obj_type == "sample":
        sample_collection_obj.addTaxonomyAnnotation()
+       ic("just added taxonomyAnnotation")
        sample_collection_obj.get_sample_collection_stats()
+       ic(sample_collection_obj.print_summary())
+       sys.exit()
 
     return
 
@@ -182,7 +186,7 @@ def sample_analysis(sample_collection_obj):
     sample_env_df = pd.read_csv(infile, sep = '\t')
     # ic(sample_env_df.head())
     env_sample_list = sample_env_df['sample_accession'].to_list()
-    limit_length=1000
+    limit_length=10000
     env_sample_list = env_sample_list[0:limit_length]
     ic(len(env_sample_list))
     count = 0

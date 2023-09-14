@@ -11,6 +11,7 @@ chmod a+x sample.py
 from icecream import ic
 import os
 import argparse
+import inspect
 
 class Sample:
     """
@@ -32,6 +33,8 @@ class Sample:
         self.location_end = ""
         self.country_clean = ""
         self.country_is_european = ""
+        #alos these, but not defined until later
+        self.taxonomy_obj = None
 
     def setEnvironmentalSample(self, boolean_flag):
         """
@@ -65,10 +68,18 @@ class Sample:
         
     def print_values(self):
         out_string = ""
-        summary_dict = self.get_summary_dict()
 
+        #ic(inspect.getmembers(self))
+
+        summary_dict = self.get_summary_dict()
         for field in sorted(summary_dict.keys()):
             out_string += f"{field.ljust(30)}: {summary_dict[field]}\n"
+
+        if hasattr(self,"taxonomy_obj") and self.taxonomy_obj != None:
+            taxonomy_obj = self.taxonomy_obj
+            print(taxonomy_obj.print_summary())
+
+            #out_string += f"{'tax_isMarine'.ljust(30)}: {self.taxonomy_obj.tax_isMarine}\n"
 
         return out_string
 

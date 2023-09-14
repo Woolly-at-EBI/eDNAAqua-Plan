@@ -17,13 +17,23 @@ import sys
 
 
 class taxon:
-   """
+    """
         self.scientific_name
         self.tax_id
         self.tax_list
-   """
+    """
+    def print_summary(self):
+       out_string = ""
+       out_string += f"{'scientific_name'.ljust(30)}: {self.scientific_name}\n"
+       out_string += f"{'tax_id'.ljust(30)}: {self.tax_id}\n"
+       out_string += f"{'tag_list'.ljust(30)}: {self.tag_list}\n"
+       out_string += f"{'isTerrestrial'.ljust(30)}: {self.isTerrestrial}\n"
+       out_string += f"{'isMarine'.ljust(30)}: {self.isMarine}\n"
+       out_string += f"{'isCoastal'.ljust(30)}: {self.isCoastal}\n"
+       out_string += f"{'isFreshwater'.ljust(30)}: {self.isFreshwater}\n"
+       return out_string
 
-   def __init__(self, hit):
+    def __init__(self, hit):
         """
         :param hit:
             # {'scientific_name': 'Chloephaga melanoptera',
@@ -31,41 +41,32 @@ class taxon:
             #     'tax_division': 'VRT',
             #     'tax_id': '8860'},
         #fails safe, but where high or medium confidence they are marked True
-        self.isTerrestrial = False
-        self.isTerrestrial = False
-        self.isCoastal = False
-        self.isFreshwater = False
 
         """
-        if hit['tax_id'] != "":
-            self.scientific_name = hit['scientific_name']
-            self.tax_id = hit['tax_id']
-            self.tag_list = sorted(hit['tag'].split(';'))
-        else: #ie. create a dummy {tax_id = ''}
-            self.scientific_name = ''
-            self.tax_id = ''
-            self.tag_list = []
-
-
-           # 'coastal_brackish',
-           # 'coastal_brackish_low_confidence',
-           # 'freshwater',
-           # 'freshwater_low_confidence',
-           # 'marine',
-           # 'marine_low_confidence',
-           # 'terrestrial',
-           # 'terrestrial_low_confidence']
+        #intialise:
+        self.scientific_name = ''
+        self.tax_id = ''
+        self.tag_list = []
         self.isTerrestrial = False
         self.isMarine = False
         self.isCoastal = False
         self.isFreshwater = False
+
+        if hit['tax_id'] != "":
+            self.scientific_name = hit['scientific_name']
+            self.tax_id = hit['tax_id']
+            self.tag_list = sorted(hit['tag'].split(';'))
+        # else: #ie. create a dummy {tax_id = ''}
+
         for tag in self.tag_list:
-           splits = tag.split(",")
+           splits = tag.split("_")
+           ic(f"inspecting tags {splits}")
            if len(splits)==3 and splits[2] == "confidence" and (splits[1] == "medium" or splits[1] == "high"):
+               ic(splits[0])
                if splits[0] == "terrestrial":
                    self.isTerrestrial = True
                elif splits[0] == "marine":
-                    self.isMarine = True
+                   self.isMarine = True
                elif splits[0] == "coastal":
                     self.isCoastal = True
                elif  splits[0] == "freshwater":
@@ -105,6 +106,11 @@ class taxon_collection:
 
     def get_dummy_taxon_obj(self):
         return self.dummy_taxon_obj
+
+    def print_summary(self):
+        outstring = "*** summary of taxon ***\n"
+        outstring += f"\ttaxon_objects_total={len(self.get_all_taxon_obj_list())}"
+        return outstring
 
 
 def do_portal_api_tax_call(result_object_type, query_accession_ids, return_fields):
@@ -196,6 +202,8 @@ def generate_taxon_collection(tax_id_list):
     ic()
     combined_data = create_taxonomy_hash(tax_id_list)
     taxon_collection_obj = taxon_collection(combined_data)
+    ic(taxon_collection_obj.print_summary())
+
     return taxon_collection_obj
 
 
