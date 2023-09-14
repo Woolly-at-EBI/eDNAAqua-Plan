@@ -191,7 +191,7 @@ def sample_analysis(sample_collection_obj):
     sample_env_df = pd.read_csv(infile, sep = '\t')
     # ic(sample_env_df.head())
     env_sample_list = sample_env_df['sample_accession'].to_list()
-    limit_length=100000
+    limit_length=1000
     env_sample_list = env_sample_list[0:limit_length]
     ic(len(env_sample_list))
     count = 0
@@ -224,10 +224,9 @@ def sample_analysis(sample_collection_obj):
     ic(sample_collection_obj.environmental_study_accession_set)
     ic(len(sample_collection_obj.environmental_study_accession_set))
 
-    ic(sample_collection_obj.get_sample_coll_df())
     ic("..............")
     ic(sample_collection_obj.get_sample_coll_df())
-    sys.exit()
+
     return sample_collection_obj
 
 
@@ -236,6 +235,8 @@ def main():
     sample_analysis(sample_collection_obj)
     sample_set = sample_collection_obj.sample_set
     ic(len(sample_set))
+
+    ic("******* END OF MAIN *******")
 
 
 if __name__ == '__main__':

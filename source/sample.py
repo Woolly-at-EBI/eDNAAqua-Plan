@@ -9,9 +9,7 @@ chmod a+x sample.py
 
 
 from icecream import ic
-import os
-import argparse
-import inspect
+import sys
 
 class Sample:
     """
@@ -33,7 +31,7 @@ class Sample:
         self.location_end = ""
         self.country_clean = ""
         self.country_is_european = ""
-        #alos these, but not defined until later
+        #also these, but not defined until later
         self.taxonomy_obj = None
 
     def setEnvironmentalSample(self, boolean_flag):
@@ -63,6 +61,10 @@ class Sample:
                "location_start": self.location_start,
                "location_end": self.location_end
              }
+
+            if self.taxonomy_obj != None:
+                self.sample_summary_dict.update(self.taxonomy_obj.get_taxon_dict())
+                #ic(self.sample_summary_dict)
             return self.sample_summary_dict
         
         

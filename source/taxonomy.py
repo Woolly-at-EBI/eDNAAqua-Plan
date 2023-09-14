@@ -24,14 +24,24 @@ class taxon:
     """
     def print_summary(self):
        out_string = ""
-       out_string += f"{'scientific_name'.ljust(30)}: {self.scientific_name}\n"
-       out_string += f"{'tax_id'.ljust(30)}: {self.tax_id}\n"
-       out_string += f"{'tag_list'.ljust(30)}: {self.tag_list}\n"
-       out_string += f"{'isTerrestrial'.ljust(30)}: {self.isTerrestrial}\n"
-       out_string += f"{'isMarine'.ljust(30)}: {self.isMarine}\n"
-       out_string += f"{'isCoastal'.ljust(30)}: {self.isCoastal}\n"
-       out_string += f"{'isFreshwater'.ljust(30)}: {self.isFreshwater}\n"
+       for property in self.get_taxon_dict():
+           out_string += f"{property.ljust(30)}: {self.taxon_dict[property]}\n"
+
        return out_string
+
+    def get_taxon_dict(self):
+        if not hasattr(self,'taxon_dict'):
+            self.taxon_dict = {
+            'scientific_name': self.scientific_name,
+            'tax_id': self.tax_id,
+            'tag_list': self.tag_list,
+            'isTerrestrial': self.isTerrestrial,
+            'isMarine': self.isMarine,
+            'isCoastal': self.isCoastal,
+            'isFreshwater': self.isFreshwater
+            }
+        return self.taxon_dict
+
 
     def __init__(self, hit):
         """
@@ -106,6 +116,8 @@ class taxon_collection:
 
     def get_dummy_taxon_obj(self):
         return self.dummy_taxon_obj
+    
+        
 
     def print_summary(self):
         outstring = "*** Summary of Taxonomy Collection ***\n"
