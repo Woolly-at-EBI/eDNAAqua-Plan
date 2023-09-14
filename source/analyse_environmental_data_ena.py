@@ -19,7 +19,9 @@ from sample import Sample
 from geography import Geography
 from ena_portal_api import ena_portal_api_call
 
-ena_data_dir = "/Users/woollard/projects/eDNAaquaPlan/eDNAAqua-Plan/data/ena_in"
+ena_project_dir = "/Users/woollard/projects/eDNAaquaPlan/eDNAAqua-Plan/"
+ena_data_dir = ena_project_dir + "data/ena_in/"
+ena_data_out_dir = ena_project_dir + "data/out/"
 # Define the ENA API URL
 ena_api_url = "https://www.ebi.ac.uk/ena/portal/api"
 
@@ -226,6 +228,12 @@ def sample_analysis(sample_collection_obj):
 
     ic("..............")
     ic(sample_collection_obj.get_sample_coll_df())
+
+    ena_env_sample_df_file = ena_data_out_dir + "ena_env_sample_df.parquet"
+    ic(f"writing {ena_env_sample_df_file}")
+    df = sample_collection_obj.get_sample_coll_df()
+    df.to_parquet(ena_env_sample_df_file)
+
 
     return sample_collection_obj
 

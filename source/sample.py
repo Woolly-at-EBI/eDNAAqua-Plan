@@ -30,7 +30,7 @@ class Sample:
         self.location_start = ""
         self.location_end = ""
         self.country_clean = ""
-        self.country_is_european = ""
+        self.country_is_european = False
         #also these, but not defined until later
         self.taxonomy_obj = None
 
