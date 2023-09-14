@@ -85,7 +85,6 @@ class SampleCollection:
         ic(len(self.sample_set))
         for sample_obj in self.sample_set:
             self.tax_id_set.add(sample_obj.tax_id)
-        ic(len(self.sample_set))
         ic(len(self.tax_id_set))
 
         self.tax_isMarine_set = set()
@@ -94,32 +93,33 @@ class SampleCollection:
         self.tax_isFreshwater_set = set()
 
         tax_id_list = sorted(self.tax_id_set)
-        ic(tax_id_list)
+        ic(len(tax_id_list))
         taxon_collection_obj = generate_taxon_collection(tax_id_list)
         for sample_obj in self.sample_set:
-            ic(sample_obj.tax_id)
+            #ic(sample_obj.tax_id)
 
             #ic(sample_obj.print_values())
             taxonomy_obj = taxon_collection_obj.get_taxon_obj_by_id(sample_obj.tax_id)
             if taxonomy_obj and hasattr(taxonomy_obj, 'tax_id'):
                 sample_obj.taxonomy_obj = taxonomy_obj  # this is very important!
-                ic(sample_obj.taxonomy_obj.tax_id)
+                #ic(sample_obj.taxonomy_obj.tax_id)
                 if taxonomy_obj.isMarine:
-                    ic("\tmarine")
+                    #ic(f"\tmarine {sample_obj.taxonomy_obj.tax_id}")
                     self.tax_isMarine_set.add(sample_obj)
                 if taxonomy_obj.isTerrestrial:
-                    ic("\tterrestrial")
+                    ic(f"\tterrestrial {sample_obj.taxonomy_obj.tax_id}")
                     self.tax_isTerrestrial_set.add(sample_obj)
                 if taxonomy_obj.isCoastal:
-                    ic("\tcoastal")
+                    ic("\tcoastal {sample_obj.taxonomy_obj.tax_id}")
                     self.tax_isCoastal_set.add(sample_obj)
                 if taxonomy_obj.isFreshwater:
-                    ic("\tfreshwater")
+                    ic("\tfreshwater {sample_obj.taxonomy_obj.tax_id}")
                     self.tax_isFreshwater_set.add(sample_obj)
             else:
-                ic(f"Warning: for {sample_obj.tax_id} generating a dummy")
+                #ic(f"Warning: for {sample_obj.tax_id} generating a dummy")
                 sample_obj.taxonomy_obj = taxon({'tax_id': ''})  # generates a dummy
-
+        ic()
+        #sys.exit()
     def print_summary(self):
         ic()
         outstring = f"Run date={datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f%z')}\n"
@@ -143,15 +143,15 @@ class SampleCollection:
 
         outstring +='#####################################\n'
         sample_obj1 = random.choice(list(self.sample_set))
-        outstring += f"Random sample: {sample_obj1.print_values()}\n"
+        outstring += f"Random sample:\n{sample_obj1.print_values()}\n"
 
         print('#####################################')
         sample_obj2 = random.choice(list(self.sample_set))
-        outstring += f"Random sample: {sample_obj2.print_values()}\n"
+        outstring += f"Random sample:\n{sample_obj2.print_values()}\n"
 
         print('#####################################')
         sample_obj3 = random.choice(list(self.sample_set))
-        outstring += f"Random sample: {sample_obj3.print_values()}\n"
+        outstring += f"Random sample:\n{sample_obj3.print_values()}\n"
 
 
         return outstring

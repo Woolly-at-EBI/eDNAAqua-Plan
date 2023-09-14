@@ -60,9 +60,9 @@ class taxon:
 
         for tag in self.tag_list:
            splits = tag.split("_")
-           ic(f"inspecting tags {splits}")
+           #ic(f"inspecting tags {splits}")
            if len(splits)==3 and splits[2] == "confidence" and (splits[1] == "medium" or splits[1] == "high"):
-               ic(splits[0])
+               #ic(splits[0])
                if splits[0] == "terrestrial":
                    self.isTerrestrial = True
                elif splits[0] == "marine":
@@ -90,12 +90,12 @@ class taxon_collection:
         :param tax_id:
         :return:
         """
-        ic()
+        #ic()
         if tax_id in self.tax_id_dict:
            #ic(f"YIPPEE: {tax_id} found")
            return self.tax_id_dict[tax_id]
         elif tax_id == "":
-            ic(f"ERROR: '{tax_id}' not found as it was blank")
+            #ic(f"ERROR: '{tax_id}' not found as it was blank")
             return None
         else:
             ic(f"ERROR: '{tax_id}' not found")
@@ -108,7 +108,7 @@ class taxon_collection:
         return self.dummy_taxon_obj
 
     def print_summary(self):
-        outstring = "*** summary of taxon ***\n"
+        outstring = "*** Summary of Taxonomy Collection ***\n"
         outstring += f"\ttaxon_objects_total={len(self.get_all_taxon_obj_list())}"
         return outstring
 
@@ -190,7 +190,13 @@ def create_taxonomy_hash(tax_list):
     taxonomy_rtn_fields = ['tax_id','tax_division', 'tag','scientific_name']
     with_obj_type = "taxon"
     combined_data = []
+    chunk_count = chunk_pos = 0
+    list_size = len(tax_list)
     while chunk := list(islice(iterator, chunk_size)):
+            chunk_pos += chunk_size
+            chunk_count += 1
+            if chunk_count % 10 == 0:
+                ic(f"{chunk_pos}/{list_size}")
             data = []
             return_fields = taxonomy_rtn_fields
             # ic(f"{with_obj_type} ++++ {chunk} ++++++ {return_fields}")

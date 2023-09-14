@@ -124,7 +124,7 @@ def add_info_to_object_list(with_obj_type, obj_dict, data):
                 pass
             # print(obj.print_values())
 
-    ic()
+    #ic()
 
 def annotate_sample_objs(sample_list, with_obj_type, sample_collection_obj):
     """
@@ -142,10 +142,15 @@ def annotate_sample_objs(sample_list, with_obj_type, sample_collection_obj):
 
     iterator = iter(sample_list)
     chunk_size = 500
-
+    sample_list_size = len(sample_list)
     sample_obj_dict = sample_collection_obj.sample_obj_dict
     # ic(sample_obj_dict)
+    chunk_count =    chunk_pos =0
     while chunk := list(islice(iterator, chunk_size)):
+        chunk_count +=1
+        chunk_pos += chunk_size
+        if chunk_count % 100 == 0:
+           ic(f"{chunk_pos}/{sample_list_size}")
         #ic("++++++++++++++++++++++++++++++++++++++++++++++++++++")
         chunk_sample_id_list = []
         for sample in chunk:
@@ -171,8 +176,8 @@ def annotate_sample_objs(sample_list, with_obj_type, sample_collection_obj):
        sample_collection_obj.addTaxonomyAnnotation()
        ic("just added taxonomyAnnotation")
        sample_collection_obj.get_sample_collection_stats()
-       ic(sample_collection_obj.print_summary())
-       sys.exit()
+       ic()
+       print(sample_collection_obj.print_summary())
 
     return
 
@@ -186,7 +191,7 @@ def sample_analysis(sample_collection_obj):
     sample_env_df = pd.read_csv(infile, sep = '\t')
     # ic(sample_env_df.head())
     env_sample_list = sample_env_df['sample_accession'].to_list()
-    limit_length=10000
+    limit_length=100000
     env_sample_list = env_sample_list[0:limit_length]
     ic(len(env_sample_list))
     count = 0
@@ -215,14 +220,14 @@ def sample_analysis(sample_collection_obj):
     print("************** Summary of the ENA samples **************\n")
     print(sample_collection_obj.print_summary())
     print("+++++++++++++++++++++++++++++++++++")
-    sys.exit()
+
     ic(sample_collection_obj.environmental_study_accession_set)
     ic(len(sample_collection_obj.environmental_study_accession_set))
 
     ic(sample_collection_obj.get_sample_coll_df())
     ic("..............")
     ic(sample_collection_obj.get_sample_coll_df())
-
+    sys.exit()
     return sample_collection_obj
 
 

@@ -26,7 +26,7 @@ def ena_portal_api_call(url, params, result_object_type, query_accession_ids):
     :param query_accession_ids:
     :return:
     """
-    ic()
+    #ic()
     response = requests.get(url, params)
     #ic(url)
     #ic(params)
