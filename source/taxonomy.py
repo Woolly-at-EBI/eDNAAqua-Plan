@@ -11,7 +11,7 @@ chmod a+x taxonomy.py
 from icecream import ic
 import os
 import argparse
-from  ena_portal_api import ena_portal_api_call, ena_portal_url
+from  ena_portal_api import ena_portal_api_call, get_ena_portal_url
 from itertools import islice
 import sys
 
@@ -143,7 +143,7 @@ def do_portal_api_tax_call(result_object_type, query_accession_ids, return_field
                 'tax_id': '9606'}]
     """
 
-    ena_api_url = ena_portal_url()
+    ena_api_url = get_ena_portal_url()
     ena_search_url = f"{ena_api_url}search?"
     # Define the query parameters
     #get rid of duplicates and blank
@@ -204,12 +204,13 @@ def create_taxonomy_hash(tax_list):
     combined_data = []
     chunk_count = chunk_pos = 0
     list_size = len(tax_list)
+    ic(tax_list)
+    ic(f"{chunk_pos}/{list_size}")
     while chunk := list(islice(iterator, chunk_size)):
             chunk_pos += chunk_size
             chunk_count += 1
-            if chunk_count % 10 == 0:
+            if chunk_count % 10 == 0 or chunk_count == 1:
                 ic(f"{chunk_pos}/{list_size}")
-            data = []
             return_fields = taxonomy_rtn_fields
             # ic(f"{with_obj_type} ++++ {chunk} ++++++ {return_fields}")
             data = do_portal_api_tax_call(with_obj_type, chunk, return_fields)

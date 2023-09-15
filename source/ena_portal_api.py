@@ -15,7 +15,7 @@ import argparse
 import requests
 import json
 
-def ena_portal_url():
+def get_ena_portal_url():
     return "https://www.ebi.ac.uk/ena/portal/api/"
 def ena_portal_api_call(url, params, result_object_type, query_accession_ids):
     """
@@ -28,8 +28,8 @@ def ena_portal_api_call(url, params, result_object_type, query_accession_ids):
     """
     #ic()
     response = requests.get(url, params)
-    #ic(url)
-    #ic(params)
+    ic(url)
+    ic(params)
 
     data = []
     if response.status_code == 200:  # i.e. ok

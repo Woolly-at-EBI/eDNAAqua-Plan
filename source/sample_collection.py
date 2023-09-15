@@ -14,7 +14,7 @@ import os
 import argparse
 import random
 from sample import Sample
-from ena_portal_api import ena_portal_api_call
+from ena_portal_api import *
 from taxonomy import generate_taxon_collection, taxon
 from datetime import datetime
 import pandas as pd
@@ -120,10 +120,14 @@ class SampleCollection:
                 sample_obj.taxonomy_obj = taxon({'tax_id': ''})  # generates a dummy
         ic()
         #sys.exit()
+
+    def get_sample_set_size(self):
+        return int(len(self.sample_set))
+
     def print_summary(self):
         ic()
         outstring = f"Run date={datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f%z')}\n"
-        outstring += f"sample_set_size={len(self.sample_set)}\n"
+        outstring += f"sample_set_size={self.get_sample_set_size()}\n"
         outstring += f"sample_dict_size={len(self.sample_obj_dict)}\n"
         outstring += f"total_ena_sample_size={self.total_archive_sample_size}\n"
         outstring += f"total_ena_tax_id_count={len(self.tax_id_set)}\n"
@@ -138,8 +142,6 @@ class SampleCollection:
         outstring += f"  total_ena_tax_terrestrial_count={len(self.tax_isTerrestrial_set)}\n"
         outstring += f"  total_ena_tax_coastal_count={len(self.tax_isCoastal_set)}\n"
         outstring += f"  total_ena_tax_freshwater_count={len(self.tax_isFreshwater_set)}\n"
-
-
 
         outstring +='#####################################\n'
         sample_obj1 = random.choice(list(self.sample_set))
@@ -172,7 +174,7 @@ class SampleCollection:
                          "is_environmental_sample": sample_obj.is_environmental_sample
                       }
                 if sample_obj.is_environmental_sample:
-                    print(".", end="")
+                    # print(".", end="")
                     self.environmental_sample_set.add(sample_obj)
                     if sample_obj.country_is_european:
                         self.european_environmental_set.add(sample_obj)
@@ -198,6 +200,80 @@ class SampleCollection:
 
     def get_environmental_study_accession_list(self):
         return list(self.environmental_study_accession_set)
+
+def do_portal_api_sample_call(result_object_type, query_accession_ids, return_fields):
+    """
+
+    :param result_object_type:
+    :param query_accession_ids:
+    :param return_fields:
+    :return: data # (as list of row hits) e.g.
+       [{'description': 'Waikite Restoration Feature 5',
+            'sample_accession': 'SAMEA110453696',
+            'study_accession': 'PRJEB55115'},
+           {'description': 'Waikite Restoration Feature 3',
+            'sample_accession': 'SAMEA110453715',
+            'study_accession': 'PRJEB55115'},
+           {'description': 'Radiata Pool',
+            'sample_accession': 'SAMEA110453701',
+            'study_accession': 'PRJEB55115'}]
+ic| len(data): 3
+
+#        curl 'https://www.ebi.ac.uk/ena/portal/api/search?includeAccessions=SAMEA110453690,SAMEA110453698&result=sample&fields=sample_accession,description,study_accession,environment_biome,tax_id,taxonomic_identity_marker,country,location_start,location_end&format=json&limit=0'
+    """
+
+    result_object_type = 'sample'
+    ena_portal_api_url = get_ena_portal_url()
+    ena_search_url = f"{ena_portal_api_url}search?"
+
+    # Define the query parameters
+    sample_accessions = ','.join(query_accession_ids)
+    params = {
+        "result": result_object_type,
+        "includeAccessions": sample_accessions,
+        "format": "json",
+        "fields": return_fields,
+        "limit": 0
+    }
+    #my_url = ena_search_url + '?includeAccessions=' + sample_accessions
+    # Make a GET request to the ENA API
+    # ic(my_url)
+    (data, response) = ena_portal_api_call(ena_search_url, params, result_object_type, query_accession_ids)
+
+    if response.status_code != 200:
+        print("Due to response exiting")
+        ic()
+        sys.exit()
+
+    return data
+def get_sample_field_data(sample_list, sample_rtn_fields):
+    API_pre = "https://www.ebi.ac.uk/ena/portal/api/search?result="
+
+    all_sample_data = []
+
+    iterator = iter(sample_list)
+    chunk_size = 500 # 100 seems to have errors!
+    sample_list_size = len(sample_list)
+    with_obj_type = 'sample'
+
+    chunk_count = chunk_pos = 0
+    while chunk := list(islice(iterator, chunk_size)):
+        chunk_count += 1
+        chunk_pos += chunk_size
+        ic(f"{chunk_pos}/{sample_list_size}")
+        if chunk_count % 100 == 0 or chunk_count == 1:
+            ic(f"{chunk_pos}/{sample_list_size}")
+        # ic("++++++++++++++++++++++++++++++++++++++++++++++++++++")
+        chunk_sample_id_list = []
+        for sample in chunk:
+            # ic(sample.sample_accession)
+            chunk_sample_id_list.append(sample.sample_accession)
+        # ic(chunk_sample_id_list)
+
+        sample_ena_data = do_portal_api_sample_call(with_obj_type, chunk_sample_id_list, sample_rtn_fields)
+        all_sample_data.append(sample_ena_data)
+    return all_sample_data
+
 def main():
     pass
 
