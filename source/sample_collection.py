@@ -14,6 +14,7 @@ import os
 import argparse
 import random
 from sample import Sample
+from itertools import islice
 from ena_portal_api import *
 from taxonomy import generate_taxon_collection, taxon
 from datetime import datetime
@@ -252,16 +253,17 @@ def get_sample_field_data(sample_list, sample_rtn_fields):
     all_sample_data = []
 
     iterator = iter(sample_list)
-    chunk_size = 500 # 100 seems to have errors!
+    chunk_size = 400 # 1000 seems to have errors!
     sample_list_size = len(sample_list)
     with_obj_type = 'sample'
 
-    chunk_count = chunk_pos = 0
+    chunk_count = 0
+    chunk_pos = 0
+    ic(f"{chunk_pos}/{sample_list_size}")
     while chunk := list(islice(iterator, chunk_size)):
         chunk_count += 1
         chunk_pos += chunk_size
-        ic(f"{chunk_pos}/{sample_list_size}")
-        if chunk_count % 100 == 0 or chunk_count == 1:
+        if chunk_count % 10 == 0:
             ic(f"{chunk_pos}/{sample_list_size}")
         # ic("++++++++++++++++++++++++++++++++++++++++++++++++++++")
         chunk_sample_id_list = []

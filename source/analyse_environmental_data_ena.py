@@ -17,7 +17,7 @@ from itertools import islice
 from sample_collection import SampleCollection, get_sample_field_data
 from sample import Sample
 from geography import Geography
-from ena_portal_api import ena_portal_api_call
+from ena_portal_api import ena_portal_api_call, get_ena_portal_url, ena_portal_api_call_basic
 
 ena_project_dir = "/Users/woollard/projects/eDNAaquaPlan/eDNAAqua-Plan/"
 ena_data_dir = ena_project_dir + "data/ena_in/"
@@ -95,7 +95,7 @@ def add_info_to_object_list(with_obj_type, obj_dict, data):
 
 def annotate_sample_objs(sample_list, with_obj_type, sample_collection_obj):
     """
-     annotate all the sample objects
+     annotate all the sample objects - CONSIDER moving to the sample_collection, even in an OO way
     :param sample_list:
     :param with_obj_type:
     :return:
@@ -107,7 +107,7 @@ def annotate_sample_objs(sample_list, with_obj_type, sample_collection_obj):
     sample_obj_dict = sample_collection_obj.sample_obj_dict
 
     for sample in sample_list:
-        ic(sample.sample_accession)
+        # ic(sample.sample_accession)
         sample_obj_dict[sample.sample_accession] = sample
 
     all_sample_data = get_sample_field_data(sample_list, sample_rtn_fields)
@@ -126,21 +126,61 @@ def annotate_sample_objs(sample_list, with_obj_type, sample_collection_obj):
 def get_environmental_sample_list():
     """
     all from the ena_expt_searchable_EnvironmentalSample_summarised are EnvironmentalSample tagged in the ENA archive!
+    curl -s -X POST -H "Content-Type: application/x-www-form-urlencoded" -d 'result=read_experiment&query=environmental_sample%3Dtrue&fields=experiment_accession%2Cexperiment_title%2Cenvironmental_sample&format=tsv' "https://www.ebi.ac.uk/ena/portal/api/search" > $outfile
+    curl -s -X POST -H "Content-Type: application/x-www-form-urlencoded" -d 'result=read_experiment&query=environmental_sample%3Dtrue&fields=experiment_accession&format=tsv' "https://www.ebi.ac.uk/ena/portal/api/search"
+    curl 'https://www.ebi.ac.uk/ena/portal/api/search?result=read_experiment&query=environmental_sample=true&fields=experiment_accession&format=tsv&limit=10'
     :return:
     """
-    infile = ena_data_dir + "/" + "ena_expt_searchable_EnvironmentalSample_summarised.txt"
-    sample_env_df = pd.read_csv(infile, sep = '\t')
-    # ic(sample_env_df.head())
-    env_sample_list = sample_env_df['sample_accession'].to_list()
-    return sample_env_df['sample_accession'].to_list()
+    # infile = ena_data_dir + "/" + "ena_expt_searchable_EnvironmentalSample_summarised.txt"
+    # sample_env_df = pd.read_csv(infile, sep = '\t')
+    # # ic(sample_env_df.head())
+    # env_sample_list = sample_env_df['sample_accession'].to_list()
+    # return sample_env_df['sample_accession'].to_list()
+
+    result_object_type = 'read_experiment'
+    # ena_portal_api_url = get_ena_portal_url()
+    # ena_search_url = f"{ena_portal_api_url}search?"
+    #
+    # params = {
+    #     "result": result_object_type,
+    #     "format": "tsv",
+    #
+    #     "fields": 'sample_accession',
+    #     "limit": 10
+    # }
+
+    #"query": "environmental_sample=true",
+
+    limit = 0
+
+    # url = 'https://www.ebi.ac.uk/ena/portal/api/count?result=sample&dataPortal=ena'
+    url = get_ena_portal_url() + "search?" + 'result=read_experiment&query=environmental_sample=true&fields=experiment_accession&format=tsv&limit=10'
+    url = 'https://www.ebi.ac.uk/ena/portal/api/search?result=read_experiment&query=environmental_sample=true&fields=sample_accession&format=tsv&limit=' + str(limit)
+
+    #(data, response) = ena_portal_api_call(url, {}, result_object_type, "")
+    (data, response) = ena_portal_api_call_basic(url)
+    # returns tsv text block with fields: experiment_accession	sample_accession
+
+    my_set = set()
+    for line in data.split("\n"):
+        if line != "":
+            cols = line.split("\t")
+            #ic(cols)
+            #ic(cols[1])
+            my_set.add(cols[1])
+
+    my_set.remove("sample_accession")
+    #print(my_set)
+    return list(my_set)
+
 
 def sample_analysis(sample_list):
     """
     """
     ic()
     sample_collection_obj = SampleCollection()
-    limit_length = 10
-    sample_list = sample_list[0:limit_length]
+
+
     ic(len(sample_list))
     count = 0
     sample_set = set()
@@ -192,6 +232,8 @@ def sample_analysis(sample_list):
 
 def main():
     env_sample_acc_list = get_environmental_sample_list()
+    # limit_length = 10000
+    # env_sample_acc_list = env_sample_acc_list[0:limit_length]
     sample_collection_obj = sample_analysis(env_sample_acc_list)
     sample_set = sample_collection_obj.sample_set
     ic(len(sample_set))

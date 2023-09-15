@@ -204,7 +204,7 @@ def create_taxonomy_hash(tax_list):
     combined_data = []
     chunk_count = chunk_pos = 0
     list_size = len(tax_list)
-    ic(tax_list)
+    #ic(tax_list)
     ic(f"{chunk_pos}/{list_size}")
     while chunk := list(islice(iterator, chunk_size)):
             chunk_pos += chunk_size
