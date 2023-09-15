@@ -127,7 +127,8 @@ class SampleCollection:
 
     def print_summary(self):
         ic()
-        outstring = f"Run date={datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f%z')}\n"
+        outstring = f"**** collection_obj Summary ****"
+        outstring += f"On run date={datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f%z')}\n"
         outstring += f"sample_set_size={self.get_sample_set_size()}\n"
         outstring += f"sample_dict_size={len(self.sample_obj_dict)}\n"
         outstring += f"total_ena_sample_size={self.total_archive_sample_size}\n"
@@ -148,13 +149,13 @@ class SampleCollection:
         sample_obj1 = random.choice(list(self.sample_set))
         outstring += f"Random sample:\n{sample_obj1.print_values()}\n"
 
-        print('#####################################')
-        sample_obj2 = random.choice(list(self.sample_set))
-        outstring += f"Random sample:\n{sample_obj2.print_values()}\n"
-
-        print('#####################################')
-        sample_obj3 = random.choice(list(self.sample_set))
-        outstring += f"Random sample:\n{sample_obj3.print_values()}\n"
+        # print('#####################################')
+        # sample_obj2 = random.choice(list(self.sample_set))
+        # outstring += f"Random sample:\n{sample_obj2.print_values()}\n"
+        #
+        # print('#####################################')
+        # sample_obj3 = random.choice(list(self.sample_set))
+        # outstring += f"Random sample:\n{sample_obj3.print_values()}\n"
 
 
         return outstring

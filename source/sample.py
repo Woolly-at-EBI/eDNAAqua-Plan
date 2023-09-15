@@ -33,6 +33,10 @@ class Sample:
         self.country_is_european = False
         #also these, but not defined until later
         self.taxonomy_obj = None
+        self.source_category = ""
+
+    def setCategory(self, category):
+        self.source_category = category
 
     def setEnvironmentalSample(self, boolean_flag):
         """
@@ -59,7 +63,8 @@ class Sample:
                "country_clean": self.country_clean,
                "country_is_european": self.country_is_european,
                "location_start": self.location_start,
-               "location_end": self.location_end
+               "location_end": self.location_end,
+                "category": self.source_category
              }
 
             if self.taxonomy_obj != None:

@@ -154,8 +154,8 @@ def get_environmental_sample_list():
     limit = 0
 
     # url = 'https://www.ebi.ac.uk/ena/portal/api/count?result=sample&dataPortal=ena'
-    url = get_ena_portal_url() + "search?" + 'result=read_experiment&query=environmental_sample=true&fields=experiment_accession&format=tsv&limit=10'
-    url = 'https://www.ebi.ac.uk/ena/portal/api/search?result=read_experiment&query=environmental_sample=true&fields=sample_accession&format=tsv&limit=' + str(limit)
+    #url = get_ena_portal_url() + "search?" + 'result=read_experiment&query=environmental_sample=true&fields=experiment_accession&format=tsv&limit=10'
+    url = get_ena_portal_url() + "search?" + 'result=read_experiment&query=environmental_sample=true&fields=sample_accession&format=tsv&limit=' + str(limit)
 
     #(data, response) = ena_portal_api_call(url, {}, result_object_type, "")
     (data, response) = ena_portal_api_call_basic(url)
@@ -174,7 +174,7 @@ def get_environmental_sample_list():
     return list(my_set)
 
 
-def sample_analysis(sample_list):
+def sample_analysis(category, sample_list):
     """
     """
     ic()
@@ -187,7 +187,9 @@ def sample_analysis(sample_list):
     for sample_accession in sample_list:
         sample = Sample(sample_accession)
         sample_set.add(sample)
-        sample.setEnvironmentalSample(True)
+        if category == "environmental_sample_tagged":
+            sample.setEnvironmentalSample(True)
+        sample.setCategory(category)
         #ic(sample.sample_accession)
         #ic(sample.EnvironmentalSample)
 
@@ -216,11 +218,14 @@ def sample_analysis(sample_list):
     print(sample_collection_obj.print_summary())
     print("+++++++++++++++++++++++++++++++++++")
 
+
     ic(len(sample_collection_obj.environmental_study_accession_set))
     print(", ".join(sample_collection_obj.environmental_study_accession_set))
 
     ic("..............")
     ic(sample_collection_obj.get_sample_coll_df())
+    df = sample_collection_obj.get_sample_coll_df()
+    print(df.head(10).to_markdown())
 
     ena_env_sample_df_file = ena_data_out_dir + "ena_env_sample_df.parquet"
     ic(f"writing {ena_env_sample_df_file}")
@@ -231,10 +236,11 @@ def sample_analysis(sample_list):
 
 
 def main():
+    category = "environmental_sample_tagged"
     env_sample_acc_list = get_environmental_sample_list()
-    # limit_length = 10000
-    # env_sample_acc_list = env_sample_acc_list[0:limit_length]
-    sample_collection_obj = sample_analysis(env_sample_acc_list)
+    limit_length = 10000
+    env_sample_acc_list = env_sample_acc_list[0:limit_length]
+    sample_collection_obj = sample_analysis(category, env_sample_acc_list)
     sample_set = sample_collection_obj.sample_set
     ic(len(sample_set))
 
