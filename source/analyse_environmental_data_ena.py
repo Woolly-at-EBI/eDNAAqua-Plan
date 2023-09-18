@@ -18,6 +18,7 @@ from sample_collection import SampleCollection, get_sample_field_data
 from sample import Sample
 from geography import Geography
 from ena_portal_api import ena_portal_api_call, get_ena_portal_url, ena_portal_api_call_basic
+from study_collection import study2sample, StudyCollection
 
 ena_project_dir = "/Users/woollard/projects/eDNAaquaPlan/eDNAAqua-Plan/"
 ena_data_dir = ena_project_dir + "data/ena_in/"
@@ -168,71 +169,20 @@ def get_barcode_study_list():
     # return sample_env_df['sample_accession'].to_list()
 
     result_object_type = 'study'
-    limit = 5
-    url = get_ena_portal_url() + "search?" + 'result=read_experiment&query=environmental_sample=true&fields=sample_accession&format=tsv'
-    url += '&limit=' + str(limit)
-
-
+    limit = 10
     url = get_ena_portal_url() + "search?" + 'result=' + result_object_type
     #url += '&query=study_name%3D%22barcoding%22%20OR%20study_title%3D%22barcoding%22%20OR%20study_description%3D%22barcoding%22&fields=study_accession%2Cstudy_title%2Cstudy_name&format=json'
     url += '&query=study_name%3D%22barcoding%22%20OR%20study_title%3D%22barcoding%22%20OR%20study_description%3D%22barcoding%22&fields=study_accession&format=tsv'
-    url +=  '&limit=' + str(limit)
+    url += '&limit=' + str(limit)
     (data, response) = ena_portal_api_call_basic(url)
     # returns tsv text block with fields: experiment_accession	sample_accession
-    print(data)
+    # print(data)
     my_set = set()
     for line in data.split("\n"):
         ic(line)
         if line != "":
             my_set.add(line)
     my_set.remove("study_accession")
-    return list(my_set)
-
-def study2sample(study_id_list):
-    """
-
-    :param studu_id_list:
-    :return:
-
-    curl -X POST -H "Content-Type: application/x-www-form-urlencoded" -d 'result=sample&query=study_accession%3D%22PRJDB13387%22&fields=sample_accession%2Csample_description%2Cstudy_accession&format=tsv' "https://www.ebi.ac.uk/ena/portal/api/search"
-sample_accession	sample_description	study_accession
-SAMD00454395	Mus musculus	PRJDB13387
-SAMD00454397	Mus musculus	PRJDB13387
-SAMD00454399	Mus musculus	PRJDB13387
-SAMD00454401	Mus musculus	PRJDB13387
-SAMD00454396	Mus musculus	PRJDB13387
-SAMD00454398	Mus musculus	PRJDB13387
-SAMD00454400	Mus musculus	PRJDB13387
-SAMD00454394	Mus musculus	PRJDB13387
-    """
-    result_object_type = 'sample'
-    limit = 5
-    study_id = 'PRJDB13387'
-    my_set = set()
-
-    # curl - X POST - H "Content-Type: application/x-www-form-urlencoded" - d
-    # 'result=sample&query=study_accession%3DPRJDB13387&fields=sample_accession%2Csample_description
-    # %2Cstudy_accession&format=tsv' "https://www.ebi.ac.uk/ena/portal/api/search"
-
-    for study_id in study_id_list:
-      ic(study_id)
-      url = get_ena_portal_url() + "search?" + 'result=' + result_object_type
-      url += ('&query=study_accession' + '%3D' + study_id + '&fields=sample_accession&format=tsv')
-      url += '&limit=' + str(limit)
-      (data, response) = ena_portal_api_call_basic(url)
-      # returns tsv text block with fields: experiment_accession	sample_accession
-      print(data)
-
-
-
-      for line in data.split("\n"):
-        ic(line)
-        if line != "":
-            my_set.add(line)
-
-
-    my_set.remove("sample_accession")
-    ic(my_set)
     return list(my_set)
 
 def sample_analysis(category, sample_list):
@@ -299,7 +249,12 @@ def sample_analysis(category, sample_list):
 def main():
     categories = ["environmental_sample_tagged"]
     categories = ["get_barcode_study_list"]
+
+    study_collection = StudyCollection
+
+
     for category in categories:
+        ic(f"*********** category={category} ***********")
         if category == "environmental_sample_tagged":
            env_sample_acc_list = get_environmental_sample_list()
            limit_length = 1000
@@ -311,7 +266,10 @@ def main():
         elif category == "get_barcode_study_list":
            study_acc_list = get_barcode_study_list()
            ic(study_acc_list)
-           study2sample(study_acc_list)
+           sample_acc_list = study2sample(study_acc_list, study_collection, False)
+           ic(len(sample_acc_list))
+
+           ic(len(study_collection.get_sample_id_list()))
            sys.exit()
 
 

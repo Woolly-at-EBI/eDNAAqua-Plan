@@ -20,8 +20,13 @@ def get_ena_portal_url():
     return "https://www.ebi.ac.uk/ena/portal/api/"
 
 def ena_portal_api_call_basic(url):
+    """
+    Allows a basic URL call with little error detection
+    :param url:
+    :return:
+    """
 
-    ic(url)
+    #ic(url)
     response = requests.get(url)
     # print(f"content={response.content}")
     # ic(type(response.content))
@@ -38,11 +43,12 @@ def ena_portal_api_call_basic(url):
         data = response.text
     else:
         print(f"Error: Unable to fetch data for {url} because {response}")
+        sys.exit()
     return data, response
 
 def ena_portal_api_call(url, params, result_object_type, query_accession_ids):
     """
-
+    URL API call allowing slightly more complex situations than ena_portal_api_call_basic i.e. using params
     :param url:
     :param params:
     :param result_object_type:  #don't use it just for debugging
