@@ -39,7 +39,6 @@ def ena_portal_api_call_basic(url):
         # Parse the JSON response
         # ic(response)
         # ic(response.text)
-
         data = response.text
     else:
         print(f"Error: Unable to fetch data for {url} because {response}")
