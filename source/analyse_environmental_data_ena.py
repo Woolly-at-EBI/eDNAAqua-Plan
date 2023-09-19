@@ -12,6 +12,7 @@ from icecream import ic
 import os
 import argparse
 import pandas as pd
+import re
 
 from itertools import islice
 from sample_collection import SampleCollection, get_sample_field_data
@@ -169,7 +170,7 @@ def get_barcode_study_list():
     # return sample_env_df['sample_accession'].to_list()
 
     result_object_type = 'study'
-    limit = 10
+    limit = 0
     url = get_ena_portal_url() + "search?" + 'result=' + result_object_type
     #url += '&query=study_name%3D%22barcoding%22%20OR%20study_title%3D%22barcoding%22%20OR%20study_description%3D%22barcoding%22&fields=study_accession%2Cstudy_title%2Cstudy_name&format=json'
     url += '&query=study_name%3D%22barcoding%22%20OR%20study_title%3D%22barcoding%22%20OR%20study_description%3D%22barcoding%22&fields=study_accession&format=tsv'
@@ -178,11 +179,99 @@ def get_barcode_study_list():
     # returns tsv text block with fields: experiment_accession	sample_accession
     # print(data)
     my_set = set()
-    for line in data.split("\n"):
-        ic(line)
-        if line != "":
-            my_set.add(line)
+    for row in data.split("\n"):
+        if row != "":
+            my_set.add(row)
     my_set.remove("study_accession")
+    ic(f"barcode study total={len(my_set)}")
+    return list(my_set)
+
+def clean_target_genes(target_gene_list):
+    """
+     This cleans the target gene list
+    :param target_gene_list:
+    :return: clean_set, target_gene_dict
+    the target_gene_dict as the term as in the provided list. The value is a list of cleaned matches
+    """
+    clean_set = set()
+    missing_set = set()
+    target_gene_dict = {}
+    for term in target_gene_list:
+        #ic(term)
+        terms = term.split(",")
+        local_list = []
+        for sub_term in terms:
+            # print(f"\t{sub_term}")
+            match = re.search(r'(\d+S|ITS[1-2]?|CO1|rbcL|trnL|LSU)', sub_term)
+            if match:
+                # print(f"\t\t++++{match.group()}++++")
+                #print(f"\t\t++++{match(str).group(1)}++++")
+                clean_set.add(match.group())
+                local_list.append(match.group())
+            else:
+                match = re.search(r'(\d+s|ribulose|oxygenase)', sub_term)
+                if match:
+                        #print(f"\t\t++++{match.group()}++++")
+                        matching_term = match.group()
+                        if "ribulose" in matching_term:
+                            matching_term = 'rbcL'
+                        elif "oxygenase" in matching_term:
+                                matching_term = 'CO1'
+                        else:
+                            matching_term = matching_term.upper()
+                        clean_set.add(matching_term)
+                        local_list.append(match.group())
+                else:
+                    #print(f"\t\tTBD={sub_term}")
+                    missing_set.add(sub_term)
+        target_gene_dict[term] = local_list
+    ic(f"Terms not able to be recognised as target_genes: {missing_set}")
+    return clean_set, target_gene_dict
+def get_ITS_sample_list():
+    """
+
+if ! test -f $outfile; then
+  echo "generating "$field" "$outfile
+  curl -s -X POST -H "Content-Type: application/x-www-form-urlencoded" -d 'result=read_experiment&query=target_gene%3D%2216S%22%20OR%20%20target_gene%3D%2223S%22%20OR%20%20target_gene%3D%2212S%22%20OR%20%20target_gene%3D%2212S%22%20OR%20target_gene%3D%22ITS%22%20OR%20target_gene%3D%22cytochrome%20B%22%20OR%20target_gene%3D%22CO1%22%20OR%20target_gene%3D%22rbcL%22%20OR%20target_gene%3D%22matK%22%20OR%20target_gene%3D%22ITS2%22%20or%20target_gene%3D%22trnl%22&fields=experiment_accession%2Cexperiment_title%2Ctarget_gene&format=tsv' "https://www.ebi.ac.uk/ena/portal/api/search" > $outfile
+  echo "generating "field" "$outfile
+  infile=$outfile
+  echo "total;cleaned_target_gene" > $outfile
+  cut -f4 $infile  |  tr '[A-Z]' '[a-z]' | sed 's/ribulose-1,5-bisphosphate carboxylase\/oxygenase gene large-subunit//;s/cytochrome c oxidase i/co1/;s/internal transcribed spacer/its/g' | sed 's/[,;:)(-]/ /g' | tr ' ' '\n'  | sed '/^$/d;/^of$/d;/^v[0-9]*$/d;/^gene/d;/^and$/d;/^[0-9]*$/d' | awk '!/^on$|^bp$|^the$|^regions$|^variable$|^bacterial$|^archaeal$|mitochondrial$|^fungal$|^to$|^cyanobacteria|^cdna$|^rdna|converted|^target_gene$|^metagenome$|^hypervariable$|^ribsomal$|^region$|^ribosomal$|transcriptome$|^rna$|^rrna$|^v3v4|518r|27f|^subunit$|^large$|^nuclear$|^intron$|^uaa$|^\.$/' | sort | uniq -c | sort -nr | sed 's/^ *//;s/ /;/;' >> $outfile
+fi
+    """
+    # infile = ena_data_dir + "/" + "ena_expt_searchable_EnvironmentalSample_summarised.txt"
+    # sample_env_df = pd.read_csv(infile, sep = '\t')
+    # # ic(sample_env_df.head())
+    # env_sample_list = sample_env_df['sample_accession'].to_list()
+    # return sample_env_df['sample_accession'].to_list()
+
+    result_object_type = 'read_experiment'
+    limit = 0
+    url = get_ena_portal_url() + "search?" + 'result=' + result_object_type
+    url += '&query=target_gene%3D%2216S%22%20OR%20%20target_gene%3D%2223S%22%20OR%20%20target_gene%3D%2212S%22%20OR%20%20target_gene%3D%2212S%22%20OR%20target_gene%3D%22ITS%22%20OR%20target_gene%3D%22cytochrome%20B%22%20OR%20target_gene%3D%22CO1%22%20OR%20target_gene%3D%22rbcL%22%20OR%20target_gene%3D%22matK%22%20OR%20target_gene%3D%22ITS2%22%20or%20target_gene%3D%22trnl%22&fields=experiment_accession%2Cexperiment_title%2Ctarget_gene'
+    url += '&limit=' + str(limit)
+    (data, response) = ena_portal_api_call_basic(url)
+    # returns tsv text block with fields: experiment_accession	sample_accession
+    #print(data)
+    my_set = set()
+    target_gene_set = set()
+    # experiment_accession	experiment_title	sample_accession	target_gene
+    row_count = 0
+    for row in data.split("\n"):
+        if row_count > 0 and row != "":
+            line = row.split("\t")
+            my_set.add(line[2])
+            target_gene_set.add(line[3])
+        row_count += 1
+    # ic(my_set)
+    # ic(f"sample total={len(my_set)}")
+    # ic(target_gene_set)
+
+    #not using the below information yet, but will need it soon.
+    clean_set, target_gene_dict = clean_target_genes(list(target_gene_set))
+    ic(f"target_genes: {', '.join(list(clean_set))}")
+    sys.exit()
+
     return list(my_set)
 
 def sample_analysis(category, sample_list):
@@ -190,7 +279,6 @@ def sample_analysis(category, sample_list):
     """
     ic()
     sample_collection_obj = SampleCollection()
-
 
     ic(len(sample_list))
     count = 0
@@ -244,34 +332,55 @@ def sample_analysis(category, sample_list):
     df.to_parquet(ena_env_sample_df_file)
 
     return sample_collection_obj
+def clean_acc_list(sample_acc_list):
+    """
+    remove redundancy etc.
+    split on on ";'
+    sample_acc_list = clean_acc_list(sample_acc_list)
+    :param sample_acc_list:
+    :return: sorted non-redundant list
+    """
+    clean_set = set()
+    for term in sample_acc_list:
+        for sub_term in term.split(";"):
+            clean_set.add(sub_term)
 
+    ic(f"clean_acc_list input total={len(sample_acc_list)} output total = {len(clean_set)}")
+
+    return sorted(clean_set)
 
 def main():
     categories = ["environmental_sample_tagged"]
-    categories = ["get_barcode_study_list"]
+    categories = ["barcode_study_list"]
+    categories = ["ITS_experiment"]
 
-    study_collection = StudyCollection
 
+    study_collection = StudyCollection()
 
     for category in categories:
         ic(f"*********** category={category} ***********")
         if category == "environmental_sample_tagged":
-           env_sample_acc_list = get_environmental_sample_list()
+           sample_acc_list = get_environmental_sample_list()
            limit_length = 1000
 
-           env_sample_acc_list = env_sample_acc_list[0:limit_length]
-           sample_collection_obj = sample_analysis(category, env_sample_acc_list)
-           sample_set = sample_collection_obj.sample_set
+           sample_acc_list = sample_acc_list[0:limit_length]
+
            ic(len(sample_set))
-        elif category == "get_barcode_study_list":
+        elif category == "barcode_study_list":
            study_acc_list = get_barcode_study_list()
-           ic(study_acc_list)
+           # limit_length = 0
+           # study_acc_list = study_acc_list[0:limit_length]
+           #ic(study_acc_list)
            sample_acc_list = study2sample(study_acc_list, study_collection, False)
            ic(len(sample_acc_list))
-
            ic(len(study_collection.get_sample_id_list()))
-           sys.exit()
-
+        elif category == "ITS_experiment":
+           sample_acc_list = get_ITS_sample_list()
+        ic()
+        ic(sample_acc_list)
+        sample_acc_list = clean_acc_list(sample_acc_list)
+        sample_collection_obj = sample_analysis(category, sample_acc_list)
+        sample_set = sample_collection_obj.sample_set
 
 
     ic("******* END OF MAIN *******")

@@ -14,6 +14,7 @@ import os
 import argparse
 import random
 from sample import Sample
+import time
 from itertools import islice
 from ena_portal_api import *
 from taxonomy import generate_taxon_collection, taxon
@@ -243,9 +244,14 @@ ic| len(data): 3
     (data, response) = ena_portal_api_call(ena_search_url, params, result_object_type, query_accession_ids)
 
     if response.status_code != 200:
-        print("Due to response exiting")
-        ic()
-        sys.exit()
+        doze_time = 10
+        print(f"Due to response {response.status_code}, having another try for {ena_search_url} {params}, after a little doze of {doze_time} seconds")
+        time.sleep(doze_time)
+        (data, response) = ena_portal_api_call(ena_search_url, params, result_object_type, query_accession_ids)
+        if response.status_code != 200:
+            print(f"Due to response exiting {response.status_code}, tried twice")
+            ic()
+            sys.exit()
 
     return data
 def get_sample_field_data(sample_list, sample_rtn_fields):

@@ -72,8 +72,14 @@ def study2sample(study_id_list, study_collection, debug_status):
 
     pre_url = get_ena_portal_url() + "search?" + 'result=' + result_object_type + '&fields=sample_accession&format=tsv'
     pre_url += '&limit=' + str(limit) + '&query=study_accession' + '%3D'
+
+    study_id_pos = 0
+    ic(f"{study_id_pos+1}/{len(study_id_list)}")
     #study_collection.study_dict
     for study_id in study_id_list:
+       if study_id_pos%10 == 0:
+           ic(f"{study_id_pos}/{len(study_id_list)}")
+       study_id_pos += 1
        if study_id in study_collection.study_dict:
            my_set.add(study_collection.study_dict[study_id]['sample_acc_set'])
        else:
@@ -90,7 +96,6 @@ def study2sample(study_id_list, study_collection, debug_status):
                   my_set.add(row)
                   my_local_sample_acc_set.add(row)
               my_row_count += 1
-          ic()
           study_collection.study_dict['study'][study_id] = {}
           #ic(study_collection.study_dict)
           study_collection.study_dict['study'][study_id]['sample_acc_set'] = my_local_sample_acc_set
