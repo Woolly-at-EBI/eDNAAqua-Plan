@@ -6,19 +6,15 @@ ___start_date___ = 2023-09-06
 __docformat___ = 'reStructuredText'
 chmod a+x analyse_environmental_data_ena.py
 """
+import re
 import sys
 
 from icecream import ic
-import os
-import argparse
-import pandas as pd
-import re
 
-from itertools import islice
-from sample_collection import SampleCollection, get_sample_field_data
-from sample import Sample
+from ena_portal_api import get_ena_portal_url, ena_portal_api_call_basic
 from geography import Geography
-from ena_portal_api import ena_portal_api_call, get_ena_portal_url, ena_portal_api_call_basic
+from sample import Sample
+from sample_collection import SampleCollection, get_sample_field_data
 from study_collection import study2sample, StudyCollection
 
 ena_project_dir = "/Users/woollard/projects/eDNAaquaPlan/eDNAAqua-Plan/"
@@ -270,7 +266,7 @@ fi
     #not using the below information yet, but will need it soon.
     clean_set, target_gene_dict = clean_target_genes(list(target_gene_set))
     ic(f"target_genes: {', '.join(list(clean_set))}")
-    sys.exit()
+    #sys.exit()
 
     return list(my_set)
 
@@ -326,10 +322,12 @@ def sample_analysis(category, sample_list):
     df = sample_collection_obj.get_sample_coll_df()
     print(df.head(3).to_markdown())
 
-    ena_env_sample_df_file = ena_data_out_dir + "ena_env_sample_df.parquet"
+    file_name = "ena_" + category + "_sample_df"
+    ena_env_sample_df_file = ena_data_out_dir + file_name
     ic(f"writing {ena_env_sample_df_file}")
     df = sample_collection_obj.get_sample_coll_df()
-    df.to_parquet(ena_env_sample_df_file)
+    df.to_parquet(ena_env_sample_df_file + '.parquet')
+    df.to_csv(ena_env_sample_df_file + '.tsv', sep='\t')
 
     return sample_collection_obj
 def clean_acc_list(sample_acc_list):
@@ -350,41 +348,71 @@ def clean_acc_list(sample_acc_list):
     return sorted(clean_set)
 
 def main():
-    categories = ["environmental_sample_tagged"]
-    categories = ["barcode_study_list"]
-    categories = ["ITS_experiment"]
 
+    categories = ["environmental_sample_tagged", "barcode_study_list", "ITS_experiment"]
 
+    # categories = ["environmental_sample_tagged"]
+    # categories = ["barcode_study_list"]
+    # categories = ["ITS_experiment"]
+    #
     study_collection = StudyCollection()
-
+    sample_accs_by_category = {}
+    limit_length = 10
     for category in categories:
         ic(f"*********** category={category} ***********")
         if category == "environmental_sample_tagged":
            sample_acc_list = get_environmental_sample_list()
-           limit_length = 1000
+           sample_accs_by_category[category] = { 'sample_acc_list': sample_acc_list }
 
-           sample_acc_list = sample_acc_list[0:limit_length]
+           if limit_length != 0:
+               sample_acc_list = sample_acc_list[0:limit_length]
 
-           ic(len(sample_set))
+           ic(len(sample_acc_list))
         elif category == "barcode_study_list":
            study_acc_list = get_barcode_study_list()
-           # limit_length = 0
-           # study_acc_list = study_acc_list[0:limit_length]
+           sample_accs_by_category[category] = { 'sample_acc_list': sample_acc_list }
+           if limit_length != 0:
+             study_acc_list = study_acc_list[0:limit_length]
            #ic(study_acc_list)
            sample_acc_list = study2sample(study_acc_list, study_collection, False)
            ic(len(sample_acc_list))
            ic(len(study_collection.get_sample_id_list()))
         elif category == "ITS_experiment":
            sample_acc_list = get_ITS_sample_list()
+           sample_accs_by_category[category] = { 'sample_acc_list': sample_acc_list }
+           if limit_length != 0:
+               sample_acc_list = sample_acc_list[0:limit_length]
         ic()
         ic(sample_acc_list)
         sample_acc_list = clean_acc_list(sample_acc_list)
         sample_collection_obj = sample_analysis(category, sample_acc_list)
         sample_set = sample_collection_obj.sample_set
+        ic(f"category={category} total sample total={len(sample_set)}")
 
+
+    generated_combined_summary(sample_accs_by_category)
 
     ic("******* END OF MAIN *******")
 
+def generated_combined_summary(sample_accs_by_category):
+    """
+
+    :param sample_accs_by_category:
+    :return:
+    """
+    print("===================== generated_combined_summary =============================")
+
+    all_categories = list(sample_accs_by_category.keys())
+    stats = {"combined": { "total_uniq_sample_set_total": 0}}
+    stats = {"individual": {}}
+    total_uniq_sample_set = set()
+    for category in all_categories:
+        ic(f"{category}  {len(sample_accs_by_category[category]['sample_acc_list'])}")
+        sample_accs_by_category[category]['sample_acc_set'] = set(sample_accs_by_category[category]['sample_acc_list'])
+        total_uniq_sample_set.update(sample_accs_by_category[category]['sample_acc_set'] )
+        stats["individual"][category] = {'sample_acc_set': {"total": len(sample_accs_by_category[category]['sample_acc_list'])}}
+    stats["combined"]["total_uniq_sample_set_total"] = len(total_uniq_sample_set)
+    ic(stats)
 
 if __name__ == '__main__':
     ic()
