@@ -13,7 +13,7 @@ import sys
 from icecream import ic
 import pickle
 
-from ena_portal_api import get_ena_portal_url, ena_portal_api_call_basic
+from ena_portal_api import get_ena_portal_url, ena_portal_api_call_basic, ena_portal_api_call, chunk_portal_api_call, urldata2id_set
 from geography import Geography
 from sample import Sample
 from sample_collection import SampleCollection, get_sample_field_data
@@ -123,7 +123,7 @@ def annotate_sample_objs(sample_list, with_obj_type, sample_collection_obj):
     return
 
 
-def get_environmental_sample_list():
+def get_environmental_sample_list(limit_length):
     """
     all from the ena_expt_searchable_EnvironmentalSample_summarised are EnvironmentalSample tagged in the ENA archive!
     curl -s -X POST -H "Content-Type: application/x-www-form-urlencoded" -d 'result=read_experiment&query=environmental_sample%3Dtrue&fields=experiment_accession%2Cexperiment_title%2Cenvironmental_sample&format=tsv' "https://www.ebi.ac.uk/ena/portal/api/search" > $outfile
@@ -138,21 +138,10 @@ def get_environmental_sample_list():
     # return sample_env_df['sample_accession'].to_list()
 
     result_object_type = 'read_experiment'
-    limit = 0
-    url = get_ena_portal_url() + "search?" + 'result=read_experiment&query=environmental_sample=true&fields=sample_accession&format=tsv&limit=' + str(limit)
-
+    url = get_ena_portal_url() + "search?" + 'result=read_experiment&query=environmental_sample=true&fields=sample_accession&format=tsv&limit=' + str(limit_length)
     (data, response) = ena_portal_api_call_basic(url)
     # returns tsv text block with fields: experiment_accession	sample_accession
-
-    my_set = set()
-    for line in data.split("\n"):
-        if line != "":
-            cols = line.split("\t")
-            #ic(cols)
-            #ic(cols[1])
-            my_set.add(cols[1])
-
-    my_set.remove("sample_accession")
+    my_set = urldata2id_set(data, 1)
     #print(my_set)
     return list(my_set)
 
@@ -387,7 +376,46 @@ def generated_combined_summary(sample_accs_by_category):
     stats["combined"]["uniq_sample_set_total"] = len(total_uniq_sample_set)
     ic(stats)
 
+
+
+def tax_ids2sample_ids(tax_id_list):
+    """
+
+    :param tax_id_list:
+    :return: sample_id_list
+    """
+    ic()
+    #'result=sample&fields=sample_accession%2Csample_description&limit=100&includeAccessionType=taxon&includeAccessions=9606%2C1%2C2&format=tsv' "https://www.ebi.ac.uk/ena/portal/api/search"
+    #
+    url = 'https://www.ebi.ac.uk/ena/portal/api/search?dataPortal=ena' + '&includeAccessionType=taxon'
+    with_obj_type = "sample"
+    return_fields = "sample_accession,tax_id"
+    data = chunk_portal_api_call(url, with_obj_type, return_fields, tax_id_list)
+    sample_id_set = set()
+    # ic(data)
+    for row in data:
+        sample_id_set.add(row['sample_accession'])
+    return list(sample_id_set)
+
+def get_taxonomic_environmental_tagged_sample_id_list(limit_length):
+    ic()
+    # tag="coastal_brackish_high_confidence" AND tag="freshwater_high_confidence" AND tag="marine_high_confidence" AND tag="environmental" AND tag="arrayexpress"
+    # curl -X POST -H "Content-Type: application/x-www-form-urlencoded" -d 'result=taxon&query=tag%3D%22coastal_brackish_high_confidence%22%20AND%20tag%3D%22freshwater_high_confidence%22%20AND%20tag%3D%22marine_high_confidence%22%20AND%20tag%3D%22environmental%22%20AND%20tag%3D%22arrayexpress%22&fields=tax_id%2Cscientific_name%2Ctag&format=tsv' "https://www.ebi.ac.uk/ena/portal/api/search"
+
+    #https://www.ebi.ac.uk/ena/portal/api/search?result=taxon&query=tag%3Dmarine_medium_confidence%20OR%20tag%3Dmarine_high_confidence%20OR%20tag%3Dfreshwater_medium_confidence%20OR%20tag%3Dfreshwater_high_confidence%20OR%20tag%3Dcoastal_brackish_medium_confidence%20OR%20tag%3Dcoastal_brackish_high_confidence&fields=tax_id%2Ctag&limit=10&dataPortal=ena&dccDataOnly=false&format=tsv&download=false
+    limit = '&limit=' + str(limit_length)
+    url = 'https://www.ebi.ac.uk/ena/portal/api/search?result=taxon&query=tag%3Dmarine_medium_confidence%20OR%20tag%3Dmarine_high_confidence%20OR%20tag%3Dfreshwater_medium_confidence%20OR%20tag%3Dfreshwater_high_confidence%20OR%20tag%3Dcoastal_brackish_medium_confidence%20OR%20tag%3Dcoastal_brackish_high_confidence&fields=tax_id%2Ctag&dataPortal=ena&dccDataOnly=false&format=tsv' + limit
+    #ic(url)
+    (data, response) = ena_portal_api_call_basic(url)
+
+    #ic(data)
+    tax_id_list = urldata2id_set(data, 0)
+    sample_acc_list = tax_ids2sample_ids(tax_id_list)
+    ic(len(sample_acc_list))
+    return sample_acc_list
+
 def main():
+    ic()
 
     sabc_pickle_filename = 'sample_acc_by_category.pickle'
     if os.path.isfile(sabc_pickle_filename):
@@ -397,7 +425,7 @@ def main():
     else:
         sample_accs_by_category = {}
 
-    categories = ["environmental_sample_tagged", "barcode_study_list", "ITS_experiment"]
+    categories = ["environmental_sample_tagged", "barcode_study_list", "ITS_experiment","taxonomic_environmental_domain_tagged"]
 
     # categories = ["environmental_sample_tagged"]
     # categories = ["barcode_study_list"]
@@ -409,7 +437,7 @@ def main():
     for category in categories:
         ic(f"*********** category={category} ***********")
         if category == "environmental_sample_tagged" and category not in sample_accs_by_category:
-           sample_acc_list = get_environmental_sample_list()
+           sample_acc_list = get_environmental_sample_list(limit_length)
            sample_accs_by_category[category] = { 'sample_acc_list': sample_acc_list }
 
            if limit_length != 0:
@@ -430,6 +458,13 @@ def main():
            sample_accs_by_category[category] = { 'sample_acc_list': sample_acc_list }
            if limit_length != 0:
                sample_acc_list = sample_acc_list[0:limit_length]
+        elif category == "taxonomic_environmental_domain_tagged" and category not in sample_accs_by_category:
+            ic()
+            sample_acc_list = get_taxonomic_environmental_tagged_sample_id_list(limit_length)
+            sample_accs_by_category[category] = {'sample_acc_list': sample_acc_list}
+            ic(len(sample_acc_list))
+            if limit_length != 0:
+                sample_acc_list = sample_acc_list[0:limit_length]
 
         if not os.path.isfile(sabc_pickle_filename):
           ic()

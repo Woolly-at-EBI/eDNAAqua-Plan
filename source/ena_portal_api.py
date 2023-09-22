@@ -15,6 +15,7 @@ import argparse
 import requests
 import json
 import sys
+from itertools import islice
 
 def get_ena_portal_url():
     return "https://www.ebi.ac.uk/ena/portal/api/"
@@ -75,8 +76,72 @@ def ena_portal_api_call(url, params, result_object_type, query_accession_ids):
         elif len(data) <= 0:
             print(f"WARNING: {result_object_type} {query_accession_ids} no results found")
     else:
-            print(f"Error: Unable to fetch data for {result_object_type} {query_accession_ids} because {response}")
+            ic()
+            print(f"url={url}")
+            print(f"params={params}")
+            print(f"Error: Unable to fetch data for \"{result_object_type}\" {query_accession_ids} because {response} {response.text}")
     return data, response
+
+def urldata2id_set(data, id_col_pos):
+        """
+        e.g. my_set = urldata2id_set(data,1)  where id_col_pos is indexed from 0
+        :param id_col:
+        :return:
+        """
+        my_set = set()
+        line_count = 0
+        for line in data.split("\n"):
+            if line_count > 0 and line != "":
+                cols = line.split("\t")
+                # ic(cols)
+                # ic(cols[id_col_pos])
+                my_set.add(cols[id_col_pos])
+            line_count += 1
+        return my_set
+def chunk_portal_api_call(url, with_obj_type, return_fields, id_list):
+    """
+    useful for when there could be a long list of ids, that needs to be chunked to not exceed limits.
+    N.B. will need to gradually port the other list chunking methods to here!
+    passing a URL with a few specific params is critical, as otherwise too much complexity for this
+    :param with_obj_type:
+    :param id_list:
+    :param return_fields:
+    :return:
+    """
+    print(f"url={url}\n, ob_type={with_obj_type}\n, rtn_fields={return_fields}\n, id_list len={len(id_list)}\n")
+
+    combined_data = []
+    chunk_count = chunk_pos = 0
+    list_size = len(id_list)
+    iterator = iter(id_list)
+    chunk_size = 400  # 400 about the maximum reliable chunk size for including accessions
+    ic(f"{chunk_pos}/{list_size}")
+
+    while chunk := list(islice(iterator, chunk_size)):
+        chunk_pos += chunk_size
+        chunk_count += 1
+        if chunk_count % 10 == 0 or chunk_count == 1:
+            ic(f"{chunk_pos}/{list_size}")
+        # ic(f"{with_obj_type} ++++ {chunk} ++++++ {return_fields}")
+
+        id_string = ','.join(chunk)
+        params = {
+                "result": with_obj_type,
+                "includeAccessions":  id_string,
+                "format": "json",
+                "fields": return_fields,
+                "limit": 0
+            }
+        #print(f"{url}, {params}, {with_obj_type}, {id_string}")
+        #print("****************************************************************************************")
+        #ic()
+        #ic(f"chunked_id_list_size={len(chunk)}")
+        (data, response) = ena_portal_api_call(url, params, with_obj_type, id_list)
+        #print(f"data={data}")
+        combined_data += data
+    return combined_data
+
+
 
 def main():
     url = 'https://www.ebi.ac.uk/ena/portal/api/count?result=sample&dataPortal=ena'
