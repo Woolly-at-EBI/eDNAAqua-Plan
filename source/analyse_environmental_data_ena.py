@@ -6,10 +6,12 @@ ___start_date___ = 2023-09-06
 __docformat___ = 'reStructuredText'
 chmod a+x analyse_environmental_data_ena.py
 """
+import os.path
 import re
 import sys
 
 from icecream import ic
+import pickle
 
 from ena_portal_api import get_ena_portal_url, ena_portal_api_call_basic
 from geography import Geography
@@ -346,54 +348,6 @@ def clean_acc_list(sample_acc_list):
     ic(f"clean_acc_list input total={len(sample_acc_list)} output total = {len(clean_set)}")
 
     return sorted(clean_set)
-
-def main():
-
-    categories = ["environmental_sample_tagged", "barcode_study_list", "ITS_experiment"]
-
-    # categories = ["environmental_sample_tagged"]
-    # categories = ["barcode_study_list"]
-    # categories = ["ITS_experiment"]
-    #
-    study_collection = StudyCollection()
-    sample_accs_by_category = {}
-    limit_length = 10
-    for category in categories:
-        ic(f"*********** category={category} ***********")
-        if category == "environmental_sample_tagged":
-           sample_acc_list = get_environmental_sample_list()
-           sample_accs_by_category[category] = { 'sample_acc_list': sample_acc_list }
-
-           if limit_length != 0:
-               sample_acc_list = sample_acc_list[0:limit_length]
-
-           ic(len(sample_acc_list))
-        elif category == "barcode_study_list":
-           study_acc_list = get_barcode_study_list()
-           sample_accs_by_category[category] = { 'sample_acc_list': sample_acc_list }
-           if limit_length != 0:
-             study_acc_list = study_acc_list[0:limit_length]
-           #ic(study_acc_list)
-           sample_acc_list = study2sample(study_acc_list, study_collection, False)
-           ic(len(sample_acc_list))
-           ic(len(study_collection.get_sample_id_list()))
-        elif category == "ITS_experiment":
-           sample_acc_list = get_ITS_sample_list()
-           sample_accs_by_category[category] = { 'sample_acc_list': sample_acc_list }
-           if limit_length != 0:
-               sample_acc_list = sample_acc_list[0:limit_length]
-        ic()
-        ic(sample_acc_list)
-        sample_acc_list = clean_acc_list(sample_acc_list)
-        sample_collection_obj = sample_analysis(category, sample_acc_list)
-        sample_set = sample_collection_obj.sample_set
-        ic(f"category={category} total sample total={len(sample_set)}")
-
-
-    generated_combined_summary(sample_accs_by_category)
-
-    ic("******* END OF MAIN *******")
-
 def generated_combined_summary(sample_accs_by_category):
     """
 
@@ -403,16 +357,98 @@ def generated_combined_summary(sample_accs_by_category):
     print("===================== generated_combined_summary =============================")
 
     all_categories = list(sample_accs_by_category.keys())
-    stats = {"combined": { "total_uniq_sample_set_total": 0}}
-    stats = {"individual": {}}
+    stats = {"combined": {"sample_set_intersect_total": 0, "uniq_sample_set_total": 0}, "individual": {}}
     total_uniq_sample_set = set()
+    total_intersect_sample_set = set()
+    category_count = 0
     for category in all_categories:
-        ic(f"{category}  {len(sample_accs_by_category[category]['sample_acc_list'])}")
+        # ic(f"{category}  {len(sample_accs_by_category[category]['sample_acc_list'])}")
         sample_accs_by_category[category]['sample_acc_set'] = set(sample_accs_by_category[category]['sample_acc_list'])
         total_uniq_sample_set.update(sample_accs_by_category[category]['sample_acc_set'] )
+        if category_count == 0:
+            total_intersect_sample_set.update(sample_accs_by_category[category]['sample_acc_set'])
+        else:
+            total_intersect_sample_set.intersection_update(sample_accs_by_category[category]['sample_acc_set'] )
         stats["individual"][category] = {'sample_acc_set': {"total": len(sample_accs_by_category[category]['sample_acc_list'])}}
-    stats["combined"]["total_uniq_sample_set_total"] = len(total_uniq_sample_set)
+        stats["combined"][category] = {}
+        category_count += 1
+
+    for category in all_categories:
+        #ic(f"{category} {len(sample_accs_by_category[category]['sample_acc_set'])}")
+        for category2 in all_categories:
+            if category != category2:
+                ic(f"\t{category2} {len(sample_accs_by_category[category2]['sample_acc_set'])}")
+                tmp_set = sample_accs_by_category[category]['sample_acc_set'].copy()
+                tmp_set.intersection_update(sample_accs_by_category[category2]['sample_acc_set'])
+                stats["combined"][category][category2] = { "total_intersect" :  len(tmp_set) }
+
+
+    stats["combined"]["sample_set_intersect_total"] = len(total_intersect_sample_set)
+    stats["combined"]["uniq_sample_set_total"] = len(total_uniq_sample_set)
     ic(stats)
+
+def main():
+
+    sabc_pickle_filename = 'sample_acc_by_category.pickle'
+    if os.path.isfile(sabc_pickle_filename):
+        ic(f"For sample_acc_by_category using {sabc_pickle_filename}")
+        with open(sabc_pickle_filename, 'rb') as f:
+            sample_accs_by_category = pickle.load(f)
+    else:
+        sample_accs_by_category = {}
+
+    categories = ["environmental_sample_tagged", "barcode_study_list", "ITS_experiment"]
+
+    # categories = ["environmental_sample_tagged"]
+    # categories = ["barcode_study_list"]
+    # categories = ["ITS_experiment"]
+    #
+    study_collection = StudyCollection()
+
+    limit_length = 0
+    for category in categories:
+        ic(f"*********** category={category} ***********")
+        if category == "environmental_sample_tagged" and category not in sample_accs_by_category:
+           sample_acc_list = get_environmental_sample_list()
+           sample_accs_by_category[category] = { 'sample_acc_list': sample_acc_list }
+
+           if limit_length != 0:
+               sample_acc_list = sample_acc_list[0:limit_length]
+
+           ic(len(sample_acc_list))
+        elif category == "barcode_study_list" and category not in sample_accs_by_category:
+           study_acc_list = get_barcode_study_list()
+           sample_accs_by_category[category] = { 'sample_acc_list': sample_acc_list }
+           if limit_length != 0:
+             study_acc_list = study_acc_list[0:limit_length]
+           #ic(study_acc_list)
+           sample_acc_list = study2sample(study_acc_list, study_collection, False)
+           ic(len(sample_acc_list))
+           ic(len(study_collection.get_sample_id_list()))
+        elif category == "ITS_experiment" and category not in sample_accs_by_category:
+           sample_acc_list = get_ITS_sample_list()
+           sample_accs_by_category[category] = { 'sample_acc_list': sample_acc_list }
+           if limit_length != 0:
+               sample_acc_list = sample_acc_list[0:limit_length]
+
+        if not os.path.isfile(sabc_pickle_filename):
+          ic()
+          ic(sample_acc_list)
+          sample_acc_list = clean_acc_list(sample_acc_list)
+          sample_collection_obj = sample_analysis(category, sample_acc_list)
+          sample_set = sample_collection_obj.sample_set
+          ic(f"category={category} total sample total={len(sample_set)}")
+
+    with open(sabc_pickle_filename, 'wb') as f:
+        ic(f"writing sample_accs_by_category to {sabc_pickle_filename}")
+        pickle.dump(sample_accs_by_category,f)
+
+
+    generated_combined_summary(sample_accs_by_category)
+
+    ic("******* END OF MAIN *******")
+
+
 
 if __name__ == '__main__':
     ic()
