@@ -21,7 +21,7 @@ class StudyCollection:
     def __init__(self):
         ic()
         self.name = "TBD"
-        self.study_dict = {'study' : {}, 'sample': {}}
+        self.study_dict = {'study': {}, 'sample': {}}
 
     def get_name(self):
         return(self.name)
