@@ -105,7 +105,7 @@ def chunk_portal_api_call(url, with_obj_type, return_fields, id_list):
     passing a URL with a few specific params is critical, as otherwise too much complexity for this
     :param with_obj_type:
     :param id_list:
-    :param return_fields:
+    :param return_fields:   # is a list
     :return:
     """
     #print(f"url={url}\n, ob_type={with_obj_type}\n, rtn_fields={return_fields}\n, id_list len={len(id_list)}\n")
@@ -129,7 +129,6 @@ def chunk_portal_api_call(url, with_obj_type, return_fields, id_list):
             }
         # print(f"{url}, {params}, {with_obj_type}, {','.join(return_fields)}")
         # print("****************************************************************************************")
-        #ic()
         # ic(f"chunked_id_list_size={len(chunk)}")
         (data, response) = ena_portal_api_call(url, params, with_obj_type, chunk)
         # print(f"data={data}")
@@ -138,6 +137,7 @@ def chunk_portal_api_call(url, with_obj_type, return_fields, id_list):
             doze_time = 10
             print(
                 f"Due to response {response.status_code}, having another try for {url} and obj_type={with_obj_type} with {params}, after a little doze of {doze_time} seconds")
+            sys.exit()
             time.sleep(doze_time)
             (data, response) = ena_portal_api_call(url, params, with_obj_type, id_list)
             if response.status_code != 200:

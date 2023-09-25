@@ -389,7 +389,7 @@ def tax_ids2sample_ids(tax_id_list):
     #
     url = 'https://www.ebi.ac.uk/ena/portal/api/search?dataPortal=ena' + '&includeAccessionType=taxon'
     with_obj_type = "sample"
-    return_fields = "sample_accession,tax_id"
+    return_fields = ["sample_accession","tax_id"]
     data = chunk_portal_api_call(url, with_obj_type, return_fields, tax_id_list)
     sample_id_set = set()
     # ic(data)
@@ -404,12 +404,13 @@ def get_taxonomic_environmental_tagged_sample_id_list(limit_length):
 
     #https://www.ebi.ac.uk/ena/portal/api/search?result=taxon&query=tag%3Dmarine_medium_confidence%20OR%20tag%3Dmarine_high_confidence%20OR%20tag%3Dfreshwater_medium_confidence%20OR%20tag%3Dfreshwater_high_confidence%20OR%20tag%3Dcoastal_brackish_medium_confidence%20OR%20tag%3Dcoastal_brackish_high_confidence&fields=tax_id%2Ctag&limit=10&dataPortal=ena&dccDataOnly=false&format=tsv&download=false
     limit = '&limit=' + str(limit_length)
-    url = 'https://www.ebi.ac.uk/ena/portal/api/search?result=taxon&query=tag%3Dmarine_medium_confidence%20OR%20tag%3Dmarine_high_confidence%20OR%20tag%3Dfreshwater_medium_confidence%20OR%20tag%3Dfreshwater_high_confidence%20OR%20tag%3Dcoastal_brackish_medium_confidence%20OR%20tag%3Dcoastal_brackish_high_confidence&fields=tax_id%2Ctag&dataPortal=ena&dccDataOnly=false&format=tsv' + limit
-    #ic(url)
+    url = 'https://www.ebi.ac.uk/ena/portal/api/search?result=taxon&query=tag%3Dmarine_medium_confidence%20OR%20tag%3Dmarine_high_confidence%20OR%20tag%3Dfreshwater_medium_confidence%20OR%20tag%3Dfreshwater_high_confidence%20OR%20tag%3Dcoastal_brackish_medium_confidence%20OR%20tag%3Dcoastal_brackish_high_confidence&fields=tax_id&dataPortal=ena&format=tsv' + limit
+    ic(url)
     (data, response) = ena_portal_api_call_basic(url)
 
     #ic(data)
     tax_id_list = urldata2id_set(data, 0)
+    ic("Now doing tax_ids2sample_ids")
     sample_acc_list = tax_ids2sample_ids(tax_id_list)
     ic(len(sample_acc_list))
     return sample_acc_list
@@ -429,9 +430,10 @@ def main():
     # categories = ["barcode_study_list"]
     # categories = ["ITS_experiment"]
     #
+    categories = ["taxonomic_environmental_domain_tagged"]
     study_collection = StudyCollection()
 
-    limit_length = 0
+    limit_length = 10000
     for category in categories:
         ic(f"*********** category={category} ***********")
         if category == "environmental_sample_tagged" and category not in sample_accs_by_category:
