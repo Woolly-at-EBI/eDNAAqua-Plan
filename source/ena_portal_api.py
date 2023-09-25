@@ -16,6 +16,7 @@ import requests
 import json
 import sys
 from itertools import islice
+import time
 
 def get_ena_portal_url():
     return "https://www.ebi.ac.uk/ena/portal/api/"
@@ -55,7 +56,6 @@ def ena_portal_api_call(url, params, result_object_type, query_accession_ids):
     :param query_accession_ids:  #don't use it just for debugging
     :return:
     """
-    #ic()
     response = requests.get(url, params)
     #ic(url)
     #ic(params)
@@ -108,35 +108,42 @@ def chunk_portal_api_call(url, with_obj_type, return_fields, id_list):
     :param return_fields:
     :return:
     """
-    print(f"url={url}\n, ob_type={with_obj_type}\n, rtn_fields={return_fields}\n, id_list len={len(id_list)}\n")
-
+    #print(f"url={url}\n, ob_type={with_obj_type}\n, rtn_fields={return_fields}\n, id_list len={len(id_list)}\n")
     combined_data = []
     chunk_count = chunk_pos = 0
     list_size = len(id_list)
     iterator = iter(id_list)
     chunk_size = 400  # 400 about the maximum reliable chunk size for including accessions
     ic(f"{chunk_pos}/{list_size}")
-
     while chunk := list(islice(iterator, chunk_size)):
         chunk_pos += chunk_size
         chunk_count += 1
-        if chunk_count % 10 == 0 or chunk_count == 1:
-            ic(f"{chunk_pos}/{list_size}")
-        # ic(f"{with_obj_type} ++++ {chunk} ++++++ {return_fields}")
-
-        id_string = ','.join(chunk)
+        if chunk_count % 50 == 0:   #only print progress every X chunks
+            ic(f"{chunk_pos}/{list_size} in chunk_portal_api_call()")
         params = {
                 "result": with_obj_type,
-                "includeAccessions":  id_string,
+                "includeAccessions":  ','.join(chunk),
                 "format": "json",
-                "fields": return_fields,
+                "fields": ','.join(return_fields),
                 "limit": 0
             }
-        #print(f"{url}, {params}, {with_obj_type}, {id_string}")
-        #print("****************************************************************************************")
+        # print(f"{url}, {params}, {with_obj_type}, {','.join(return_fields)}")
+        # print("****************************************************************************************")
         #ic()
-        #ic(f"chunked_id_list_size={len(chunk)}")
+        # ic(f"chunked_id_list_size={len(chunk)}")
         (data, response) = ena_portal_api_call(url, params, with_obj_type, id_list)
+        # print(f"data={data}")
+
+        if response.status_code != 200:
+            doze_time = 10
+            print(
+                f"Due to response {response.status_code}, having another try for {url} and obj_type={with_obj_type} with {params}, after a little doze of {doze_time} seconds")
+            time.sleep(doze_time)
+            (data, response) = ena_portal_api_call(url, params, with_obj_type, id_list)
+            if response.status_code != 200:
+                print(f"Due to response exiting {response.status_code}, tried twice")
+                ic()
+                sys.exit()
         #print(f"data={data}")
         combined_data += data
     return combined_data
@@ -146,7 +153,6 @@ def chunk_portal_api_call(url, with_obj_type, return_fields, id_list):
 def main():
     url = 'https://www.ebi.ac.uk/ena/portal/api/count?result=sample&dataPortal=ena'
     ena_portal_api_call(url, {}, "sample", "")
-
 
 if __name__ == '__main__':
     ic()

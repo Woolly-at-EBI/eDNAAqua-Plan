@@ -11,7 +11,7 @@ chmod a+x taxonomy.py
 from icecream import ic
 import os
 import argparse
-from  ena_portal_api import ena_portal_api_call, get_ena_portal_url
+from ena_portal_api import ena_portal_api_call, get_ena_portal_url, chunk_portal_api_call
 from itertools import islice
 import sys
 
@@ -142,7 +142,6 @@ def do_portal_api_tax_call(result_object_type, query_accession_ids, return_field
                 'tax_division': 'HUM',
                 'tax_id': '9606'}]
     """
-
     ena_api_url = get_ena_portal_url()
     ena_search_url = f"{ena_api_url}search?"
     # Define the query parameters
@@ -193,28 +192,32 @@ def create_taxonomy_hash(tax_list):
                 'tax_division': 'HUM',
                 'tax_id': '9606'}]
     """
-    ic()
-    iterator = iter(tax_list)
-    chunk_size = 500
-
+    # iterator = iter(tax_list)
+    # chunk_size = 500
     tax_hash = []
     # ic(sample_obj_dict)
     taxonomy_rtn_fields = ['tax_id','tax_division', 'tag','scientific_name']
     with_obj_type = "taxon"
-    combined_data = []
-    chunk_count = chunk_pos = 0
-    list_size = len(tax_list)
-    #ic(tax_list)
-    ic(f"{chunk_pos}/{list_size}")
-    while chunk := list(islice(iterator, chunk_size)):
-            chunk_pos += chunk_size
-            chunk_count += 1
-            if chunk_count % 10 == 0 or chunk_count == 1:
-                ic(f"{chunk_pos}/{list_size}")
-            return_fields = taxonomy_rtn_fields
-            # ic(f"{with_obj_type} ++++ {chunk} ++++++ {return_fields}")
-            data = do_portal_api_tax_call(with_obj_type, chunk, return_fields)
-            combined_data += data
+    ena_portal_api_url = get_ena_portal_url()
+    ena_search_url = f"{ena_portal_api_url}search?"
+    # print(f"{ena_search_url} {with_obj_type} {taxonomy_rtn_fields} {tax_list}")
+    combined_data = chunk_portal_api_call(ena_search_url, with_obj_type, taxonomy_rtn_fields, tax_list)
+    # print(combined_data)
+    #combined_data = []
+    # chunk_count = chunk_pos = 0
+    # list_size = len(tax_list)
+    # #ic(tax_list)
+    # ic(f"{chunk_pos}/{list_size}")
+    # while chunk := list(islice(iterator, chunk_size)):
+    #         chunk_pos += chunk_size
+    #         chunk_count += 1
+    #         if chunk_count % 10 == 0 or chunk_count == 1:
+    #             ic(f"{chunk_pos}/{list_size}")
+    #         return_fields = taxonomy_rtn_fields
+    #         # ic(f"{with_obj_type} ++++ {chunk} ++++++ {return_fields}")
+    #         data = do_portal_api_tax_call(with_obj_type, chunk, return_fields)
+    #         combined_data += data
+
     return combined_data
 
 def generate_taxon_collection(tax_id_list):

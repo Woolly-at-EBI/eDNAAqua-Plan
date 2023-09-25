@@ -13,7 +13,7 @@ import sys
 from icecream import ic
 import pickle
 
-from ena_portal_api import get_ena_portal_url, ena_portal_api_call_basic, ena_portal_api_call, chunk_portal_api_call, urldata2id_set
+from ena_portal_api import get_ena_portal_url, ena_portal_api_call_basic, chunk_portal_api_call, urldata2id_set
 from geography import Geography
 from sample import Sample
 from sample_collection import SampleCollection, get_sample_field_data
@@ -416,14 +416,12 @@ def get_taxonomic_environmental_tagged_sample_id_list(limit_length):
 
 def main():
     ic()
-
+    sample_accs_by_category = {}
     sabc_pickle_filename = 'sample_acc_by_category.pickle'
-    if os.path.isfile(sabc_pickle_filename):
-        ic(f"For sample_acc_by_category using {sabc_pickle_filename}")
-        with open(sabc_pickle_filename, 'rb') as f:
-            sample_accs_by_category = pickle.load(f)
-    else:
-        sample_accs_by_category = {}
+    # if os.path.isfile(sabc_pickle_filename):
+    #     ic(f"For sample_acc_by_category using {sabc_pickle_filename}")
+    #     with open(sabc_pickle_filename, 'rb') as f:
+    #         sample_accs_by_category = pickle.load(f)
 
     categories = ["environmental_sample_tagged", "barcode_study_list", "ITS_experiment","taxonomic_environmental_domain_tagged"]
 
@@ -466,17 +464,17 @@ def main():
             if limit_length != 0:
                 sample_acc_list = sample_acc_list[0:limit_length]
 
-        if not os.path.isfile(sabc_pickle_filename):
-          ic()
-          ic(sample_acc_list)
-          sample_acc_list = clean_acc_list(sample_acc_list)
-          sample_collection_obj = sample_analysis(category, sample_acc_list)
-          sample_set = sample_collection_obj.sample_set
-          ic(f"category={category} total sample total={len(sample_set)}")
+        # if not os.path.isfile(sabc_pickle_filename):
+        #   ic()
+        #   ic(sample_acc_list)
+        sample_acc_list = clean_acc_list(sample_acc_list)
+        #   sample_collection_obj = sample_analysis(category, sample_acc_list)
+        #   sample_set = sample_collection_obj.sample_set
+        #   ic(f"category={category} total sample total={len(sample_set)}")
 
     with open(sabc_pickle_filename, 'wb') as f:
         ic(f"writing sample_accs_by_category to {sabc_pickle_filename}")
-        pickle.dump(sample_accs_by_category,f)
+        pickle.dump(sample_accs_by_category, f)
 
 
     generated_combined_summary(sample_accs_by_category)
