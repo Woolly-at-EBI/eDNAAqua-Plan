@@ -56,7 +56,7 @@ def ena_portal_api_call(url, params, result_object_type, query_accession_ids):
     :param query_accession_ids:  #don't use it just for debugging
     :return:
     """
-    response = requests.get(url, params)
+    response = requests.post(url, params)
     #ic(url)
     #ic(params)
 
@@ -131,7 +131,7 @@ def chunk_portal_api_call(url, with_obj_type, return_fields, id_list):
         # print("****************************************************************************************")
         #ic()
         # ic(f"chunked_id_list_size={len(chunk)}")
-        (data, response) = ena_portal_api_call(url, params, with_obj_type, id_list)
+        (data, response) = ena_portal_api_call(url, params, with_obj_type, chunk)
         # print(f"data={data}")
 
         if response.status_code != 200:
@@ -147,6 +147,62 @@ def chunk_portal_api_call(url, with_obj_type, return_fields, id_list):
         #print(f"data={data}")
         combined_data += data
     return combined_data
+
+def chunk_portal_api_call_w_ands(url, with_obj_type, return_fields, and_accession, id_list):
+    """
+    useful for when there could be a long list of ids, that needs to be chunked to not exceed limits.
+    N.B. will need to gradually port the other list chunking methods to here!
+    passing a URL with a few specific params is critical, as otherwise too much complexity for this
+    :param with_obj_type:
+    :param id_list:
+    :param return_fields:
+    :return:
+    """
+    #print(f"url={url}\n, ob_type={with_obj_type}\n, rtn_fields={return_fields}\n, id_list len={len(id_list)}\n")
+    combined_data = []
+    chunk_count = chunk_pos = 0
+    list_size = len(id_list)
+    iterator = iter(id_list)
+    chunk_size = 10  # 10 about the maximum reliable chunk size for AND accessions
+    ic(f"{chunk_pos}/{list_size}")
+    pre_url = url  # as need to more to this
+    # https://www.ebi.ac.uk/ena/portal/api/search?study_accession$3DPRJNA435556%20OR%20study_accession%3DPRJEB32543
+    #works curl -s 'https://www.ebi.ac.uk/ena/portal/api/search?result=sample&query=study_accession%3DPRJNA505510%20OR%20study_accession%3DPRJEB32543&fields=sample_accession%2Csample_description%2Cstudy_accession&format=tsv'
+    while chunk := list(islice(iterator, chunk_size)):
+        chunk_pos += chunk_size
+        chunk_count += 1
+        and_accession_string = and_accession + '%3D'
+        join_string = '%20OR%20' + and_accession + '%3D'
+        and_accession_string += join_string.join(chunk)
+        #ic(and_accession_string)
+        url = pre_url + 'query='
+        url += and_accession_string
+        if chunk_count % 10 == 0:   #only print progress every X chunks
+            ic(f"{chunk_pos}/{list_size} in chunk_portal_api_call()")
+        params = {
+                "result": with_obj_type,
+                "format": "json",
+                "fields": ','.join(return_fields),
+                "limit": 0
+            }
+        #print(f"{url}, {params}, {with_obj_type}, {','.join(return_fields)}")
+        (data, response) = ena_portal_api_call(url, params, with_obj_type, chunk)
+        # print(f"data={data}")
+
+        if response.status_code != 200:
+            doze_time = 10
+            print(
+                f"Due to response {response.status_code}, having another try for {url} and obj_type={with_obj_type} with {params}, after a little doze of {doze_time} seconds")
+            time.sleep(doze_time)
+            (data, response) = ena_portal_api_call(url, params, with_obj_type, id_list)
+            if response.status_code != 200:
+                print(f"Due to response exiting {response.status_code}, tried twice")
+                ic()
+                sys.exit()
+        #print(f"data={data}")
+        combined_data += data
+    return combined_data
+
 
 
 

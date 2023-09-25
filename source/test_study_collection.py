@@ -35,7 +35,8 @@ class TestStudyCollection(unittest.TestCase):
                           'PRJEB28751',
                           'PRJEB36404',
                           'PRJEB27360',
-                          'PRJEB40122', "madeup"]
+                          'PRJEB40122',
+                          "madeup"]
         sample_acc_list = study2sample(study_acc_list, self.study_collection, False)
         self.assertEqual(len(sample_acc_list), 121)
 
