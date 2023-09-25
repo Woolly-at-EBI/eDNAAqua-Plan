@@ -204,83 +204,63 @@ class SampleCollection:
     def get_environmental_study_accession_list(self):
         return list(self.environmental_study_accession_set)
 
-def do_portal_api_sample_call(result_object_type, query_accession_ids, return_fields):
-    """
-
-    :param result_object_type:
-    :param query_accession_ids:
-    :param return_fields:
-    :return: data # (as list of row hits) e.g.
-       [{'description': 'Waikite Restoration Feature 5',
-            'sample_accession': 'SAMEA110453696',
-            'study_accession': 'PRJEB55115'},
-           {'description': 'Waikite Restoration Feature 3',
-            'sample_accession': 'SAMEA110453715',
-            'study_accession': 'PRJEB55115'},
-           {'description': 'Radiata Pool',
-            'sample_accession': 'SAMEA110453701',
-            'study_accession': 'PRJEB55115'}]
-ic| len(data): 3
-
-#        curl 'https://www.ebi.ac.uk/ena/portal/api/search?includeAccessions=SAMEA110453690,SAMEA110453698&result=sample&fields=sample_accession,description,study_accession,environment_biome,tax_id,taxonomic_identity_marker,country,location_start,location_end&format=json&limit=0'
-    """
-
-    result_object_type = 'sample'
-    ena_portal_api_url = get_ena_portal_url()
-    ena_search_url = f"{ena_portal_api_url}search?"
-
-    # Define the query parameters
-    sample_accessions = ','.join(query_accession_ids)
-    params = {
-        "result": result_object_type,
-        "includeAccessions": sample_accessions,
-        "format": "json",
-        "fields": return_fields,
-        "limit": 0
-    }
-    #my_url = ena_search_url + '?includeAccessions=' + sample_accessions
-    # Make a GET request to the ENA API
-    # ic(my_url)
-    (data, response) = ena_portal_api_call(ena_search_url, params, result_object_type, query_accession_ids)
-
-    if response.status_code != 200:
-        doze_time = 10
-        print(f"Due to response {response.status_code}, having another try for {ena_search_url} {params}, after a little doze of {doze_time} seconds")
-        time.sleep(doze_time)
-        (data, response) = ena_portal_api_call(ena_search_url, params, result_object_type, query_accession_ids)
-        if response.status_code != 200:
-            print(f"Due to response exiting {response.status_code}, tried twice")
-            ic()
-            sys.exit()
-
-    return data
-def get_sample_field_data(sample_list, sample_rtn_fields):
-    API_pre = "https://www.ebi.ac.uk/ena/portal/api/search?result="
-
-    all_sample_data = []
-
-    iterator = iter(sample_list)
-    chunk_size = 400 # 1000 seems to have errors!
-    sample_list_size = len(sample_list)
+# def do_portal_api_sample_call(result_object_type, query_accession_ids, return_fields):
+#     """
+#
+#     :param result_object_type:
+#     :param query_accession_ids:
+#     :param return_fields:
+#     :return: data # (as list of row hits) e.g.
+#        [{'description': 'Waikite Restoration Feature 5',
+#             'sample_accession': 'SAMEA110453696',
+#             'study_accession': 'PRJEB55115'},
+#            {'description': 'Waikite Restoration Feature 3',
+#             'sample_accession': 'SAMEA110453715',
+#             'study_accession': 'PRJEB55115'},
+#            {'description': 'Radiata Pool',
+#             'sample_accession': 'SAMEA110453701',
+#             'study_accession': 'PRJEB55115'}]
+# ic| len(data): 3
+#
+# #        curl 'https://www.ebi.ac.uk/ena/portal/api/search?includeAccessions=SAMEA110453690,SAMEA110453698&result=sample&fields=sample_accession,description,study_accession,environment_biome,tax_id,taxonomic_identity_marker,country,location_start,location_end&format=json&limit=0'
+#     """
+#
+#     result_object_type = 'sample'
+#     ena_portal_api_url = get_ena_portal_url()
+#     ena_search_url = f"{ena_portal_api_url}search?"
+#
+#     # Define the query parameters
+#     sample_accessions = ','.join(query_accession_ids)
+#     params = {
+#         "result": result_object_type,
+#         "includeAccessions": sample_accessions,
+#         "format": "json",
+#         "fields": return_fields,
+#         "limit": 0
+#     }
+#     #my_url = ena_search_url + '?includeAccessions=' + sample_accessions
+#     # Make a GET request to the ENA API
+#     # ic(my_url)
+#     (data, response) = ena_portal_api_call(ena_search_url, params, result_object_type, query_accession_ids)
+#
+#     if response.status_code != 200:
+#         doze_time = 10
+#         print(f"Due to response {response.status_code}, having another try for {ena_search_url} {params}, after a little doze of {doze_time} seconds")
+#         time.sleep(doze_time)
+#         (data, response) = ena_portal_api_call(ena_search_url, params, result_object_type, query_accession_ids)
+#         if response.status_code != 200:
+#             print(f"Due to response exiting {response.status_code}, tried twice")
+#             ic()
+#             sys.exit()
+#
+#     return data
+def get_sample_field_data(sample_list, return_fields):
     with_obj_type = 'sample'
+    ena_search_url = f"{get_ena_portal_url()}search?"
 
-    chunk_count = 0
-    chunk_pos = 0
-    ic(f"{chunk_pos}/{sample_list_size}")
-    while chunk := list(islice(iterator, chunk_size)):
-        chunk_count += 1
-        chunk_pos += chunk_size
-        if chunk_count % 10 == 0:
-            ic(f"{chunk_pos}/{sample_list_size}")
-        # ic("++++++++++++++++++++++++++++++++++++++++++++++++++++")
-        chunk_sample_id_list = []
-        for sample in chunk:
-            # ic(sample.sample_accession)
-            chunk_sample_id_list.append(sample.sample_accession)
-        # ic(chunk_sample_id_list)
+    #all_sample_data = []
+    all_sample_data = chunk_portal_api_call(ena_search_url, with_obj_type, return_fields, sample_list)
 
-        sample_ena_data = do_portal_api_sample_call(with_obj_type, chunk_sample_id_list, sample_rtn_fields)
-        all_sample_data.append(sample_ena_data)
     return all_sample_data
 
 def main():

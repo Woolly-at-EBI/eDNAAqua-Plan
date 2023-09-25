@@ -70,6 +70,7 @@ def study2sample(study_id_list, study_collection, debug_status):
     # 'result=sample&query=study_accession%3DPRJDB13387&fields=sample_accession%2Csample_description
     # %2Cstudy_accession&format=tsv' "https://www.ebi.ac.uk/ena/portal/api/search"
 
+    #currently very inefficient doing one call per study_id
     pre_url = get_ena_portal_url() + "search?" + 'result=' + result_object_type + '&fields=sample_accession&format=tsv'
     pre_url += '&limit=' + str(limit) + '&query=study_accession' + '%3D'
 
@@ -77,7 +78,7 @@ def study2sample(study_id_list, study_collection, debug_status):
     ic(f"{study_id_pos+1}/{len(study_id_list)}")
     #study_collection.study_dict
     for study_id in study_id_list:
-       if study_id_pos%10 == 0:
+       if study_id_pos%100 == 0:
            ic(f"{study_id_pos}/{len(study_id_list)}")
        study_id_pos += 1
        if study_id in study_collection.study_dict:
