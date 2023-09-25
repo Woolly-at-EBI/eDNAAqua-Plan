@@ -137,7 +137,6 @@ def chunk_portal_api_call(url, with_obj_type, return_fields, id_list):
             doze_time = 10
             print(
                 f"Due to response {response.status_code}, having another try for {url} and obj_type={with_obj_type} with {params}, after a little doze of {doze_time} seconds")
-            sys.exit()
             time.sleep(doze_time)
             (data, response) = ena_portal_api_call(url, params, with_obj_type, id_list)
             if response.status_code != 200:
