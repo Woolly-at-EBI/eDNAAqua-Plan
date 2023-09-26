@@ -5,7 +5,17 @@ echo "Script to mine ena for environmental terms"
 datadir="../data/ena_in"
 tmpfile=$datadir"/tmpfile.txt"
 
-
+outfile=$datadir/ena_all_env_raw.txt
+if ! test -f $outfile; then
+  echo "generating "$outfile
+  #'https://www.ebi.ac.uk/ena/portal/api/search?result=sample&fields=sample_accession%2Cbroad_scale_environmental_context%2Cenvironment_biome%2Cenvironment_feature%2Cenvironment_material%2Cenvironmental_medium%2Cenvironmental_sample%2Clocal_environmental_context&limit=10&dataPortal=ena&includeMetagenomes=true'
+  curl -X 'GET' 'https://www.ebi.ac.uk/ena/portal/api/search?result=sample&fields=sample_accession%2Cbroad_scale_environmental_context%2Cenvironment_biome%2Cenvironment_feature%2Cenvironment_material%2Cenvironmental_medium%2Cenvironmental_sample%2Clocal_environmental_context&limit=0&dataPortal=ena&includeMetagenomes=true'   -H 'accept: */*' > $outfile
+  infile=$outfile
+  outfile=$datadir/ena_all_env.txt
+  #compressing this down to only samples with environmental columns, took it to just over a 1/3 of the data volume
+  cat $infile | tr '\t' '£' | grep -v '£££££££' | tr '£' '\t' > $outfile
+fi
+exit
 
 outfile=$datadir/ena_results_objects.txt
 if ! test -f $outfile; then
