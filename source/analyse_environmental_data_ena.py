@@ -12,6 +12,10 @@ import sys
 
 from icecream import ic
 import pickle
+import pandas as pd
+pd.set_option('display.max_rows', 1000)
+pd.set_option('display.max_columns', 500)
+pd.set_option('display.width', 1000)
 
 from ena_portal_api import get_ena_portal_url, ena_portal_api_call_basic, chunk_portal_api_call, urldata2id_set
 from geography import Geography
@@ -415,56 +419,119 @@ def get_taxonomic_environmental_tagged_sample_id_list(limit_length):
     ic(len(sample_acc_list))
     return sample_acc_list
 
+def get_environmental_properties_sample_id_list(limit_length):
+    """
+    currently only using broad_scale_environmental_context, as found few instances of other columns being used when this was not.
+    :param limit_length:
+    :return: sample_id_list
+    """
+    ic()
+    sample_acc_list = []
+    infile= ena_data_dir + "ena_all_env.txt"
+    df = pd.read_csv(infile, sep = '\t', on_bad_lines='skip')
+    #, nrows=100000)
+    ic(df.columns)
+    # ic(df)
+    #df.columns: Index(
+    #  ['sample_accession', 'broad_scale_environmental_context', 'environment_biome', 'environment_feature',
+    #    'environment_material', 'environmental_medium', 'environmental_sample', 'local_environmental_context'], dtype='object')
+    columns = ['broad_scale_environmental_context']
+    exclusion_terms = {'broad_scale_environmental_context': 'healthy_adult|not aplicable|[Nn]ot [Aa]pplicable|not provided|Mouse gut|incubation experiment|female-fallopian tubes|Intestinal tract|^Control|^a$|^[0-9]+$|gut microbiome|Herdsmen|nematode body|^missing$|intestinal[ _]tract|animal cage|intestine environment|Mosue colon|^mouse|animal distal gut|bodily fluid material biome|animal facilities|^urine|^[Ss]tool|Sealed jar in the lab|retail food|^skin|^lung|^Lung|^colon$|^[Cc]hicken|mice|^mouth|chiclken|intestinal|^Saliva|^[Ff]ood$|^oral|^nasal|anaerobic sludge blanket reactor|^[Cc]hicken$|^[Mm]ouse$|Bos taurus|digestive tract|infant|digestive system|[Hh]ospital|stool sample|^Gallus gallus|poultry|RUSITEC|children|^gut$|mouse-gut|AA broiler breeder gut|attus norvegicus gut|Infant stool|tongue coat|tongue coat|gut mucosa|pig|Vagina|Gut|Oral|nan|human|Human|chicken gut|^rat|pH|mouse digestive system|entity|food material|vagina|Anaerobic Reactor|anaerobic bioreactor|biogas|cecum|Anerobic Reactor|[Hh]omo [Ss]apien|commercial food enzyme product|foodon|pig feces|laboratory colony|gerbil|Reactor|not applicable|meat part|laboratory|Laboratory|Laboratory|fermented vegetable food product|Larval rearing tank|Aged care home'
+    }
+
+    sample_acc_set = set()
+    ic(len(df))
+    for my_col in columns:
+        #print(my_col)
+        #print(df[my_col].value_counts())
+        df[my_col] = df[my_col].astype(str)
+        #ic(df[df[my_col].str.contains('biome')])
+        exclusion_terms = exclusion_terms[my_col]
+        tmp_df = df[~df[my_col].str.contains(exclusion_terms)]
+        ic(len(tmp_df))
+        #ic()
+        #print(tmp_df.to_string())
+        #print(tmp_df[my_col].value_counts().to_string())
+        #select_columns = ['broad_scale_environmental_context', 'local_environmental_context']
+        ic(len(tmp_df[my_col].to_list()))
+        ic(tmp_df[my_col].value_counts())
+
+        sample_acc_set.update(set(tmp_df['sample_accession'].to_list()))
+        ic(len(sample_acc_set))
+    # ic(df[select_columns].groupby(select_columns).size().reset_index(name='count').sort_values(by=['count'], ascending=False).head(10))
+
+    return sorted(sample_acc_set)
+
 def main():
     ic()
+    limit_length = 100000
+    limit_length = 0
+
     sample_accs_by_category = {}
     sabc_pickle_filename = 'sample_acc_by_category.pickle'
-    # if os.path.isfile(sabc_pickle_filename):
-    #     ic(f"For sample_acc_by_category using {sabc_pickle_filename}")
-    #     with open(sabc_pickle_filename, 'rb') as f:
-    #         sample_accs_by_category = pickle.load(f)
+    if os.path.isfile(sabc_pickle_filename):
+         ic(f"For sample_acc_by_category using {sabc_pickle_filename}")
+         with open(sabc_pickle_filename, 'rb') as f:
+             sample_accs_by_category = pickle.load(f)
 
-    categories = ["environmental_sample_tagged", "barcode_study_list", "ITS_experiment","taxonomic_environmental_domain_tagged"]
+    categories = ["environmental_sample_properties", "environmental_sample_tagged", "barcode_study_list", "ITS_experiment", "taxonomic_environmental_domain_tagged"]
+    #categories = ["environmental_sample_tagged", "barcode_study_list"]
+    #categories = ["environmental_sample_properties"]
 
     # categories = ["environmental_sample_tagged"]
     # categories = ["barcode_study_list"]
     # categories = ["ITS_experiment"]
     #
-    categories = ["taxonomic_environmental_domain_tagged"]
+    #categories = ["taxonomic_environmental_domain_tagged"]
     study_collection = StudyCollection()
+    sample_collection = SampleCollection()
 
-    limit_length = 10000
+
     for category in categories:
         ic(f"*********** category={category} ***********")
-        if category == "environmental_sample_tagged" and category not in sample_accs_by_category:
+        if category in sample_accs_by_category:
+            if category == "environmental_sample_tagged":
+                ic(sample_accs_by_category[category]['sample_acc_list'])
+                ic(len(sample_accs_by_category[category]['sample_acc_list']))
+            continue
+        if category == "environmental_sample_tagged":
            sample_acc_list = get_environmental_sample_list(limit_length)
-           sample_accs_by_category[category] = { 'sample_acc_list': sample_acc_list }
+           sample_accs_by_category[category] = {'sample_acc_list': sample_acc_list}
 
            if limit_length != 0:
                sample_acc_list = sample_acc_list[0:limit_length]
-
            ic(len(sample_acc_list))
-        elif category == "barcode_study_list" and category not in sample_accs_by_category:
+        elif category == "barcode_study_list":
            study_acc_list = get_barcode_study_list()
-           sample_accs_by_category[category] = { 'sample_acc_list': sample_acc_list }
            if limit_length != 0:
              study_acc_list = study_acc_list[0:limit_length]
            #ic(study_acc_list)
            sample_acc_list = study2sample(study_acc_list, study_collection, False)
            ic(len(sample_acc_list))
+           sample_accs_by_category[category] = {'sample_acc_list': sample_acc_list}
            ic(len(study_collection.get_sample_id_list()))
-        elif category == "ITS_experiment" and category not in sample_accs_by_category:
+        elif category == "ITS_experiment":
            sample_acc_list = get_ITS_sample_list()
            sample_accs_by_category[category] = { 'sample_acc_list': sample_acc_list }
            if limit_length != 0:
                sample_acc_list = sample_acc_list[0:limit_length]
-        elif category == "taxonomic_environmental_domain_tagged" and category not in sample_accs_by_category:
+        elif category == "taxonomic_environmental_domain_tagged":
             ic()
             sample_acc_list = get_taxonomic_environmental_tagged_sample_id_list(limit_length)
             sample_accs_by_category[category] = {'sample_acc_list': sample_acc_list}
             ic(len(sample_acc_list))
             if limit_length != 0:
                 sample_acc_list = sample_acc_list[0:limit_length]
+        elif category == "environmental_sample_properties" and category not in sample_accs_by_category:
+            sample_acc_list = get_environmental_properties_sample_id_list(limit_length)
+            sample_accs_by_category[category] = {'sample_acc_list': sample_acc_list}
+            ic(len(sample_acc_list))
+            if limit_length != 0:
+                sample_acc_list = sample_acc_list[0:limit_length]
+        else:
+            #ena_all_env.txt
+            print(f"ERROR: category {category} has now fetch methods etc.")
+            sys.exit()
 
         # if not os.path.isfile(sabc_pickle_filename):
         #   ic()
@@ -480,6 +547,7 @@ def main():
 
 
     generated_combined_summary(sample_accs_by_category)
+    print(f"total_ena_archive_sample_size={sample_collection.get_total_archive_sample_size()}")
 
     ic("******* END OF MAIN *******")
 

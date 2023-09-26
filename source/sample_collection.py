@@ -42,10 +42,13 @@ class SampleCollection:
 
 
     def get_total_archive_sample_size(self):
-       url='https://www.ebi.ac.uk/ena/portal/api/count?result=sample&dataPortal=ena'
-       (total, response) = ena_portal_api_call(url, {}, "sample", "")
-       ic(total)
-       return total
+        if hasattr(self, 'total_archive_sample_size'):
+            return self.total_archive_sample_size
+        url='https://www.ebi.ac.uk/ena/portal/api/count?result=sample&dataPortal=ena'
+        (total, response) = ena_portal_api_call_basic(url)
+        self.total_archive_sample_size = total
+        ic(self.total_archive_sample_size)
+        return self.total_archive_sample_size
 
     def get_sample_coll_df(self):
         """
