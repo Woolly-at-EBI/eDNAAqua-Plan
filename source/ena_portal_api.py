@@ -120,6 +120,7 @@ def chunk_portal_api_call(url, with_obj_type, return_fields, id_list):
         chunk_count += 1
         if chunk_count % 50 == 0:   #only print progress every X chunks
             ic(f"{chunk_pos}/{list_size} in chunk_portal_api_call()")
+        #ic(chunk[0:3])
         params = {
                 "result": with_obj_type,
                 "includeAccessions":  ','.join(chunk),

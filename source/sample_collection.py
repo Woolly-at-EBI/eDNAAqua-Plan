@@ -151,7 +151,7 @@ class SampleCollection:
 
         outstring +='#####################################\n'
         sample_obj1 = random.choice(list(self.sample_set))
-        outstring += f"Random sample:\n{sample_obj1.print_values()}\n"
+        # outstring += f"Random sample:\n{sample_obj1.print_values()}\n"
 
         # print('#####################################')
         # sample_obj2 = random.choice(list(self.sample_set))
@@ -257,12 +257,37 @@ class SampleCollection:
 #             sys.exit()
 #
 #     return data
+
+def sample_obj_list_2_sample_acc_list(sample_list):
+    sample_set = set()
+    for sample_obj in sample_list:
+        sample_set.add(sample_obj.sample_accession)
+    return sorted(sample_set)
+
 def get_sample_field_data(sample_list, return_fields):
+    """
+
+    :param sample_list: #are sample objects
+    :param return_fields:  #ecpect a list
+    :return:
+    """
+    ic()
     with_obj_type = 'sample'
     ena_search_url = f"{get_ena_portal_url()}search?"
+    sample_id_list = sample_obj_list_2_sample_acc_list(sample_list)
+    #sample_id_list = sample_id_list[0:5]
+    #ic| f"{chunk_pos}/{list_size} in chunk_portal_api_call()": '880000/1541315 in chunk_portal_api_call()'
+    # low = 880000
+    # high = low + 50000
+    # sample_id_list = sample_id_list[low:high]
+
+    ic(len(sample_id_list))
+    ic(sample_id_list[0:5])
+    ic(return_fields)
 
     #all_sample_data = []
-    all_sample_data = chunk_portal_api_call(ena_search_url, with_obj_type, return_fields, sample_list)
+    all_sample_data = chunk_portal_api_call(ena_search_url, with_obj_type, return_fields, sample_id_list)
+    # ic(all_sample_data)
 
     return all_sample_data
 

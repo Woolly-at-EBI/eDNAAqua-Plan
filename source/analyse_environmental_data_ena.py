@@ -44,25 +44,32 @@ def encode_accession_list(id_list):
 
 def add_info_to_object_list(with_obj_type, obj_dict, data):
     """
-
+    adds information from multiple ids to object.
     :param with_obj_type:
     :param obj_dict:
     :param data:
     :return:
     """
+    ic()
 
     #ic(data)
     data_by_id = {}
 
+    id_list = []
+
     if with_obj_type == "sample":
         for dict_row in data:
+            #ic(dict_row['sample_accession'])
             #ic(dict_row)
             data_by_id[dict_row['sample_accession']] = dict_row
-    # ic(data_by_id)
+            id_list.append(dict_row['sample_accession'])
+    ic(len(id_list))
+
     geography = Geography()
 
     #ic("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-    for id in obj_dict:
+    for id in id_list:
+        #ic(id)
         obj = obj_dict[id]
         if with_obj_type == "sample":
             if obj.sample_accession in data_by_id:
@@ -94,6 +101,7 @@ def add_info_to_object_list(with_obj_type, obj_dict, data):
             # print(obj.print_values())
 
     #ic()
+    return
 
 
 
@@ -106,17 +114,20 @@ def annotate_sample_objs(sample_list, with_obj_type, sample_collection_obj):
     """
     ic()
     ic(with_obj_type)
-    sample_rtn_fields = ','.join(sample_collection_obj.sample_fields)
-    #ic(','.join(sample_collection_obj.sample_fields))
+    sample_rtn_fields = sample_collection_obj.sample_fields
+
+    ic(','.join(sample_collection_obj.sample_fields))
+    #sample_list = sample_list[0:10]
+    ic(sample_list[0:3])
     sample_obj_dict = sample_collection_obj.sample_obj_dict
 
     for sample in sample_list:
-        # ic(sample.sample_accession)
+        ic(sample.sample_accession)
         sample_obj_dict[sample.sample_accession] = sample
 
     all_sample_data = get_sample_field_data(sample_list, sample_rtn_fields)
-    for sample_ena_data in all_sample_data:
-        add_info_to_object_list(with_obj_type, sample_obj_dict, sample_ena_data)
+    add_info_to_object_list(with_obj_type, sample_obj_dict, all_sample_data)
+
     ic()
     if with_obj_type == "sample":
        sample_collection_obj.addTaxonomyAnnotation()
@@ -142,10 +153,11 @@ def get_environmental_sample_list(limit_length):
     # return sample_env_df['sample_accession'].to_list()
 
     result_object_type = 'read_experiment'
-    url = get_ena_portal_url() + "search?" + 'result=read_experiment&query=environmental_sample=true&fields=sample_accession&format=tsv&limit=' + str(limit_length)
+    url = get_ena_portal_url() + "search?" + 'result=read_experiment&query=environmental_sample=true&fields=run_accession,experiment_accession,sample_accession&format=tsv&limit=' + str(limit_length)
+    ic(url)
     (data, response) = ena_portal_api_call_basic(url)
     # returns tsv text block with fields: experiment_accession	sample_accession
-    my_set = urldata2id_set(data, 1)
+    my_set = urldata2id_set(data, 2)
     #print(my_set)
     return list(my_set)
 
@@ -310,7 +322,7 @@ def sample_analysis(category, sample_list):
 
 
     ic(len(sample_collection_obj.environmental_study_accession_set))
-    print(", ".join(sample_collection_obj.environmental_study_accession_set))
+    # print(", ".join(sample_collection_obj.environmental_study_accession_set))
 
     ic("..............")
     ic(sample_collection_obj.get_sample_coll_df())
@@ -370,7 +382,7 @@ def generated_combined_summary(sample_accs_by_category):
         #ic(f"{category} {len(sample_accs_by_category[category]['sample_acc_set'])}")
         for category2 in all_categories:
             if category != category2:
-                ic(f"\t{category2} {len(sample_accs_by_category[category2]['sample_acc_set'])}")
+                #ic(f"\t{category2} {len(sample_accs_by_category[category2]['sample_acc_set'])}")
                 tmp_set = sample_accs_by_category[category]['sample_acc_set'].copy()
                 tmp_set.intersection_update(sample_accs_by_category[category2]['sample_acc_set'])
                 stats["combined"][category][category2] = { "total_intersect" :  len(tmp_set) }
@@ -427,9 +439,12 @@ def get_environmental_properties_sample_id_list(limit_length):
     """
     ic()
     sample_acc_list = []
-    infile= ena_data_dir + "ena_all_env.txt"
-    df = pd.read_csv(infile, sep = '\t', on_bad_lines='skip')
-    #, nrows=100000)
+    infile = ena_data_dir + "ena_all_env.txt"
+    if limit_length == 0:
+        df = pd.read_csv(infile, sep = '\t', on_bad_lines='skip')
+    else:
+        df = pd.read_csv(infile, sep = '\t', on_bad_lines='skip', nrows=limit_length)
+
     ic(df.columns)
     # ic(df)
     #df.columns: Index(
@@ -454,7 +469,7 @@ def get_environmental_properties_sample_id_list(limit_length):
         #print(tmp_df[my_col].value_counts().to_string())
         #select_columns = ['broad_scale_environmental_context', 'local_environmental_context']
         ic(len(tmp_df[my_col].to_list()))
-        ic(tmp_df[my_col].value_counts())
+        ic(tmp_df[my_col].value_counts().head(5))
 
         sample_acc_set.update(set(tmp_df['sample_accession'].to_list()))
         ic(len(sample_acc_set))
@@ -462,10 +477,20 @@ def get_environmental_properties_sample_id_list(limit_length):
 
     return sorted(sample_acc_set)
 
+def detailed_sample_analysis(category, sample_acc_list):
+    ic()
+    ic(len(sample_acc_list))
+    #ic(sample_acc_list[0:10])
+    sample_acc_list = clean_acc_list(sample_acc_list)
+    sample_collection_obj = sample_analysis(category, sample_acc_list)
+    ic(f"category={category} total sample total={len(sample_collection_obj.sample_set)}")
+
+    return sample_collection_obj
+
 def main():
     ic()
     limit_length = 100000
-    limit_length = 0
+    limit_length = 100
 
     sample_accs_by_category = {}
     sabc_pickle_filename = 'sample_acc_by_category.pickle'
@@ -475,10 +500,13 @@ def main():
              sample_accs_by_category = pickle.load(f)
 
     categories = ["environmental_sample_properties", "environmental_sample_tagged", "barcode_study_list", "ITS_experiment", "taxonomic_environmental_domain_tagged"]
+    #categories = ["environmental_sample_properties",  "taxonomic_environmental_domain_tagged"]
+    #categories = ["environmental_sample_properties"]
+
     #categories = ["environmental_sample_tagged", "barcode_study_list"]
     #categories = ["environmental_sample_properties"]
 
-    # categories = ["environmental_sample_tagged"]
+    categories = ["environmental_sample_tagged"]
     # categories = ["barcode_study_list"]
     # categories = ["ITS_experiment"]
     #
@@ -486,66 +514,58 @@ def main():
     study_collection = StudyCollection()
     sample_collection = SampleCollection()
 
-
     for category in categories:
         ic(f"*********** category={category} ***********")
         if category in sample_accs_by_category:
             if category == "environmental_sample_tagged":
                 ic(sample_accs_by_category[category]['sample_acc_list'])
                 ic(len(sample_accs_by_category[category]['sample_acc_list']))
+            #if commented
+            sample_collection_obj = sample_accs_by_category[category]['sample_collection_obj']
+            print("\n+++++++++++++++++++++++++++++++++++")
+            print("************** Summary of the ENA samples **************\n")
+            print(sample_collection_obj.print_summary())
+            print("+++++++++++++++++++++++++++++++++++")
+            #sample_collection_obj = detailed_sample_analysis(category, sample_accs_by_category[category]['sample_acc_list'])
             continue
+        ic(f"+++++++++++++ about to run sample get for category-{category}  +++++++++++++++")
         if category == "environmental_sample_tagged":
            sample_acc_list = get_environmental_sample_list(limit_length)
-           sample_accs_by_category[category] = {'sample_acc_list': sample_acc_list}
-
-           if limit_length != 0:
-               sample_acc_list = sample_acc_list[0:limit_length]
            ic(len(sample_acc_list))
         elif category == "barcode_study_list":
            study_acc_list = get_barcode_study_list()
            if limit_length != 0:
              study_acc_list = study_acc_list[0:limit_length]
-           #ic(study_acc_list)
            sample_acc_list = study2sample(study_acc_list, study_collection, False)
-           ic(len(sample_acc_list))
-           sample_accs_by_category[category] = {'sample_acc_list': sample_acc_list}
            ic(len(study_collection.get_sample_id_list()))
         elif category == "ITS_experiment":
            sample_acc_list = get_ITS_sample_list()
-           sample_accs_by_category[category] = { 'sample_acc_list': sample_acc_list }
            if limit_length != 0:
                sample_acc_list = sample_acc_list[0:limit_length]
         elif category == "taxonomic_environmental_domain_tagged":
             ic()
             sample_acc_list = get_taxonomic_environmental_tagged_sample_id_list(limit_length)
             sample_accs_by_category[category] = {'sample_acc_list': sample_acc_list}
-            ic(len(sample_acc_list))
             if limit_length != 0:
                 sample_acc_list = sample_acc_list[0:limit_length]
-        elif category == "environmental_sample_properties" and category not in sample_accs_by_category:
+        elif category == "environmental_sample_properties":
             sample_acc_list = get_environmental_properties_sample_id_list(limit_length)
-            sample_accs_by_category[category] = {'sample_acc_list': sample_acc_list}
-            ic(len(sample_acc_list))
             if limit_length != 0:
                 sample_acc_list = sample_acc_list[0:limit_length]
         else:
             #ena_all_env.txt
             print(f"ERROR: category {category} has now fetch methods etc.")
             sys.exit()
-
-        # if not os.path.isfile(sabc_pickle_filename):
-        #   ic()
-        #   ic(sample_acc_list)
-        sample_acc_list = clean_acc_list(sample_acc_list)
-        #   sample_collection_obj = sample_analysis(category, sample_acc_list)
-        #   sample_set = sample_collection_obj.sample_set
-        #   ic(f"category={category} total sample total={len(sample_set)}")
+        ic(len(sample_acc_list))
+        sample_accs_by_category[category] = {'sample_acc_list': sample_acc_list}
+        sample_collection_obj = detailed_sample_analysis(category, sample_acc_list)
+        sample_accs_by_category[category]['sample_collection_obj'] = sample_collection_obj
 
     with open(sabc_pickle_filename, 'wb') as f:
         ic(f"writing sample_accs_by_category to {sabc_pickle_filename}")
         pickle.dump(sample_accs_by_category, f)
 
-
+    sys.exit()
     generated_combined_summary(sample_accs_by_category)
     print(f"total_ena_archive_sample_size={sample_collection.get_total_archive_sample_size()}")
 
