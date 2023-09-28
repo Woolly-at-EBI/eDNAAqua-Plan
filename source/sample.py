@@ -31,6 +31,7 @@ class Sample:
         self.location_end = ""
         self.country_clean = ""
         self.country_is_european = False
+        self.sample_tag_is_freshwater = False
         #also these, but not defined until later
         self.taxonomy_obj = None
         self.source_category = ""
@@ -40,7 +41,7 @@ class Sample:
 
     def setEnvironmentalSample(self, boolean_flag):
         """
-        this is what is tagged in ENA archive uner experiment.is_environmental_sample
+        this is what is tagged in ENA archive if experiment.is_environmental_sample
         :param boolean_flag:
         :return:
         """

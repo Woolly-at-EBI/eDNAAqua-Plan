@@ -34,8 +34,9 @@ class SampleCollection:
         self.environmental_study_accession_set = set()
         self.european_environmental_set = set()
         self.european_sample_set = set()
+        self.freshwater_sample_tag_set = set()
         self.tax_id_set = set()
-        self.sample_fields = ['sample_accession', 'description', 'study_accession', 'environment_biome', 'tax_id', 'taxonomic_identity_marker', 'country', 'location_start', 'location_end']
+        self.sample_fields = ['sample_accession', 'description', 'study_accession', 'environment_biome', 'tax_id', 'taxonomic_identity_marker', 'country', 'location_start', 'location_end', 'tag']
         self.total_archive_sample_size = self.get_total_archive_sample_size()
 
     def put_sample_set(self, sample_set):
@@ -210,7 +211,8 @@ class SampleCollection:
                     for study_accession in sample_obj.study_accession.split(';'):
                       sample_collection_stats_dict['by_study_id'][study_accession] = {'sample_id': { sample_obj.sample_accession : sample_collection_stats_dict['by_sample_id'][sample_obj.sample_accession]} }
                       self.environmental_study_accession_set.add(study_accession)
-
+                if sample_obj.sample_tag_is_freshwater:
+                    self.freshwater_sample_tag_set.add(sample_obj)
                 self.sample_collection_stats_dict = sample_collection_stats_dict
             self.sample_count = len(sample_collection_stats_dict['by_sample_id'])
             # ic(self.sample_collection_stats_dict)

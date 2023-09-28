@@ -62,7 +62,7 @@ def add_info_to_object_list(with_obj_type, obj_dict, data):
     if with_obj_type == "sample":
         for dict_row in data:
             #ic(dict_row['sample_accession'])
-            #ic(dict_row)
+            ic(dict_row)
             data_by_id[dict_row['sample_accession']] = dict_row
             id_list.append(dict_row['sample_accession'])
     ic(len(id_list))
@@ -86,7 +86,6 @@ def add_info_to_object_list(with_obj_type, obj_dict, data):
                       obj.taxonomic_identity_marker = data_by_id[obj.sample_accession]['taxonomic_identity_marker']
                if 'tax_id' in data_by_id[obj.sample_accession]:
                    obj.tax_id = data_by_id[obj.sample_accession]['tax_id']
-
                if 'country' in data_by_id[obj.sample_accession]:
                    obj.country = data_by_id[obj.sample_accession]['country']
                    obj.country_clean = geography.clean_insdc_country_term(obj.country)
@@ -96,6 +95,10 @@ def add_info_to_object_list(with_obj_type, obj_dict, data):
                    obj.location_start = data_by_id[obj.sample_accession]['location_start']
                if 'location_end' in data_by_id[obj.sample_accession]:
                    obj.location_end = data_by_id[obj.sample_accession]['location_end']
+            if 'tag' in data_by_id[obj.sample_accession]:
+                obj.tag = data_by_id[obj.sample_accession]['tag']
+                if ('freshwater_medium_confidence' in obj.tag) or ('freshwater_high_confidence' in obj.tag):
+                    obj.sample_tag_is_freshwater = True
 
             else:
                 #ic(f"Warning: {obj.sample_accession} not being found in hits")
@@ -366,6 +369,7 @@ def generated_combined_summary(sample_accs_by_category):
     for category in all_categories:
         # ic(f"{category}  {len(sample_accs_by_category[category]['sample_acc_list'])}")
         sample_accs_by_category[category]['sample_acc_set'] = set(sample_accs_by_category[category]['sample_acc_list'])
+        sample_accs_by_category[category]['sample_acc_set_european'] = set(sample_accs_by_category[category]['sample_acc_list_european'])
         total_uniq_sample_set.update(sample_accs_by_category[category]['sample_acc_set'] )
         if category_count == 0:
             total_intersect_sample_set.update(sample_accs_by_category[category]['sample_acc_set'])
@@ -373,6 +377,15 @@ def generated_combined_summary(sample_accs_by_category):
             total_intersect_sample_set.intersection_update(sample_accs_by_category[category]['sample_acc_set'] )
         stats["individual"][category] = {'sample_acc_set': {"total": len(sample_accs_by_category[category]['sample_acc_list'])}}
         stats["combined"][category] = {}
+        #
+        # sample_accs_by_category[category] = {'sample_acc_list': sample_acc_list}
+        # sample_collection_obj = detailed_sample_analysis(category, sample_acc_list)
+        # sample_accs_by_category[category]['sample_collection_obj'] = sample_collection_obj
+        sample_collection_obj = sample_accs_by_category[category]['sample_collection_obj']
+        ic(sample_collection_obj.print_summary())
+        ic(len(sample_collection_obj.get_european_sample_accession_list()))
+        len(sample_collection_obj.european_sample_set)
+        stats["individual"][category]['sample_acc_set_european'] = {"total": len(sample_collection_obj.european_sample_set)}
         category_count += 1
 
     for category in all_categories:
@@ -384,40 +397,57 @@ def generated_combined_summary(sample_accs_by_category):
                 tmp_set.intersection_update(sample_accs_by_category[category2]['sample_acc_set'])
                 stats["combined"][category][category2] = { "total_intersect" :  len(tmp_set) }
 
-    generate_combined_summary_table(all_categories, stats)
+
+
+
 
     stats["combined"]["sample_set_intersect_total"] = len(total_intersect_sample_set)
     stats["combined"]["uniq_sample_set_total"] = len(total_uniq_sample_set)
 
+    generate_combined_summary_table(all_categories, stats)
+
+
+
     return stats
 
 def generate_combined_summary_table(all_categories, stats):
+    """
 
-    #generate Total tables
+    :param all_categories:
+    :param stats:
+    :return:
+    """
 
+    #generate Total tables"""
+    ic()
+    ic(all_categories)
+
+    # generate Total tables
     individual_total_data = []
     for category in all_categories:
         #print(f"\t{category}  {stats['individual'][category]['sample_acc_set']['total']}")
-        individual_total_data.append({'Category': category,  "Total" : stats['individual'][category]['sample_acc_set']['total']})
+        individual_total_data.append({'Category': category,  "Sample_total": stats['individual'][category]['sample_acc_set']['total'],\
+                                      "European_sample_total": stats['individual'][category]['sample_acc_set_european']['total']})
     ic(individual_total_data)
     markdown = markdown_table(individual_total_data).get_markdown()
     print(markdown)
+
+    sys.exit()
 
     combined_total_data = []
     for category in all_categories:
 
         for category2 in all_categories:
             if category != category2:
-                print(f"\t{category} {category2} {stats['combined'][category][category2]['total_intersect']}")
+                # print(f"\t{category} {category2} {stats['combined'][category][category2]['total_intersect']}")
                 combined_total_data.append({'Category_1': category, 'Category_2': category2,\
                                             "total_intersect": stats['combined'][category][category2]['total_intersect']\
                                             })
-    ic(combined_total_data)
+    #ic(combined_total_data)
     markdown = markdown_table(combined_total_data).get_markdown()
     print(markdown)
     df = pd.DataFrame.from_records(combined_total_data)
-    ic(df)
-
+    # ic(df.head(3))
     fig = px.bar(df, x='Category_1', y='total_intersect', color='Category_2', title="In ENA: Overlaps between different environment search category searches")
     fig.show()
     image_filename =(ena_data_out_dir + 'ENA_environment_search_strategy_overlaps' + '.png')
@@ -518,12 +548,14 @@ def detailed_sample_analysis(category, sample_acc_list):
     return sample_collection_obj
 
 
-def process_categories(categories, limit_length):
+def process_categories(categories, sample_accs_by_category, limit_length):
+
     for category in categories:
         study_collection = StudyCollection()
         sample_collection = SampleCollection(category)
         ic(f"*********** category={category} ***********")
         if category in sample_accs_by_category:
+            ic()
             if category == "environmental_sample_tagged":
                 ic(len(sample_accs_by_category[category]['sample_acc_list']))
             #if commented
@@ -533,7 +565,7 @@ def process_categories(categories, limit_length):
             print(sample_collection_obj.print_summary())
             print("+++++++++++++++++++++++++++++++++++")
             #sample_collection_obj = detailed_sample_analysis(category, sample_accs_by_category[category]['sample_acc_list'])
-            continue
+            continue  #I.E. if this already exists, don't bother recreating it.
         ic(f"+++++++++++++ about to run sample get for category={category}  +++++++++++++++")
         if category == "environmental_sample_tagged":
            sample_acc_list = get_environmental_sample_list(limit_length)
@@ -563,45 +595,44 @@ def process_categories(categories, limit_length):
             print(f"ERROR: category {category} has now fetch methods etc.")
             sys.exit()
         ic(len(sample_acc_list))
-        sample_accs_by_category[category] = {'sample_acc_list': sample_acc_list}
+        ic(sample_accs_by_category.keys())
+        sample_accs_by_category[category] = {}
+        sample_accs_by_category[category]['sample_acc_list'] = sample_acc_list
         sample_collection_obj = detailed_sample_analysis(category, sample_acc_list)
+        sample_accs_by_category[category]['sample_acc_list_european'] = sample_collection.get_european_sample_accession_list()
         sample_accs_by_category[category]['sample_collection_obj'] = sample_collection_obj
 
         print(f"total_ena_archive_sample_size={sample_collection.get_total_archive_sample_size()}")
 
-        return sample_accs_by_category
+    return sample_accs_by_category
 
 def main():
     ic()
     limit_length = 100000
-    limit_length = 0
+    limit_length = 100
 
     categories = ["environmental_sample_properties", "environmental_sample_tagged", "barcode_study_list",
                   "ITS_experiment", "taxonomic_environmental_domain_tagged"]
-
+    categories = ["environmental_sample_properties"]
     sample_accs_by_category = {}
     sabc_pickle_filename = 'sample_acc_by_category.pickle'
     if os.path.isfile(sabc_pickle_filename):
          ic(f"For sample_acc_by_category using {sabc_pickle_filename}")
          with open(sabc_pickle_filename, 'rb') as f:
              sample_accs_by_category = pickle.load(f)
+    ic(sample_accs_by_category.keys())
     #categories = ["environmental_sample_properties",  "taxonomic_environmental_domain_tagged"]
-    #categories = ["environmental_sample_tagged", "barcode_study_list"]
-    #categories = ["environmental_sample_properties"]
-    #categories = ["environmental_sample_tagged"]
-    #categories = ["barcode_study_list"]
-    #categories = ["ITS_experiment"]
     #categories = ["taxonomic_environmental_domain_tagged"]
-    sample_accs_by_category = process_categories(categories, limit_length)
+    sample_accs_by_category = process_categories(categories, sample_accs_by_category, limit_length)
+    ic(sample_accs_by_category.keys())
 
     with open(sabc_pickle_filename, 'wb') as f:
         ic(f"writing sample_accs_by_category to {sabc_pickle_filename}")
         pickle.dump(sample_accs_by_category, f)
 
-
     stats = generated_combined_summary(sample_accs_by_category)
     ic(stats)
-    generate_combined_summary_table(all_categories, stats)
+    # generate_combined_summary_table(categories, sample_accs_by_category, stats)
 
 
     ic("******* END OF MAIN *******")
