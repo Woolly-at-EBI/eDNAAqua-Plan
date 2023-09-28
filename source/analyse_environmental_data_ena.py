@@ -11,7 +11,9 @@ import re
 import sys
 
 from icecream import ic
+from py_markdown_table.markdown_table import markdown_table
 import pickle
+import plotly.express as px
 import pandas as pd
 pd.set_option('display.max_rows', 1000)
 pd.set_option('display.max_columns', 500)
@@ -122,7 +124,7 @@ def annotate_sample_objs(sample_list, with_obj_type, sample_collection_obj):
     sample_obj_dict = sample_collection_obj.sample_obj_dict
 
     for sample in sample_list:
-        ic(sample.sample_accession)
+        #ic(sample.sample_accession)
         sample_obj_dict[sample.sample_accession] = sample
 
     all_sample_data = get_sample_field_data(sample_list, sample_rtn_fields)
@@ -228,9 +230,13 @@ def clean_target_genes(target_gene_list):
                     #print(f"\t\tTBD={sub_term}")
                     missing_set.add(sub_term)
         target_gene_dict[term] = local_list
-    ic(f"Terms not able to be recognised as target_genes: {missing_set}")
+    ic(f"Terms not able to be recognised as target_genes: {list(missing_set)[0:10]}")
     return clean_set, target_gene_dict
-def get_ITS_sample_list():
+def get_ITS_sample_list(limit):
+    """
+
+    :return: sample_acc_set
+    """
     """
 
 if ! test -f $outfile; then
@@ -249,39 +255,30 @@ fi
     # return sample_env_df['sample_accession'].to_list()
 
     result_object_type = 'read_experiment'
-    limit = 0
     url = get_ena_portal_url() + "search?" + 'result=' + result_object_type
     url += '&query=target_gene%3D%2216S%22%20OR%20%20target_gene%3D%2223S%22%20OR%20%20target_gene%3D%2212S%22%20OR%20%20target_gene%3D%2212S%22%20OR%20target_gene%3D%22ITS%22%20OR%20target_gene%3D%22cytochrome%20B%22%20OR%20target_gene%3D%22CO1%22%20OR%20target_gene%3D%22rbcL%22%20OR%20target_gene%3D%22matK%22%20OR%20target_gene%3D%22ITS2%22%20or%20target_gene%3D%22trnl%22&fields=experiment_accession%2Cexperiment_title%2Ctarget_gene'
     url += '&limit=' + str(limit)
     (data, response) = ena_portal_api_call_basic(url)
     # returns tsv text block with fields: experiment_accession	sample_accession
     #print(data)
-    my_set = set()
-    target_gene_set = set()
-    # experiment_accession	experiment_title	sample_accession	target_gene
-    row_count = 0
-    for row in data.split("\n"):
-        if row_count > 0 and row != "":
-            line = row.split("\t")
-            my_set.add(line[2])
-            target_gene_set.add(line[3])
-        row_count += 1
-    # ic(my_set)
-    # ic(f"sample total={len(my_set)}")
-    # ic(target_gene_set)
+
+    #run_accession experiment_accession	experiment_title	sample_accession	target_gene
+    target_gene_set = urldata2id_set(data, 4)
+    sample_acc_set = urldata2id_set(data, 3)
+    #print(my_set)
 
     #not using the below information yet, but will need it soon.
     clean_set, target_gene_dict = clean_target_genes(list(target_gene_set))
     ic(f"target_genes: {', '.join(list(clean_set))}")
     #sys.exit()
 
-    return list(my_set)
+    return list(sample_acc_set)
 
 def sample_analysis(category, sample_list):
     """
     """
     ic()
-    sample_collection_obj = SampleCollection()
+    sample_collection_obj = SampleCollection(category)
 
     ic(len(sample_list))
     count = 0
@@ -316,7 +313,7 @@ def sample_analysis(category, sample_list):
     #     print(sample_obj.print_values())
 
     print("\n+++++++++++++++++++++++++++++++++++")
-    print("************** Summary of the ENA samples **************\n")
+    print(f"************** Summary of the ENA samples for {sample_collection_obj.category} **************\n")
     print(sample_collection_obj.print_summary())
     print("+++++++++++++++++++++++++++++++++++")
 
@@ -325,7 +322,7 @@ def sample_analysis(category, sample_list):
     # print(", ".join(sample_collection_obj.environmental_study_accession_set))
 
     ic("..............")
-    ic(sample_collection_obj.get_sample_coll_df())
+    #ic(sample_collection_obj.get_sample_coll_df())
     df = sample_collection_obj.get_sample_coll_df()
     print(df.head(3).to_markdown())
 
@@ -387,12 +384,45 @@ def generated_combined_summary(sample_accs_by_category):
                 tmp_set.intersection_update(sample_accs_by_category[category2]['sample_acc_set'])
                 stats["combined"][category][category2] = { "total_intersect" :  len(tmp_set) }
 
+    generate_combined_summary_table(all_categories, stats)
 
     stats["combined"]["sample_set_intersect_total"] = len(total_intersect_sample_set)
     stats["combined"]["uniq_sample_set_total"] = len(total_uniq_sample_set)
-    ic(stats)
 
+    return stats
 
+def generate_combined_summary_table(all_categories, stats):
+
+    #generate Total tables
+
+    individual_total_data = []
+    for category in all_categories:
+        #print(f"\t{category}  {stats['individual'][category]['sample_acc_set']['total']}")
+        individual_total_data.append({'Category': category,  "Total" : stats['individual'][category]['sample_acc_set']['total']})
+    ic(individual_total_data)
+    markdown = markdown_table(individual_total_data).get_markdown()
+    print(markdown)
+
+    combined_total_data = []
+    for category in all_categories:
+
+        for category2 in all_categories:
+            if category != category2:
+                print(f"\t{category} {category2} {stats['combined'][category][category2]['total_intersect']}")
+                combined_total_data.append({'Category_1': category, 'Category_2': category2,\
+                                            "total_intersect": stats['combined'][category][category2]['total_intersect']\
+                                            })
+    ic(combined_total_data)
+    markdown = markdown_table(combined_total_data).get_markdown()
+    print(markdown)
+    df = pd.DataFrame.from_records(combined_total_data)
+    ic(df)
+
+    fig = px.bar(df, x='Category_1', y='total_intersect', color='Category_2', title="In ENA: Overlaps between different environment search category searches")
+    fig.show()
+    image_filename =(ena_data_out_dir + 'ENA_environment_search_strategy_overlaps' + '.png')
+    print(f"Writing to {image_filename}")
+    fig.write_image(image_filename)
 
 def tax_ids2sample_ids(tax_id_list):
     """
@@ -487,48 +517,24 @@ def detailed_sample_analysis(category, sample_acc_list):
 
     return sample_collection_obj
 
-def main():
-    ic()
-    limit_length = 100000
-    limit_length = 100
 
-    sample_accs_by_category = {}
-    sabc_pickle_filename = 'sample_acc_by_category.pickle'
-    if os.path.isfile(sabc_pickle_filename):
-         ic(f"For sample_acc_by_category using {sabc_pickle_filename}")
-         with open(sabc_pickle_filename, 'rb') as f:
-             sample_accs_by_category = pickle.load(f)
-
-    categories = ["environmental_sample_properties", "environmental_sample_tagged", "barcode_study_list", "ITS_experiment", "taxonomic_environmental_domain_tagged"]
-    #categories = ["environmental_sample_properties",  "taxonomic_environmental_domain_tagged"]
-    #categories = ["environmental_sample_properties"]
-
-    #categories = ["environmental_sample_tagged", "barcode_study_list"]
-    #categories = ["environmental_sample_properties"]
-
-    categories = ["environmental_sample_tagged"]
-    # categories = ["barcode_study_list"]
-    # categories = ["ITS_experiment"]
-    #
-    #categories = ["taxonomic_environmental_domain_tagged"]
-    study_collection = StudyCollection()
-    sample_collection = SampleCollection()
-
+def process_categories(categories, limit_length):
     for category in categories:
+        study_collection = StudyCollection()
+        sample_collection = SampleCollection(category)
         ic(f"*********** category={category} ***********")
         if category in sample_accs_by_category:
             if category == "environmental_sample_tagged":
-                ic(sample_accs_by_category[category]['sample_acc_list'])
                 ic(len(sample_accs_by_category[category]['sample_acc_list']))
             #if commented
             sample_collection_obj = sample_accs_by_category[category]['sample_collection_obj']
             print("\n+++++++++++++++++++++++++++++++++++")
-            print("************** Summary of the ENA samples **************\n")
+            print(f"************** Summary of the ENA samples for: {category} **************\n")
             print(sample_collection_obj.print_summary())
             print("+++++++++++++++++++++++++++++++++++")
             #sample_collection_obj = detailed_sample_analysis(category, sample_accs_by_category[category]['sample_acc_list'])
             continue
-        ic(f"+++++++++++++ about to run sample get for category-{category}  +++++++++++++++")
+        ic(f"+++++++++++++ about to run sample get for category={category}  +++++++++++++++")
         if category == "environmental_sample_tagged":
            sample_acc_list = get_environmental_sample_list(limit_length)
            ic(len(sample_acc_list))
@@ -539,7 +545,7 @@ def main():
            sample_acc_list = study2sample(study_acc_list, study_collection, False)
            ic(len(study_collection.get_sample_id_list()))
         elif category == "ITS_experiment":
-           sample_acc_list = get_ITS_sample_list()
+           sample_acc_list = get_ITS_sample_list(limit_length)
            if limit_length != 0:
                sample_acc_list = sample_acc_list[0:limit_length]
         elif category == "taxonomic_environmental_domain_tagged":
@@ -561,13 +567,42 @@ def main():
         sample_collection_obj = detailed_sample_analysis(category, sample_acc_list)
         sample_accs_by_category[category]['sample_collection_obj'] = sample_collection_obj
 
+        print(f"total_ena_archive_sample_size={sample_collection.get_total_archive_sample_size()}")
+
+        return sample_accs_by_category
+
+def main():
+    ic()
+    limit_length = 100000
+    limit_length = 0
+
+    categories = ["environmental_sample_properties", "environmental_sample_tagged", "barcode_study_list",
+                  "ITS_experiment", "taxonomic_environmental_domain_tagged"]
+
+    sample_accs_by_category = {}
+    sabc_pickle_filename = 'sample_acc_by_category.pickle'
+    if os.path.isfile(sabc_pickle_filename):
+         ic(f"For sample_acc_by_category using {sabc_pickle_filename}")
+         with open(sabc_pickle_filename, 'rb') as f:
+             sample_accs_by_category = pickle.load(f)
+    #categories = ["environmental_sample_properties",  "taxonomic_environmental_domain_tagged"]
+    #categories = ["environmental_sample_tagged", "barcode_study_list"]
+    #categories = ["environmental_sample_properties"]
+    #categories = ["environmental_sample_tagged"]
+    #categories = ["barcode_study_list"]
+    #categories = ["ITS_experiment"]
+    #categories = ["taxonomic_environmental_domain_tagged"]
+    sample_accs_by_category = process_categories(categories, limit_length)
+
     with open(sabc_pickle_filename, 'wb') as f:
         ic(f"writing sample_accs_by_category to {sabc_pickle_filename}")
         pickle.dump(sample_accs_by_category, f)
 
-    sys.exit()
-    generated_combined_summary(sample_accs_by_category)
-    print(f"total_ena_archive_sample_size={sample_collection.get_total_archive_sample_size()}")
+
+    stats = generated_combined_summary(sample_accs_by_category)
+    ic(stats)
+    generate_combined_summary_table(all_categories, stats)
+
 
     ic("******* END OF MAIN *******")
 

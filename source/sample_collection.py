@@ -26,8 +26,9 @@ pd.set_option('display.width', 1000)
 
 class SampleCollection:
 
-    def __init__(self):
+    def __init__(self, category):
         self.type = "SampleCollection"
+        self.category = category
         self.sample_obj_dict = {}
         self.environmental_sample_set = set()
         self.environmental_study_accession_set = set()
