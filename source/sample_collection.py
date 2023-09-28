@@ -42,6 +42,24 @@ class SampleCollection:
         self.sample_set = sample_set
 
 
+    def get_sample_accession_list(self,sample_obj_list):
+        """
+        written in generic way so can be re-used.
+        :param sample_obj_list:  # or set
+        :return: sample_acc_list
+        """
+        sample_acc_list = []
+        for sample_obj in sample_obj_list:
+            sample_acc_list.append(sample_obj.sample_accession)
+        return sample_acc_list
+
+    def get_european_sample_accession_list(self):
+        if hasattr(self, 'european_sample_accession_list'):
+            return self.european_sample_accession_list
+        sample_acc_list = self.get_sample_accession_list(self.european_sample_set)
+        return sample_acc_list
+
+
     def get_total_archive_sample_size(self):
         if hasattr(self, 'total_archive_sample_size'):
             return self.total_archive_sample_size
