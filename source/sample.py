@@ -30,9 +30,12 @@ class Sample:
         self.location_start = ""
         self.location_end = ""
         self.country_clean = ""
+        #also these, but not defined until later, hence defining as False
         self.country_is_european = False
         self.sample_tag_is_freshwater = False
-        #also these, but not defined until later
+        self.sample_tag_is_marine = False
+        self.sample_tag_is_terrestrial = False
+        self.sample_tag_is_coastal_brackish = False
         self.taxonomy_obj = None
         self.source_category = ""
 

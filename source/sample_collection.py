@@ -35,6 +35,9 @@ class SampleCollection:
         self.european_environmental_set = set()
         self.european_sample_set = set()
         self.freshwater_sample_tag_set = set()
+        self.marine_sample_tag_set = set()
+        self.terrestrial_sample_tag_set = set()
+        self.coastal_brackish_sample_tag_set = set()
         self.tax_id_set = set()
         self.sample_fields = ['sample_accession', 'description', 'study_accession', 'environment_biome', 'tax_id', 'taxonomic_identity_marker', 'country', 'location_start', 'location_end', 'tag']
         self.total_archive_sample_size = self.get_total_archive_sample_size()
@@ -57,8 +60,42 @@ class SampleCollection:
     def get_european_sample_accession_list(self):
         if hasattr(self, 'european_sample_accession_list'):
             return self.european_sample_accession_list
-        sample_acc_list = self.get_sample_accession_list(self.european_sample_set)
-        return sample_acc_list
+        self.european_sample_accession_list = self.get_sample_accession_list(self.european_sample_set)
+        return self.european_sample_accession_list
+
+    #freshwater_sample_tag_set
+    def get_sample_tag_list(self, tag_name):
+        """
+
+        :param tag_name:  where tag name is one of  the allowable  tags
+        :return:
+        """
+        allowable_tags = ['freshwater', 'marine', 'coastal_brackish', 'terrestrial']
+        if tag_name not in allowable_tags:
+            ic(f"Error: the tag_name {tag_name} is unknown in get_sample_tag_list")
+            return []
+        sample_tag_list = tag_name + '_sample_tag_list'
+        if tag_name == 'freshwater' and hasattr(self, sample_tag_list):
+            return self.freshwater_sample_tag_list
+        elif tag_name == 'marine' and hasattr(self, sample_tag_list):
+            return self.marine_sample_tag_list
+        elif tag_name == 'coastal_brackish' and hasattr(self, sample_tag_list):
+            return self.coastal_brackish_sample_tag_list
+        elif tag_name == 'terrestrial' and hasattr(self, sample_tag_list):
+            return self.terrestrial_sample_tag_list
+
+        if tag_name == 'freshwater':
+             self.freshwater_sample_tag_list = self.get_sample_accession_list(self.freshwater_sample_tag_set)
+             return self.freshwater_sample_tag_list
+        elif tag_name == 'marine':
+            self.marine_sample_tag_list = self.get_sample_accession_list(self.marine_sample_tag_set)
+            return self.marine_sample_tag_list
+        elif tag_name == 'coastal_brackish':
+            self.coastal_brackish_sample_tag_list = self.get_sample_accession_list(self.coastal_brackish_sample_tag_set)
+            return self.coastal_brackish_sample_tag_list
+        elif tag_name == 'terrestrial':
+            self.terrestrial_sample_tag_list = self.get_sample_accession_list(self.terrestrial_sample_tag_set)
+            return self.terrestrial_sample_tag_list
 
 
     def get_total_archive_sample_size(self):
@@ -213,6 +250,12 @@ class SampleCollection:
                       self.environmental_study_accession_set.add(study_accession)
                 if sample_obj.sample_tag_is_freshwater:
                     self.freshwater_sample_tag_set.add(sample_obj)
+                if sample_obj.sample_tag_is_terrestrial:
+                    self.terrestrial_sample_tag_set.add(sample_obj)
+                if sample_obj.sample_tag_is_marine:
+                    self.marine_sample_tag_set.add(sample_obj)
+                if sample_obj.sample_tag_is_coastal_brackish:
+                    self.coastal_brackish_sample_tag_set.add(sample_obj)
                 self.sample_collection_stats_dict = sample_collection_stats_dict
             self.sample_count = len(sample_collection_stats_dict['by_sample_id'])
             # ic(self.sample_collection_stats_dict)
