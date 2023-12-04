@@ -27,8 +27,6 @@ def ena_portal_api_call_basic(url):
     :param url:
     :return:
     """
-
-    #ic(url)
     response = requests.get(url)
     # print(f"content={response.content}")
     # ic(type(response.content))

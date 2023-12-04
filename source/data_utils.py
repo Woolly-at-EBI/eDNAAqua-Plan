@@ -19,7 +19,8 @@ def get_data_location_dict():
     data_location_dict = {
         'base_dir': base_dir,
         'base_data_dir': base_data_dir,
-        'requirements_dir': base_data_dir + 'requirements_in/'
+        'requirements_dir': base_data_dir + 'requirements_in/',
+        'out_dir': base_data_dir + 'out/'
     }
     return data_location_dict
 
@@ -48,7 +49,7 @@ def get_metadata_preknown_dict():
         "record_URL": {"value": True, "example": "https://www.ebi.ac.uk/ena/browser/view/PRJNA847784", "comment": ""},
         "metadata_record_URL": {"value": True, "example": "https://www.ebi.ac.uk/ena/browser/view/SAMN28957904", "comment": ""},
         "paper_DOI_number": {"value": True, "example": "https://www.ebi.ac.uk/ena/browser/view/PRJDA18707?show=publications", "comment": "not all records have publications"},
-        "paper_link": {"value": False, "example": "https://www.ebi.ac.uk/ena/browser/view/PRJDA18707?show=publications", "comment": ""},
+        "paper_link": {"value": True, "example": "https://www.ebi.ac.uk/ena/browser/view/PRJDA18707?show=publications", "comment": "not all records have publications"},
         "DB_name": {"value": "INSDC(ENA,GenBank,DDBJ)", "example": "", "comment": "Almost all records are shared amounts INDSC members"},
         "DB_use_index": {"value": 50, "example": "", "comment": "Almost a complete guess"},
         "DB_using community": {"value": "mixed", "example": "", "comment": "INSDC does contain sequence data from practially any community including the aquatic sources"},
@@ -77,12 +78,12 @@ def get_metadata_preknown_dict():
         "sequencing_strategy": {"value": True, "example": "AMPLICON", "comment": ""},
         "analysis_workflow": {"value": True, "example": "", "comment": "Although this is rare"},
         "directly_uploaded": {"value": True, "example": "", "comment": "Can tell from the identifiers which INSDC partner it was uploaded to"},
-        "barcode_name": {"value": True, "example": "16S", "comment": "Although not always" },
-        "barcode_certain": {"value": False, "example": "", "comment": ""},
+        "barcode_name": {"value": True, "example": "16S", "comment": "Although not always"},
+        "barcode_certain": {"value": False, "example": "", "comment": "Not observed a confidence measure"},
         "taxonomy_origin": {"value": True, "example": "", "comment": "all from the NCBI"},
         "taxonomy_URL": {"value": "https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Tree&id=6720&lvl=3&p=has_linkout&p=blast_url&p=genome_blast&p=mapview&lin=f&keep=1&srchmode=1&unlock", "example": "https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Tree&id=6720&lvl=3&p=has_linkout&p=blast_url&p=genome_blast&p=mapview&lin=f&keep=1&srchmode=1&unlock", "comment": ""},
         "taxonomically_identified": {"value": True, "example": "", "comment": ""},
-        "taxonomical_name": {"value": True, "True": "", "comment": "Provides the taxonomic name and identifier, if not eactialyl known may be 'genus sp'"},
+        "taxonomical_name": {"value": True, "example": "", "comment": "Provides the taxonomic name and identifier, if not eactialyl known may be 'genus sp'"},
         "taxonomy_linking": {"value": True, "example": "", "comment": "Practically yes as points to and up to date comprehensived NCBI Taxonomy dump data, but there is no URL to the NCBI Taxonomy website."}
     }
     return metadata_preknown_dict
