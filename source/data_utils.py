@@ -42,6 +42,49 @@ def get_required_metadata_field_list():
     requirements_df = get_requirements_df()
     return list(requirements_df['Name'])
 
+def get_metadata_preknown_dict():
+    metadata_preknown_dict = {
+        "data_metadata_link": {"value": "The main metadata objects: study, analysis. sample, and experiment all have accession ids that ultimately link to a run and this sequences e.g. SRR19634423. metadata model: https://ena-docs.readthedocs.io/en/latest/submit/general-guide/metadata.html accession numbers: https://ena-docs.readthedocs.io/en/latest/submit/general-guide/accessions.html", "example": "", "comment": ""},
+        "record_URL": {"value": True, "example": "https://www.ebi.ac.uk/ena/browser/view/PRJNA847784", "comment": ""},
+        "metadata_record_URL": {"value": True, "example": "https://www.ebi.ac.uk/ena/browser/view/SAMN28957904", "comment": ""},
+        "paper_DOI_number": {"value": True, "example": "https://www.ebi.ac.uk/ena/browser/view/PRJDA18707?show=publications", "comment": "not all records have publications"},
+        "paper_link": {"value": False, "example": "https://www.ebi.ac.uk/ena/browser/view/PRJDA18707?show=publications", "comment": ""},
+        "DB_name": {"value": "INSDC(ENA,GenBank,DDBJ)", "example": "", "comment": "Almost all records are shared amounts INDSC members"},
+        "DB_use_index": {"value": 50, "example": "", "comment": "Almost a complete guess"},
+        "DB_using community": {"value": "mixed", "example": "", "comment": "INSDC does contain sequence data from practially any community including the aquatic sources"},
+        "number of records": {"value": "determine_programmatically", "example": "24000000", "comment": ""},
+        "web_interface": {"value": True, "example": "https://www.ebi.ac.uk/ena/browser/view/PRJNA847784", "comment": ""},
+        "API": {"value": "https://www.ebi.ac.uk/ena/portal/api/swagger-ui/index.html", "example": "", "comment": "A Swagger interface"},
+        "application": {"value": False, "example": "", "comment": "Although 1) ftp and Aspera cam be used  2) third parties e.g. Elixir Belgium do provide a Galaxy module"},
+        "GPS_coordinates_available": {"value": True, "example": "44.785325 N 0.5773358 W", "comment": "latitdue and longitude, for ~20% of samples"},
+        "data_export_format": {"value": ["EMBL", "XML", "JSON", "fasta"], "example": "", "comment": ""},
+        "metadata_export_format": {"value": ["EMBL", "XML", "JSON"], "example": "", "comment": ""},
+        "env_data_contains": {"value": True, "example": "SAMN28957904", "comment": "Technically, most of the samples are in biosamples."},
+        "barcode_taxonomy_confidence": {"value": False, "example": "", "comment": "Not aware of any confidence"},
+        "annually_updated": {"value": False, "example": "", "comment": "records are being added around the clock."},
+        "data_paper_location": {"value": "not being recorded", "example": "", "comment": ""},
+        "sequences_processed": {"value": "both", "example": "", "comment": ""},
+        "DB_standard_consistent": {"value": True, "example": "", "comment": ""},
+        "DB_mandatory_metadata": {"value": ["Taxonomy id", "country", "collection_date"], "example": "", "comment": ""},
+        "data_file_format": {"value": ["EMBL", "XML", "JSON", "fasta"], "example": "", "comment": ""},
+        "metadata_file_format": {"value": ["EMBL", "XML", "JSON"], "example": "", "comment": ""},
+        "metadata_file_schema": {"value": ["GSC MIxS", 'ENA'], "example": "", "comment": "Most to the INSDC terms are based on GSC MIxS. There are still some unique ones, especially in marine."},
+        "DB_active": {"value": False, "example": "", "comment": "records are being added around the clock."},
+        "DB_curation": {"value": True, "example": "", "comment": "Although this varies across INSDC partners, e.g. GenBank and DDBJ probably curate a higher proportion than ENA. In ENA some curation is retrospectively done via the ELIXIR ClearingHouse"},
+        "sample_collection": {"value": True, "example": "", "comment": "although compliance and depth vary"},
+        "DNA_extraction": {"value": True, "example": "", "comment": "although compliance and depth vary"},
+        "sequence_methodology": {"value": False, "example": "", "comment": "although this is short term aim of ENA to added"},
+        "sequencing_strategy": {"value": True, "example": "AMPLICON", "comment": ""},
+        "analysis_workflow": {"value": True, "example": "", "comment": "Although this is rare"},
+        "directly_uploaded": {"value": True, "example": "", "comment": "Can tell from the identifiers which INSDC partner it was uploaded to"},
+        "barcode_name": {"value": True, "example": "16S", "comment": "Although not always" },
+        "barcode_certain": {"value": False, "example": "", "comment": ""},
+        "taxonomy_origin": {"value": True, "example": "", "comment": "all from the NCBI"},
+        "taxonomy_URL": {"value": "https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Tree&id=6720&lvl=3&p=has_linkout&p=blast_url&p=genome_blast&p=mapview&lin=f&keep=1&srchmode=1&unlock", "example": "https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Tree&id=6720&lvl=3&p=has_linkout&p=blast_url&p=genome_blast&p=mapview&lin=f&keep=1&srchmode=1&unlock", "comment": ""},
+        "taxonomically_identified": {"value": True, "example": "", "comment": ""},
+        "taxonomical_name": {"value": True, "True": "", "comment": "Provides the taxonomic name and identifier, if not eactialyl known may be 'genus sp'"},
+        "taxonomy_linking": {"value": True, "example": "", "comment": "Practically yes as points to and up to date comprehensived NCBI Taxonomy dump data, but there is no URL to the NCBI Taxonomy website."}
+    }
 def main():
     data_location_dict = get_data_location_dict()
     ic(data_location_dict)
