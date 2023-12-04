@@ -27,6 +27,7 @@ pd.set_option('display.width', 1000)
 class SampleCollection:
 
     def __init__(self, category):
+        ic()
         self.type = "SampleCollection"
         self.category = category
         self.sample_obj_dict = {}
@@ -40,7 +41,8 @@ class SampleCollection:
         self.coastal_brackish_sample_tag_set = set()
         self.tax_id_set = set()
         self.sample_fields = ['sample_accession', 'description', 'study_accession', 'environment_biome', 'tax_id', 'taxonomic_identity_marker', 'country', 'location_start', 'location_end', 'tag']
-        self.total_archive_sample_size = self.get_total_archive_sample_size()
+        self.total_archive_sample_size = 0
+        #self.total_archive_sample_size = self.get_total_archive_sample_size()
 
     def put_sample_set(self, sample_set):
         self.sample_set = sample_set
@@ -99,7 +101,10 @@ class SampleCollection:
 
 
     def get_total_archive_sample_size(self):
-        if hasattr(self, 'total_archive_sample_size'):
+        print("HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH")
+        ic()
+        if hasattr(self, 'total_archive_sample_size') and self.total_archive_sample_size > 0:
+            ic()
             return self.total_archive_sample_size
         url='https://www.ebi.ac.uk/ena/portal/api/count?result=sample&dataPortal=ena'
         (total, response) = ena_portal_api_call_basic(url)
