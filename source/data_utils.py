@@ -85,6 +85,8 @@ def get_metadata_preknown_dict():
         "taxonomical_name": {"value": True, "True": "", "comment": "Provides the taxonomic name and identifier, if not eactialyl known may be 'genus sp'"},
         "taxonomy_linking": {"value": True, "example": "", "comment": "Practically yes as points to and up to date comprehensived NCBI Taxonomy dump data, but there is no URL to the NCBI Taxonomy website."}
     }
+    return metadata_preknown_dict
+
 def main():
     data_location_dict = get_data_location_dict()
     ic(data_location_dict)
