@@ -153,14 +153,12 @@ class SampleCollection:
         for sample_obj in self.sample_set:
             self.tax_id_set.add(sample_obj.tax_id)
         ic(len(self.tax_id_set))
-
+        tax_id_list = sorted(self.tax_id_set)
         self.tax_isMarine_set = set()
         self.tax_isTerrestrial_set = set()
         self.tax_isCoastal_set = set()
         self.tax_isFreshwater_set = set()
 
-        tax_id_list = sorted(self.tax_id_set)
-        ic(len(tax_id_list))
         taxon_collection_obj = generate_taxon_collection(tax_id_list)
         for sample_obj in self.sample_set:
             #ic(sample_obj.tax_id)
@@ -350,9 +348,9 @@ def get_sample_field_data(sample_list, return_fields):
     # high = low + 50000
     # sample_id_list = sample_id_list[low:high]
 
-    ic(len(sample_id_list))
-    ic(sample_id_list[0:5])
-    ic(return_fields)
+    # ic(len(sample_id_list))
+    # ic(sample_id_list[0:5])
+    # ic(return_fields)
 
     #all_sample_data = []
     all_sample_data = chunk_portal_api_call(ena_search_url, with_obj_type, return_fields, sample_id_list)

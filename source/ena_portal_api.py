@@ -86,6 +86,7 @@ def urldata2id_set(data, id_col_pos):
         :param id_col:
         :return:
         """
+        ic()
         my_set = set()
         line_count = 0
         for line in data.split("\n"):
@@ -95,6 +96,7 @@ def urldata2id_set(data, id_col_pos):
                 # ic(cols[id_col_pos])
                 my_set.add(cols[id_col_pos])
             line_count += 1
+        #ic(my_set)
         return my_set
 def chunk_portal_api_call(url, with_obj_type, return_fields, id_list):
     """
