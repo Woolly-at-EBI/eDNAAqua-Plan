@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Script of sample_collection.py is to sample_collection.py
+"""class of sample_collection.py is to
+provide much information about a supplied list of samples
 
 ___author___ = "woollard@ebi.ac.uk"
 ___start_date___ = 2023-09-07
@@ -101,10 +102,7 @@ class SampleCollection:
 
 
     def get_total_archive_sample_size(self):
-        print("HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH")
-        ic()
         if hasattr(self, 'total_archive_sample_size') and self.total_archive_sample_size > 0:
-            ic()
             return self.total_archive_sample_size
         url='https://www.ebi.ac.uk/ena/portal/api/count?result=sample&dataPortal=ena'
         (total, response) = ena_portal_api_call_basic(url)
@@ -120,8 +118,8 @@ class SampleCollection:
         :return:
         """
         print("++++++++++++++++++++++++++++++++++++++++++++")
-        if hasattr(self, 'sample_df'):
-            return self.sample_df
+        if hasattr(self, '_sample_df'):
+            return self._sample_df
         else:
             count = 0
             columns_list = []
@@ -135,9 +133,9 @@ class SampleCollection:
                 for field in columns_list:
                     coll_dict[field].append(sample_dict[field])
                 count += 1
-            coll_df = pd.DataFrame.from_dict(coll_dict)
-            self.sample_df = coll_df
-            return self.sample_df
+            self._sample_df = pd.DataFrame.from_dict(coll_dict)
+            return self._sample_df
+
     def addTaxonomyAnnotation(self):
         """
         # creates these
@@ -353,7 +351,7 @@ def get_sample_field_data(sample_list, return_fields):
     # ic(return_fields)
 
     #all_sample_data = []
-    all_sample_data = chunk_portal_api_call(ena_search_url, with_obj_type, return_fields, sample_id_list)
+    all_sample_data = chunk_portal_api_call(ena_search_url, with_obj_type, return_fields, None,  sample_id_list)
     # ic(all_sample_data)
 
     return all_sample_data

@@ -78,7 +78,7 @@ def study2sample(study_id_list, study_collection, debug_status):
     #the following does not work as not as study is not a valid accessionType
     #data = chunk_portal_api_call(get_ena_portal_url() + "search?" + "&includeAccessionType=study", result_object_type, return_fields, study_id_list)
     url = get_ena_portal_url() + "search?"
-    data = chunk_portal_api_call_w_ands(url, result_object_type, return_fields, 'study_accession', study_id_list)
+    data = chunk_portal_api_call_w_ands(url, result_object_type, return_fields, 'study_accession', None, study_id_list)
     #ic(data)
 
     #parse the data into a simple dictionary

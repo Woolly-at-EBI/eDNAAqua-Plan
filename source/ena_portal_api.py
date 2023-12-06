@@ -98,12 +98,13 @@ def urldata2id_set(data, id_col_pos):
             line_count += 1
         #ic(my_set)
         return my_set
-def chunk_portal_api_call(url, with_obj_type, return_fields, id_list):
+def chunk_portal_api_call(url, with_obj_type, return_fields, include_accession_type, id_list):
     """
     useful for when there could be a long list of ids, that needs to be chunked to not exceed limits.
     N.B. will need to gradually port the other list chunking methods to here!
     passing a URL with a few specific params is critical, as otherwise too much complexity for this
     :param with_obj_type:
+    :parma include_accession_type:  # will only sometimes apply if not will be "none:
     :param id_list:
     :param return_fields:   # is a list
     :return:
@@ -128,6 +129,8 @@ def chunk_portal_api_call(url, with_obj_type, return_fields, id_list):
                 "fields": ','.join(return_fields),
                 "limit": 0
             }
+        if include_accession_type != None:
+            params["include_accession_type"] = include_accession_type
         # print(f"{url}, {params}, {with_obj_type}, {','.join(return_fields)}")
         # print("****************************************************************************************")
         # ic(f"chunked_id_list_size={len(chunk)}")

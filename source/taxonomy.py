@@ -201,7 +201,7 @@ def create_taxonomy_hash(tax_list):
     ena_portal_api_url = get_ena_portal_url()
     ena_search_url = f"{ena_portal_api_url}search?"
     # print(f"{ena_search_url} {with_obj_type} {taxonomy_rtn_fields} {tax_list}")
-    combined_data = chunk_portal_api_call(ena_search_url, with_obj_type, taxonomy_rtn_fields, tax_list)
+    combined_data = chunk_portal_api_call(ena_search_url, with_obj_type, taxonomy_rtn_fields, None, tax_list)
     # print(combined_data)
     #combined_data = []
     # chunk_count = chunk_pos = 0
