@@ -115,7 +115,7 @@ class SampleCollection:
         put all into a big column orientated dict. Tried to do in a field independent way
         then generate the df.
         There is probably a more efficient way to do this.
-        :return:
+        :return: self._sample_df
         """
         print("++++++++++++++++++++++++++++++++++++++++++++")
         if hasattr(self, '_sample_df'):
