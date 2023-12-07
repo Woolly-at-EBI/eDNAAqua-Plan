@@ -41,6 +41,7 @@ def ena_portal_api_call_basic(url):
         # ic(response.text)
         data = response.text
     else:
+        ic()
         print(f"Error: Unable to fetch data for {url} because {response}")
         sys.exit()
     return data, response
@@ -107,8 +108,12 @@ def chunk_portal_api_call(url, with_obj_type, return_fields, include_accession_t
     :parma include_accession_type:  # will only sometimes apply if not will be "none:
     :param id_list:
     :param return_fields:   # is a list
-    :return:
+    :return: data (as JSON)
+
+    e.g. https://www.ebi.ac.uk/ena/portal/api/search?, {'result': 'read_run', 'includeAccessions': 'SAMD00099297,SAMD00099298,SAMD00099299,SAMD00099303,SAMD00099304,SAMD00099305,SAMD00099306,SAMD00099308,SAMD00099314,SAMD00099317', 'format': 'json', 'fields': 'run_accession,sample_accession', 'limit': 0, 'include_accession_type': 'sample_accession'}, read_run, run_accession,sample_accession
+    [{'run_accession': 'DRR111177', 'sample_accession': 'SAMD00099303'}, {'run_accession': 'DRR111178', 'sample_accession': 'SAMD00099304'}, {'run_accession': 'DRR111179', 'sample_accession': 'SAMD00099305'}, {'run_accession': 'DRR111182', 'sample_accession': 'SAMD00099308'}, {'run_accession': 'DRR111188', 'sample_accession': 'SAMD00099314'}, {'run_accession': 'DRR111171', 'sample_accession': 'SAMD00099297'}, {'run_accession': 'DRR111172', 'sample_accession': 'SAMD00099298'}, {'run_accession': 'DRR111173', 'sample_accession': 'SAMD00099299'}, {'run_accession': 'DRR111180', 'sample_accession': 'SAMD00099306'}, {'run_accession': 'DRR111191', 'sample_accession': 'SAMD00099317'}]
     """
+    ic()
     #print(f"url={url}\n, ob_type={with_obj_type}\n, rtn_fields={return_fields}\n, id_list len={len(id_list)}\n")
     combined_data = []
     chunk_count = chunk_pos = 0
@@ -149,6 +154,7 @@ def chunk_portal_api_call(url, with_obj_type, return_fields, include_accession_t
                 sys.exit()
         #print(f"data={data}")
         combined_data += data
+    # ic(combined_data)
     return combined_data
 
 def chunk_portal_api_call_w_ands(url, with_obj_type, return_fields, and_accession, id_list):
