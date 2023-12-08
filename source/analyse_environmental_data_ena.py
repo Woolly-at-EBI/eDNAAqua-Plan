@@ -308,8 +308,17 @@ def sample_analysis(category, sample_list):
         pass
 
     annotate_sample_objs(list(sample_set), "sample", sample_collection_obj)
+
+    ic(len(sample_collection_obj.get_all_sample_acc_set()))
+    ic(len(sample_collection_obj.get_total_read_run_accession_set()))
+    sample_collection_obj.get_aquatic_sample_acc_by_sample_tag_set()
+
     sample_collection_obj.get_sample_collection_stats()
 
+    return sample_collection_obj
+
+
+def analysis_summary_output():
     print(f"************** Summary of the ENA samples for {sample_collection_obj.category} **************\n")
     print(sample_collection_obj.print_summary())
     print("+++++++++++++++++++++++++++++++++++")
@@ -321,7 +330,9 @@ def sample_analysis(category, sample_list):
     df = sample_collection_obj.get_sample_coll_df()
     print(df.head(3).to_markdown())
     ic()
-    sys.exit()
+
+
+
 
     file_name = "ena_" + category + "_sample_df"
     ena_env_sample_df_file = ena_data_out_dir + file_name
@@ -366,6 +377,8 @@ def generated_combined_summary(sample_accs_by_category):
     category_count = 0
     sample_acc_set_cat_list = ["sample_acc_list_european", "sample_acc_list_freshwater", "sample_acc_list_marine",
                                "sample_acc_list_coastal_brackish", "sample_acc_list_terrestrial"]
+    tag_dict = {}
+
     for category in all_categories:
         sample_collection_obj = sample_accs_by_category[category]["sample_collection_obj"]
         # ic(f"{category}  {len(sample_accs_by_category[category]["sample_acc_list"])}")
@@ -505,18 +518,18 @@ def tax_ids2sample_ids(tax_id_list):
         sample_id_set.add(row["sample_accession"])
     return list(sample_id_set)
 
-def process_sample_tag_table(data):
+def process_sample_tag_table(data, tag_list):
     """
     This is the data table from an API query
     :param data:
-    :return: dictionary
+    :return: dictionary, with a key for all the tag_list
     """
     df = pd.read_csv(StringIO(data), sep = "\t")
     df = df.sample(25)
     sample_tag_dict = {}
 
     # ic(sorted(df['sample_accession']))
-    for tag in ['freshwater', 'marine', 'coastal_brackish']:
+    for tag in tag_list:
         # ic(tag)
         high_name = tag + ":high_confidence"
         medium_name = tag + ":medium_confidence"
@@ -529,7 +542,6 @@ def process_sample_tag_table(data):
         sample_tag_dict[tag] = {}
         sample_tag_dict[tag]['sample_accession'] = list(combined_set)
 
-    ic(sample_tag_dict)
     return sample_tag_dict
 
 
@@ -543,8 +555,7 @@ def get_aquatic_environmental_tagged_sample_id_list(limit_length):
     :return: sample_acc_list, sample_tag_dict
     """
     ic()
-
-    limit_length = 1000
+    # limit_length = 1000
     limit = "&limit=" + str(limit_length)
     # tag="coastal_brackish_high_confidence" AND tag="freshwater_high_confidence" AND tag="marine_high_confidence" AND tag="environmental" AND tag="arrayexpress"
     # curl -X POST -H "Content-Type: application/x-www-form-urlencoded" -d "result=taxon&query=tag%3D%22coastal_brackish_high_confidence%22%20AND%20tag%3D%22freshwater_high_confidence%22%20AND%20tag%3D%22marine_high_confidence%22%20AND%20tag%3D%22environmental%22%20AND%20tag%3D%22arrayexpress%22&fields=tax_id%2Cscientific_name%2Ctag&format=tsv" "https://www.ebi.ac.uk/ena/portal/api/search"
@@ -555,6 +566,8 @@ def get_aquatic_environmental_tagged_sample_id_list(limit_length):
     ic(', '.join(aquatic_tags))
     aquatic_url_part = 'tag%3D' + '%20OR%20tag%3D'.join(aquatic_tags)
     ic(aquatic_url_part)
+
+    aquatic_tag_list = ['freshwater', 'marine', 'coastal_brackish']
 
     source_type = "sample"
     if source_type == "taxon":
@@ -573,7 +586,7 @@ def get_aquatic_environmental_tagged_sample_id_list(limit_length):
         (data, response) = ena_portal_api_call_basic(url)
         # print(data)
         sample_acc_list = sorted(set(tsvString_col2set(data, 'sample_accession')))
-        sample_tag_dict = process_sample_tag_table(data)
+        sample_tag_dict = process_sample_tag_table(data, aquatic_tag_list)
 
     # ic(', '.join(sample_acc_list))
     ic(len(sample_acc_list))
@@ -600,6 +613,7 @@ def get_taxonomic_environmental_tagged_sample_id_list(limit_length):
 def get_environmental_properties_sample_id_list(limit_length):
     """
     currently only using broad_scale_environmental_context, as found few instances of other columns being used when this was not.
+
     :param limit_length:
     :return: sample_id_list
     """
@@ -657,6 +671,14 @@ def detailed_sample_analysis(category, sample_acc_list):
 
 
 def process_categories(categories, sample_accs_by_category, limit_length):
+    """
+    sample_accs_by_category[category] = {"sample_acc_list": sample_acc_list, "tag_dict": tag_dict}
+
+    :param categories:
+    :param sample_accs_by_category:
+    :param limit_length:
+    :return:
+    """
     ic()
     ic(categories)
     ic(limit_length)
@@ -695,15 +717,14 @@ def process_categories(categories, sample_accs_by_category, limit_length):
                 sample_acc_list = sample_acc_list[0:limit_length]
         elif category == "sample_aquatic_domain_tagged":
             sample_acc_list, tag_dict = get_aquatic_environmental_tagged_sample_id_list(limit_length)
-            sample_accs_by_category[category] = {"sample_acc_list": sample_acc_list}
             if limit_length != 0:
                 sample_acc_list = sample_acc_list[0:limit_length]
         elif category == "taxonomic_aquatic_domain_tagged":
-                # ic()
-                sample_acc_list = get_aquatic_environmental_tagged_sample_id_list(limit_length)
-                sample_accs_by_category[category] = {"sample_acc_list": sample_acc_list}
-                if limit_length != 0:
-                    sample_acc_list = sample_acc_list[0:limit_length]
+                ic()
+                # sample_acc_list = get_aquatic_environmental_tagged_sample_id_list(limit_length)
+                # sample_accs_by_category[category] = {"sample_acc_list": sample_acc_list}
+                # if limit_length != 0:
+                #     sample_acc_list = sample_acc_list[0:limit_length]
         elif category == "taxonomic_environmental_domain_tagged":
             # ic()
             sample_acc_list = get_taxonomic_environmental_tagged_sample_id_list(limit_length)
@@ -721,16 +742,23 @@ def process_categories(categories, sample_accs_by_category, limit_length):
 
         # ic(len(sample_acc_list))
         ic(sample_accs_by_category.keys())
-        sample_accs_by_category[category] = {}
-        sample_accs_by_category[category]["sample_acc_list"] = sample_acc_list
+        sample_accs_by_category[category] = {"sample_acc_list": sample_acc_list, "tag_dict": tag_dict}
+        sample_collection_obj = detailed_sample_analysis(category, sample_acc_list)
+        sample_collection_obj.decorate_sample_tags(tag_dict)
         # ic(sample_acc_list)
-        # ic()
-        # sys.exit()
         run_accession_list = get_sample_run_accessions(sample_acc_list)
 
-        sample_collection_obj = detailed_sample_analysis(category, sample_acc_list)
+        ic(len(sample_collection_obj.freshwater_sample_acc_tag_set))
+        ic(len(sample_collection_obj.get_aquatic_sample_acc_by_sample_tag_set()))
+        ic(len(sample_collection_obj.get_aquatic_run_read_by_sample_tag_set()))
+
+        # ic(get_sample_run_accessions(sample_collection_obj.get_aquatic_sample_acc_by_sample_tag_set()))
         ic()
         sys.exit()
+
+
+
+
         sample_accs_by_category[category][
             "sample_acc_list_european"] = sample_collection.get_european_sample_accession_list()
         sample_accs_by_category[category]["sample_acc_list_freshwater"] = sample_collection.get_sample_tag_list(
@@ -743,6 +771,8 @@ def process_categories(categories, sample_accs_by_category, limit_length):
         sample_accs_by_category[category]["sample_collection_obj"] = sample_collection_obj
 
         print(f"total_ena_archive_sample_size={sample_collection.get_total_archive_sample_size()}")
+        ic()
+        sys.exit()
         # sys.exit()  # end of loop
 
     return sample_accs_by_category
@@ -849,5 +879,5 @@ def main(limit_length):
 if __name__ == "__main__":
     ic()
     limit_length = 100000
-    limit_length = 1000
+    limit_length = 10000
     main(limit_length)
