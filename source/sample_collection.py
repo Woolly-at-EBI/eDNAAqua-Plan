@@ -26,6 +26,11 @@ pd.set_option('display.max_columns', 500)
 pd.set_option('display.width', 1000)
 
 class SampleCollection:
+    """
+    SampleCollection class of samples
+    the initialisation is quite basic, as it then get added to
+    some of the methods are lazy (just in time), but do store the data structures in case used again
+    """
 
     def __init__(self, category):
         ic()
@@ -36,23 +41,34 @@ class SampleCollection:
         self.environmental_study_accession_set = set()
         self.european_environmental_set = set()
         self.european_sample_set = set()
-        self.freshwater_sample_tag_set = set()
+        self.freshwater_sample_tag_set = set() #
         self.marine_sample_tag_set = set()
         self.terrestrial_sample_tag_set = set()
         self.coastal_brackish_sample_tag_set = set()
+        self._get_aquatic_sample_acc_by_sample_tag = set() # aquatic populated on decorate_sample_tags
+        self.freshwater_sample_acc_tag_set = set()
+        self.marine_sample_acc_tag_set = set()
+        self.coastal_brackish_sample_acc_tag_set = set()
         self.tax_id_set = set()
         self.sample_fields = ['sample_accession', 'description', 'study_accession', 'environment_biome', 'tax_id', 'taxonomic_identity_marker', 'country', 'location_start', 'location_end', 'tag']
         self.total_archive_sample_size = 0
         self._all_sample_accs_set = set()
+        self._all_read_run_accs_set = set() # the read_run ids are derived from the sample_accs
         #self.total_archive_sample_size = self.get_total_archive_sample_size()
 
     def put_sample_set(self, sample_set):
         self.sample_set = sample_set
 
+    def get_total_read_run_accession_set(self):
+        if len(self._all_read_run_accs_set) > 0:
+            return self._all_read_run_accs_set
+        self._all_read_run_accs_set = get_sample_run_accessions(self.get_all_sample_acc_set())
+        return self._all_read_run_accs_set
 
-    def get_sample_accession_list(self,sample_obj_list):
+    def get_sample_accession_list(self, sample_obj_list):
         """
         written in generic way so can be re-used.
+        This allows subsets, see also self.get_all_sample_accession_set()
         :param sample_obj_list:  # or set
         :return: sample_acc_list
         """
@@ -195,17 +211,42 @@ class SampleCollection:
         return int(len(self.sample_set))
 
     def get_all_sample_acc_set(self):
-        if hasattr(self,'_all_sample_accs'):
-            return self._all_sample_accs
-        self._all_sample_accs = set()
+        if len(self._all_sample_accs_set) > 0:
+            return self._all_sample_accs_set
         for sample_obj in self.get_sample_objs():
-            self._all_sample_accs.add(sample_obj.sample_accession)
+            self._all_sample_accs_set.add(sample_obj.sample_accession)
         #ic(self._all_sample_accs)
-        return self._all_sample_accs
+        return self._all_sample_accs_set
+
+    def decorate_sample_tags(self, tag_dict):
+        ic()
+        aquatic_tags = ['freshwater', 'marine', 'coastal_brackish']
+        for tag in aquatic_tags:
+            if tag == "freshwater":
+                self.freshwater_sample_acc_tag_set = self.freshwater_sample_acc_tag_set.union\
+                    (set(tag_dict[tag]['sample_accession']))
+            if tag == "marine":
+                self.marine_sample_acc_tag_set = self.marine_sample_acc_tag_set.union\
+                    (set(tag_dict[tag]['sample_accession']))
+            if tag == "coastal_brackish":
+                 self.coastal_brackish_sample_acc_tag_set = self.coastal_brackish_sample_acc_tag_set.union\
+                    (set(tag_dict[tag]['sample_accession']))
+
+    def get_aquatic_sample_acc_by_sample_tag_set(self):
+        ic()
+        if len(self._get_aquatic_sample_acc_by_sample_tag) > 0:
+            return self._get_aquatic_sample_acc_by_sample_tag
+        self._get_aquatic_sample_acc_by_sample_tag = self.freshwater_sample_acc_tag_set.union\
+                        (self.marine_sample_acc_tag_set, self.coastal_brackish_sample_acc_tag_set)
+        # ic(self._get_aquatic_sample_acc_by_sample_tag)
+        return(self._get_aquatic_sample_acc_by_sample_tag)
+
+    def get_aquatic_run_read_by_sample_tag_set(self):
+        return get_sample_run_accessions(self.get_aquatic_sample_acc_by_sample_tag_set())
 
     def print_summary(self):
         ic()
-        self.get_all_sample_acc_set()
+        self.get_all_sample_acc_set()  # in case this has not been run, it forces some lazy methods to be called.
         #ic(self.get_all_sample_accs())
         outstring = f"**** collection_obj Summary ****"
         outstring += f"On run date={datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f%z')}\n"
@@ -227,11 +268,12 @@ class SampleCollection:
 
         outstring += '#####################################\n'
         outstring += f"The following information was derived the sample tags\n"
-        outstring += f"  total_ena_count={len(self.get_all_sample_acc_set())}\n"
-        outstring += f"  total_ena_tax_marine_count={len(self.tax_isMarine_set)}\n"
-        outstring += f"  total_ena_tax_terrestrial_count={len(self.tax_isTerrestrial_set)}\n"
-        outstring += f"  total_ena_tax_coastal_count={len(self.tax_isCoastal_set)}\n"
-        outstring += f"  total_ena_tax_freshwater_count={len(self.tax_isFreshwater_set)}\n"
+        outstring += f"  total_ena_count of samples={len(self.get_all_sample_acc_set())}\n"
+        outstring += f"  total_ena_count of read_run={len(self.get_total_read_run_accession_set())}\n"
+        outstring += f"  total_ena_tax_marine_count of samples={len(self.tax_isMarine_set)}\n"
+        outstring += f"  total_ena_tax_terrestrial_count of samples={len(self.tax_isTerrestrial_set)}\n"
+        outstring += f"  total_ena_tax_coastal_count of samples={len(self.tax_isCoastal_set)}\n"
+        outstring += f"  total_ena_tax_freshwater_count of samples={len(self.tax_isFreshwater_set)}\n"
 
         outstring +='#####################################\n'
         sample_obj1 = random.choice(list(self.sample_set))

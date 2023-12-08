@@ -76,7 +76,6 @@ class Sample:
                 #ic(self.sample_summary_dict)
             return self.sample_summary_dict
         
-        
     def print_values(self):
         out_string = ""
 
