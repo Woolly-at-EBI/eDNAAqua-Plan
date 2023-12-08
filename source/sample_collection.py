@@ -43,6 +43,7 @@ class SampleCollection:
         self.tax_id_set = set()
         self.sample_fields = ['sample_accession', 'description', 'study_accession', 'environment_biome', 'tax_id', 'taxonomic_identity_marker', 'country', 'location_start', 'location_end', 'tag']
         self.total_archive_sample_size = 0
+        self._all_sample_accs_set = set()
         #self.total_archive_sample_size = self.get_total_archive_sample_size()
 
     def put_sample_set(self, sample_set):
@@ -136,6 +137,9 @@ class SampleCollection:
             self._sample_df = pd.DataFrame.from_dict(coll_dict)
             return self._sample_df
 
+    def addSampleEnvironmentAnnotation(self):
+        pass
+
     def addTaxonomyAnnotation(self):
         """
         # creates these
@@ -184,11 +188,25 @@ class SampleCollection:
         ic()
         #sys.exit()
 
+    def get_sample_objs(self):
+        return self.sample_set
+
     def get_sample_set_size(self):
         return int(len(self.sample_set))
 
+    def get_all_sample_acc_set(self):
+        if hasattr(self,'_all_sample_accs'):
+            return self._all_sample_accs
+        self._all_sample_accs = set()
+        for sample_obj in self.get_sample_objs():
+            self._all_sample_accs.add(sample_obj.sample_accession)
+        #ic(self._all_sample_accs)
+        return self._all_sample_accs
+
     def print_summary(self):
         ic()
+        self.get_all_sample_acc_set()
+        #ic(self.get_all_sample_accs())
         outstring = f"**** collection_obj Summary ****"
         outstring += f"On run date={datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f%z')}\n"
         outstring += f"sample_set_size={self.get_sample_set_size()}\n"
@@ -202,6 +220,14 @@ class SampleCollection:
 
         outstring += '#####################################\n'
         outstring += f"The following information was derived the taxonomy tags\n"
+        outstring += f"  total_ena_tax_marine_count={len(self.tax_isMarine_set)}\n"
+        outstring += f"  total_ena_tax_terrestrial_count={len(self.tax_isTerrestrial_set)}\n"
+        outstring += f"  total_ena_tax_coastal_count={len(self.tax_isCoastal_set)}\n"
+        outstring += f"  total_ena_tax_freshwater_count={len(self.tax_isFreshwater_set)}\n"
+
+        outstring += '#####################################\n'
+        outstring += f"The following information was derived the sample tags\n"
+        outstring += f"  total_ena_count={len(self.get_all_sample_acc_set())}\n"
         outstring += f"  total_ena_tax_marine_count={len(self.tax_isMarine_set)}\n"
         outstring += f"  total_ena_tax_terrestrial_count={len(self.tax_isTerrestrial_set)}\n"
         outstring += f"  total_ena_tax_coastal_count={len(self.tax_isCoastal_set)}\n"
@@ -224,11 +250,10 @@ class SampleCollection:
 
     def get_sample_collection_stats(self):
 
-        if hasattr(self,"sample_collection_stats_dict"):
+        if hasattr(self, "sample_collection_stats_dict"):
             return self.sample_collection_stats_dict
         else:
             sample_collection_stats_dict = {'by_sample_id': {}, 'by_study_id': {}}
-
 
             for sample_obj in self.sample_set:
                 sample_collection_stats_dict['by_sample_id'][sample_obj.sample_accession] = \
@@ -355,6 +380,8 @@ def get_sample_field_data(sample_list, return_fields):
     # ic(all_sample_data)
 
     return all_sample_data
+
+
 
 def main():
     pass

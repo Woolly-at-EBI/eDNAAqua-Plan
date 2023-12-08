@@ -7,11 +7,8 @@ __docformat___ = 'reStructuredText'
 chmod a+x ena_portal_api.py
 """
 
-
 from icecream import ic
-import os
-import argparse
-
+import pandas as pd
 import requests
 import json
 import sys
@@ -114,6 +111,7 @@ def chunk_portal_api_call(url, with_obj_type, return_fields, include_accession_t
     [{'run_accession': 'DRR111177', 'sample_accession': 'SAMD00099303'}, {'run_accession': 'DRR111178', 'sample_accession': 'SAMD00099304'}, {'run_accession': 'DRR111179', 'sample_accession': 'SAMD00099305'}, {'run_accession': 'DRR111182', 'sample_accession': 'SAMD00099308'}, {'run_accession': 'DRR111188', 'sample_accession': 'SAMD00099314'}, {'run_accession': 'DRR111171', 'sample_accession': 'SAMD00099297'}, {'run_accession': 'DRR111172', 'sample_accession': 'SAMD00099298'}, {'run_accession': 'DRR111173', 'sample_accession': 'SAMD00099299'}, {'run_accession': 'DRR111180', 'sample_accession': 'SAMD00099306'}, {'run_accession': 'DRR111191', 'sample_accession': 'SAMD00099317'}]
     """
     ic()
+    ic(id_list)
     #print(f"url={url}\n, ob_type={with_obj_type}\n, rtn_fields={return_fields}\n, id_list len={len(id_list)}\n")
     combined_data = []
     chunk_count = chunk_pos = 0
@@ -136,11 +134,11 @@ def chunk_portal_api_call(url, with_obj_type, return_fields, include_accession_t
             }
         if include_accession_type != None:
             params["include_accession_type"] = include_accession_type
-        # print(f"{url}, {params}, {with_obj_type}, {','.join(return_fields)}")
+        print(f"{url}, {params}, {with_obj_type}, {','.join(return_fields)}")
         # print("****************************************************************************************")
         # ic(f"chunked_id_list_size={len(chunk)}")
         (data, response) = ena_portal_api_call(url, params, with_obj_type, chunk)
-        # print(f"data={data}")
+        print(f"data={data}")
 
         if response.status_code != 200:
             doze_time = 10
@@ -194,7 +192,7 @@ def chunk_portal_api_call_w_ands(url, with_obj_type, return_fields, and_accessio
                 "fields": ','.join(return_fields),
                 "limit": 0
             }
-        #print(f"{url}, {params}, {with_obj_type}, {','.join(return_fields)}")
+        print(f"{url}, {params}, {with_obj_type}, {','.join(return_fields)}")
         (data, response) = ena_portal_api_call(url, params, with_obj_type, chunk)
         # print(f"data={data}")
 
@@ -212,7 +210,40 @@ def chunk_portal_api_call_w_ands(url, with_obj_type, return_fields, and_accessio
         combined_data += data
     return combined_data
 
+def encode_accession_list(id_list):
+    """
+    accessions_html_encoded = encode_accession_list(chunk_sample_id_list)
+    :param id_list:
+    :return:
+    """
+    return "%2C%20%20".join(id_list)
 
+def get_sample_run_accessions(sample_acc_list):
+    """
+    usage: run_accession_list = get_sample_run_accessions(sample_acc_list)
+    curl -X POST -H "Content-Type: application/x-www-form-urlencoded" -d 'result=read_run&fields=run_accession%2Cexperiment_title%2Csample_accession&includeAccessionType=sample&includeAccessions=SAMN05331636%2CSAMN05331635%2CSAMN27405714&format=tsv' "https://www.ebi.ac.uk/ena/portal/api/search"
+    :param sample_acc_list:
+    :return: sorted run_acc_list or []
+    """
+    ic()
+    if len(sample_acc_list) < 1:
+        ic("WARNING: no sample_acc's provide to get_sample_run_accessions()")
+        return []
+    sample_acc_string = encode_accession_list(sample_acc_list)
+    url = "https://www.ebi.ac.uk/ena/portal/api/search?"
+    # url += "result=read_run&fields=run_accession%2Csample_accession&includeAccessionType=" + sample_acc_string
+    # url += "format=tsv&limit=10"
+    #(data, response) = ena_portal_api_call_basic(url)
+    data = chunk_portal_api_call(url, 'read_run', ['run_accession', 'sample_accession'], "sample_accession", sample_acc_list)
+    # ic(pd.DataFrame.from_dict(data))
+    # ic(sorted(pd.DataFrame.from_dict(data)["run_accession"]))
+
+    df_tmp = pd.DataFrame.from_dict(data)
+    if len(df_tmp) > 0:
+        return sorted(df_tmp["run_accession"])
+    else:
+        ic("WARNING: no run_read ids found in get_sample_run_accessions()")
+        return []
 
 
 def main():

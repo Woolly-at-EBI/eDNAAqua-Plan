@@ -21,7 +21,7 @@ pd.set_option("display.max_rows", 1000)
 pd.set_option("display.max_columns", 500)
 pd.set_option("display.width", 1000)
 
-from ena_portal_api import get_ena_portal_url, ena_portal_api_call_basic, chunk_portal_api_call, urldata2id_set
+from ena_portal_api import get_ena_portal_url, ena_portal_api_call_basic, chunk_portal_api_call, urldata2id_set, get_sample_run_accessions
 from geography import Geography
 from sample import Sample
 from sample_collection import SampleCollection, get_sample_field_data
@@ -37,16 +37,6 @@ ena_api_url = "https://www.ebi.ac.uk/ena/portal/api"
 
 
 
-
-def encode_accession_list(id_list):
-    """
-    accessions_html_encoded = encode_accession_list(chunk_sample_id_list)
-    :param id_list:
-    :return:
-    """
-    return "%2C%20%20".join(id_list)
-
-
 def add_info_to_object_list(with_obj_type, obj_dict, data):
     """
     adds information from multiple ids to object.
@@ -59,7 +49,6 @@ def add_info_to_object_list(with_obj_type, obj_dict, data):
 
     # ic(data)
     data_by_id = {}
-
     id_list = []
 
     if with_obj_type == "sample":
@@ -68,8 +57,6 @@ def add_info_to_object_list(with_obj_type, obj_dict, data):
             # ic(dict_row)
             data_by_id[dict_row["sample_accession"]] = dict_row
             id_list.append(dict_row["sample_accession"])
-    ic(len(id_list))
-
     geography = Geography()
 
     # ic("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
@@ -113,8 +100,6 @@ def add_info_to_object_list(with_obj_type, obj_dict, data):
                 # ic(f"Warning: {obj.sample_accession} not being found in hits")
                 pass
             # print(obj.print_values())
-
-    # ic()
     return
 
 
@@ -126,7 +111,6 @@ def annotate_sample_objs(sample_list, with_obj_type, sample_collection_obj):
     :return:
     """
     ic()
-    ic(with_obj_type)
     sample_rtn_fields = sample_collection_obj.sample_fields
 
     # ic(",".join(sample_collection_obj.sample_fields))
@@ -317,18 +301,15 @@ def sample_analysis(category, sample_list):
     sample_collection_obj.put_sample_set(sample_set)
     if sample_collection_obj.get_sample_set_size() <= 0:
         print("ERROR: Sample_set size is 0, so something serious has gone wrong with the code or data...")
+        ic()
         sys.exit()
     else:
-        ic(sample_collection_obj.get_sample_set_size())
+        # ic(sample_collection_obj.get_sample_set_size())
+        pass
 
     annotate_sample_objs(list(sample_set), "sample", sample_collection_obj)
-
     sample_collection_obj.get_sample_collection_stats()
 
-    # for sample_obj in sample_set:
-    #     print(sample_obj.print_values())
-
-    print("\n+++++++++++++++++++++++++++++++++++")
     print(f"************** Summary of the ENA samples for {sample_collection_obj.category} **************\n")
     print(sample_collection_obj.print_summary())
     print("+++++++++++++++++++++++++++++++++++")
@@ -336,10 +317,11 @@ def sample_analysis(category, sample_list):
     ic(len(sample_collection_obj.environmental_study_accession_set))
     # print(", ".join(sample_collection_obj.environmental_study_accession_set))
 
-    ic("..............")
     # ic(sample_collection_obj.get_sample_coll_df())
     df = sample_collection_obj.get_sample_coll_df()
     print(df.head(3).to_markdown())
+    ic()
+    sys.exit()
 
     file_name = "ena_" + category + "_sample_df"
     ena_env_sample_df_file = ena_data_out_dir + file_name
@@ -523,34 +505,79 @@ def tax_ids2sample_ids(tax_id_list):
         sample_id_set.add(row["sample_accession"])
     return list(sample_id_set)
 
+def process_sample_tag_table(data):
+    """
+    This is the data table from an API query
+    :param data:
+    :return: dictionary
+    """
+    df = pd.read_csv(StringIO(data), sep = "\t")
+    df = df.sample(25)
+    sample_tag_dict = {}
+
+    # ic(sorted(df['sample_accession']))
+    for tag in ['freshwater', 'marine', 'coastal_brackish']:
+        # ic(tag)
+        high_name = tag + ":high_confidence"
+        medium_name = tag + ":medium_confidence"
+        high_set = set(df.loc[df.tag.str.contains(high_name)]['sample_accession'])
+        medium_set = set(df.loc[df.tag.str.contains(medium_name)]['sample_accession'])
+        # ic(len(high_set))
+        # ic(len(medium_set))
+        combined_set = high_set.union(medium_set)
+        # ic(len(combined_set))
+        sample_tag_dict[tag] = {}
+        sample_tag_dict[tag]['sample_accession'] = list(combined_set)
+
+    ic(sample_tag_dict)
+    return sample_tag_dict
+
+
+
+
+
 def get_aquatic_environmental_tagged_sample_id_list(limit_length):
     """
     just doing for tax at the moment
     :param limit_length:
-    :return:
+    :return: sample_acc_list, sample_tag_dict
     """
     ic()
-    #limit_length = 1000
+
+    limit_length = 1000
     limit = "&limit=" + str(limit_length)
     # tag="coastal_brackish_high_confidence" AND tag="freshwater_high_confidence" AND tag="marine_high_confidence" AND tag="environmental" AND tag="arrayexpress"
     # curl -X POST -H "Content-Type: application/x-www-form-urlencoded" -d "result=taxon&query=tag%3D%22coastal_brackish_high_confidence%22%20AND%20tag%3D%22freshwater_high_confidence%22%20AND%20tag%3D%22marine_high_confidence%22%20AND%20tag%3D%22environmental%22%20AND%20tag%3D%22arrayexpress%22&fields=tax_id%2Cscientific_name%2Ctag&format=tsv" "https://www.ebi.ac.uk/ena/portal/api/search"
 
-    aquatic_tags = sorted(["marine_medium_confidence", "marine_high_confidence", "freshwater_medium_confidence", "freshwater_high_confidence", "coastal_brackish_medium_confidence", "coastal_brackish_high_confidence"])
+    aquatic_tags = sorted(["marine_medium_confidence", "marine_high_confidence", "freshwater_medium_confidence",
+                           "freshwater_high_confidence", "coastal_brackish_medium_confidence",
+                           "coastal_brackish_high_confidence"])
     ic(', '.join(aquatic_tags))
     aquatic_url_part = 'tag%3D' + '%20OR%20tag%3D'.join(aquatic_tags)
     ic(aquatic_url_part)
-    url = "https://www.ebi.ac.uk/ena/portal/api/search?result=taxon&query=" + aquatic_url_part + "&fields=tax_id&dataPortal=ena&format=tsv" + limit
-    # url = "https://www.ebi.ac.uk/ena/portal/api/search?result=taxon&query=tag%3Dmarine_medium_confidence%20OR%20tag%3Dmarine_high_confidence%20OR%20tag%3Dfreshwater_medium_confidence%20OR%20tag%3Dfreshwater_high_confidence%20OR%20tag%3Dcoastal_brackish_medium_confidence%20OR%20tag%3Dcoastal_brackish_high_confidence&fields=tax_id&dataPortal=ena&format=tsv" + limit
-    ic(url)
-    (data, response) = ena_portal_api_call_basic(url)
 
-    # ic(data)
-    tax_id_list = urldata2id_set(data, 0)
-    #ic("Now doing tax_ids2sample_ids")
-    sample_acc_list = tax_ids2sample_ids(tax_id_list)
-    ic(f"in get_aquatic_environmental_tagged_sample_id_list {len(sample_acc_list)} from tax tagging")
+    source_type = "sample"
+    if source_type == "taxon":
+        url = "https://www.ebi.ac.uk/ena/portal/api/search?result=taxon&query=" + aquatic_url_part + "&fields=tax_id&dataPortal=ena&format=tsv" + limit
+        # url = "https://www.ebi.ac.uk/ena/portal/api/search?result=taxon&query=tag%3Dmarine_medium_confidence%20OR%20tag%3Dmarine_high_confidence%20OR%20tag%3Dfreshwater_medium_confidence%20OR%20tag%3Dfreshwater_high_confidence%20OR%20tag%3Dcoastal_brackish_medium_confidence%20OR%20tag%3Dcoastal_brackish_high_confidence&fields=tax_id&dataPortal=ena&format=tsv" + limit
+        ic(url)
+        (data, response) = ena_portal_api_call_basic(url)
+        tax_id_list = urldata2id_set(data, 0)
+        #ic("Now doing tax_ids2sample_ids")
+        sample_acc_list = tax_ids2sample_ids(tax_id_list)
+        ic(f"in get_aquatic_environmental_tagged_sample_id_list {len(sample_acc_list)} from tax tagging")
+    if source_type == "sample":
+        # url = "https://www.ebi.ac.uk/ena/portal/api/search?result=sample&query=" + aquatic_url_part + "&fields=sample_accession,description,tag&dataPortal=ena&format=tsv" + limit
+        url = "https://www.ebi.ac.uk/ena/portal/api/search?result=sample&query=" + aquatic_url_part + "&fields=sample_accession,tag&dataPortal=ena&format=tsv" + limit
+        ic(url)
+        (data, response) = ena_portal_api_call_basic(url)
+        # print(data)
+        sample_acc_list = sorted(set(tsvString_col2set(data, 'sample_accession')))
+        sample_tag_dict = process_sample_tag_table(data)
+
     # ic(', '.join(sample_acc_list))
-    return sample_acc_list
+    ic(len(sample_acc_list))
+    return sample_acc_list, sample_tag_dict
 
 def get_taxonomic_environmental_tagged_sample_id_list(limit_length):
     ic()
@@ -569,7 +596,6 @@ def get_taxonomic_environmental_tagged_sample_id_list(limit_length):
     sample_acc_list = tax_ids2sample_ids(tax_id_list)
     # ic(len(sample_acc_list))
     return sample_acc_list
-
 
 def get_environmental_properties_sample_id_list(limit_length):
     """
@@ -634,6 +660,7 @@ def process_categories(categories, sample_accs_by_category, limit_length):
     ic()
     ic(categories)
     ic(limit_length)
+    ic(sample_accs_by_category)
     for category in categories:
         ic(f"*********** category={category} ***********")
         study_collection = StudyCollection()
@@ -648,6 +675,8 @@ def process_categories(categories, sample_accs_by_category, limit_length):
             print(f"************** Summary of the ENA samples for: {category} **************\n")
             print(sample_collection_obj.print_summary())
             print("+++++++++++++++++++++++++++++++++++")
+            ic()
+            sys.exit()
             # sample_collection_obj = detailed_sample_analysis(category, sample_accs_by_category[category]["sample_acc_list"])
             continue  # I.E. if this already exists, don"t bother recreating it.
         ic(f"+++++++++++++ about to run sample get for category={category}  +++++++++++++++")
@@ -664,13 +693,17 @@ def process_categories(categories, sample_accs_by_category, limit_length):
             sample_acc_list = get_ITS_sample_list(limit_length)
             if limit_length != 0:
                 sample_acc_list = sample_acc_list[0:limit_length]
+        elif category == "sample_aquatic_domain_tagged":
+            sample_acc_list, tag_dict = get_aquatic_environmental_tagged_sample_id_list(limit_length)
+            sample_accs_by_category[category] = {"sample_acc_list": sample_acc_list}
+            if limit_length != 0:
+                sample_acc_list = sample_acc_list[0:limit_length]
         elif category == "taxonomic_aquatic_domain_tagged":
                 # ic()
                 sample_acc_list = get_aquatic_environmental_tagged_sample_id_list(limit_length)
                 sample_accs_by_category[category] = {"sample_acc_list": sample_acc_list}
                 if limit_length != 0:
                     sample_acc_list = sample_acc_list[0:limit_length]
-
         elif category == "taxonomic_environmental_domain_tagged":
             # ic()
             sample_acc_list = get_taxonomic_environmental_tagged_sample_id_list(limit_length)
@@ -685,11 +718,19 @@ def process_categories(categories, sample_accs_by_category, limit_length):
             # ena_all_env.txt
             print(f"ERROR: category {category} has no fetch methods etc.")
             sys.exit()
+
         # ic(len(sample_acc_list))
         ic(sample_accs_by_category.keys())
         sample_accs_by_category[category] = {}
         sample_accs_by_category[category]["sample_acc_list"] = sample_acc_list
+        # ic(sample_acc_list)
+        # ic()
+        # sys.exit()
+        run_accession_list = get_sample_run_accessions(sample_acc_list)
+
         sample_collection_obj = detailed_sample_analysis(category, sample_acc_list)
+        ic()
+        sys.exit()
         sample_accs_by_category[category][
             "sample_acc_list_european"] = sample_collection.get_european_sample_accession_list()
         sample_accs_by_category[category]["sample_acc_list_freshwater"] = sample_collection.get_sample_tag_list(
@@ -746,7 +787,7 @@ def generate_source_metadata_summary(stats, out_dir):
     out_file = out_dir + "ena_edna_info.xlsx"
     ic(out_file)
     df.to_excel(out_file)
-
+    ic()
     sys.exit()
     ic("___________________________________")
     ic(my_summary_dict)
@@ -765,7 +806,7 @@ def main(limit_length):
                   "ITS_experiment", "taxonomic_environmental_domain_tagged", "taxonomic_aquatic_domain_tagged"]
     categories = ["environmental_sample_properties"]
     categories = ["ITS_experiment", "taxonomic_aquatic_domain_tagged"]
-    categories = ["taxonomic_aquatic_domain_tagged"]
+    categories = ["sample_aquatic_domain_tagged"]
     # categories = ["ITS_experiment"]
     sample_accs_by_category = {}
     sabc_pickle_filename = "sample_acc_by_category.pickle"
@@ -777,28 +818,30 @@ def main(limit_length):
         ic("******* WARNING: Need to run the search scripts *******")
         sample_accs_by_category = process_categories(categories, sample_accs_by_category, limit_length)
 
+    ic()
     sys.exit()
-    # categories = ["environmental_sample_properties",  "taxonomic_environmental_domain_tagged"]
-    # categories = ["taxonomic_environmental_domain_tagged"]
-    sample_accs_by_category = process_categories(categories, sample_accs_by_category, limit_length)
-
-    processed_categories_obj = ProcessedCategories(sample_accs_by_category)
-    processed_categories_obj.print_summary()
-    ic("AFTER {sample_accs_by_category.keys()}")
-
-    processed_categories_obj = ProcessedCategories(sample_accs_by_category)
-
+    # # categories = ["environmental_sample_properties",  "taxonomic_environmental_domain_tagged"]
+    # # categories = ["taxonomic_environmental_domain_tagged"]
+    # sample_accs_by_category = process_categories(categories, sample_accs_by_category, limit_length)
+    #
+    # processed_categories_obj = ProcessedCategories(sample_accs_by_category)
+    # processed_categories_obj.print_summary()
+    # ic("AFTER {sample_accs_by_category.keys()}")
+    #
+    # processed_categories_obj = ProcessedCategories(sample_accs_by_category)
+    #
+    # sys.exit()
+    #
+    # with open(sabc_pickle_filename, "wb") as f:
+    #     ic(f"writing sample_accs_by_category to {sabc_pickle_filename}")
+    #     pickle.dump(sample_accs_by_category, f)
+    #
+    # stats = generated_combined_summary(sample_accs_by_category)
+    # ic(stats)
+    # # generate_combined_summary_table(categories, sample_accs_by_category, stats)
+    ic()
     sys.exit()
-
-    with open(sabc_pickle_filename, "wb") as f:
-        ic(f"writing sample_accs_by_category to {sabc_pickle_filename}")
-        pickle.dump(sample_accs_by_category, f)
-
-    stats = generated_combined_summary(sample_accs_by_category)
-    ic(stats)
-    # generate_combined_summary_table(categories, sample_accs_by_category, stats)
-
-    generate_source_metadata_summary(stats)
+    generate_source_metadata_summary(stats, data_location_dict['out_dir'])
 
     ic("******* END OF MAIN *******")
 
