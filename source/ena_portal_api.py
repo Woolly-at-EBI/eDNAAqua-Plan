@@ -111,7 +111,7 @@ def chunk_portal_api_call(url, with_obj_type, return_fields, include_accession_t
     [{'run_accession': 'DRR111177', 'sample_accession': 'SAMD00099303'}, {'run_accession': 'DRR111178', 'sample_accession': 'SAMD00099304'}, {'run_accession': 'DRR111179', 'sample_accession': 'SAMD00099305'}, {'run_accession': 'DRR111182', 'sample_accession': 'SAMD00099308'}, {'run_accession': 'DRR111188', 'sample_accession': 'SAMD00099314'}, {'run_accession': 'DRR111171', 'sample_accession': 'SAMD00099297'}, {'run_accession': 'DRR111172', 'sample_accession': 'SAMD00099298'}, {'run_accession': 'DRR111173', 'sample_accession': 'SAMD00099299'}, {'run_accession': 'DRR111180', 'sample_accession': 'SAMD00099306'}, {'run_accession': 'DRR111191', 'sample_accession': 'SAMD00099317'}]
     """
     ic()
-    ic(id_list)
+    # ic(id_list)
     #print(f"url={url}\n, ob_type={with_obj_type}\n, rtn_fields={return_fields}\n, id_list len={len(id_list)}\n")
     combined_data = []
     chunk_count = chunk_pos = 0
@@ -134,11 +134,11 @@ def chunk_portal_api_call(url, with_obj_type, return_fields, include_accession_t
             }
         if include_accession_type != None:
             params["include_accession_type"] = include_accession_type
-        print(f"{url}, {params}, {with_obj_type}, {','.join(return_fields)}")
+        # print(f"{url}, {params}, {with_obj_type}, {','.join(return_fields)}")
         # print("****************************************************************************************")
         # ic(f"chunked_id_list_size={len(chunk)}")
         (data, response) = ena_portal_api_call(url, params, with_obj_type, chunk)
-        print(f"data={data}")
+        # print(f"data={data}")
 
         if response.status_code != 200:
             doze_time = 10
