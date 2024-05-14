@@ -7,24 +7,30 @@ __docformat___ = 'reStructuredText'
 chmod a+x get_taxononomy_scientific_name.py
 """
 
-import requests
-import xml.etree.ElementTree as ET
-
-from icecream import ic
-import os
-import argparse
-import sys
 import json
 import pickle
+import re
 import time
+
 import pandas as pd
+import requests
+
+from geography import Geography
+from taxonomy import *
+
 
 def get_query_params():
     my_params = {
         "srv": "https://www.ebi.ac.uk/ena/portal/api/search",
-        "query": '(environmental_sample%3Dtrue%20OR%20(CHECKLIST%3D%22ERC000012%22%20OR%20CHECKLIST%3D%22ERC000020%22%20OR%20CHECKLIST%3D%22ERC000021%22%20OR%20CHECKLIST%3D%22ERC000022%22%20OR%20CHECKLIST%3D%22ERC000023%22%20OR%20CHECKLIST%3D%22ERC000024%22%20OR%20CHECKLIST%3D%22ERC000025%22%20OR%20CHECKLIST%3D%22ERC000027%22%20OR%20CHECKLIST%3D%22ERC000055%22%20OR%20CHECKLIST%3D%22ERC000030%22%20OR%20CHECKLIST%3D%22ERC000031%22%20OR%20CHECKLIST%3D%22ERC000036%22))%20AND%20not_tax_tree(9606)'
+        "query": '(environmental_sample%3Dtrue%20OR%20(CHECKLIST%3D%22ERC000012%22%20OR%20CHECKLIST%3D%22ERC000020%22'
+                 '%20OR%20CHECKLIST%3D%22ERC000021%22%20OR%20CHECKLIST%3D%22ERC000022%22%20OR%20CHECKLIST%3D'
+                 '%22ERC000023%22%20OR%20CHECKLIST%3D%22ERC000024%22%20OR%20CHECKLIST%3D%22ERC000025%22%20OR'
+                 '%20CHECKLIST%3D%22ERC000027%22%20OR%20CHECKLIST%3D%22ERC000055%22%20OR%20CHECKLIST%3D%22ERC000030'
+                 '%22%20OR%20CHECKLIST%3D%22ERC000031%22%20OR%20CHECKLIST%3D%22ERC000036%22))%20AND%20not_tax_tree('
+                 '9606)'
     }
     return my_params
+
 
 def run_webservice(url):
     r = requests.get(url)
@@ -54,6 +60,7 @@ def extract_record_ids_from_json(id_field_name, json_blob):
         record_list.append(record[id_field_name])
     return record_list
 
+
 def pickle_data_structure(data_structure, filename):
     try:
         with open(filename, "wb") as f:
@@ -61,12 +68,14 @@ def pickle_data_structure(data_structure, filename):
     except Exception as ex:
         print("Error during pickling object (Possibly unsupported):", ex)
 
+
 def unpickle_data_structure(filename):
     try:
         with open(filename, "rb") as f:
             return pickle.load(f)
     except Exception as ex:
         print("Error during unpickling object (Possibly unsupported):", ex)
+
 
 def get_env_readrun_ids():
     env_read_run_id_file = "read_run.pickle"
@@ -87,13 +96,15 @@ def get_env_readrun_ids():
     pickle_data_structure(record_list, env_read_run_id_file)
     return record_list
 
+
 def get_env_readrun_detail():
     env_read_run_detail_file = "read_run_detail.pickle"
     if os.path.exists(env_read_run_detail_file):
         ic(f"{env_read_run_detail_file} exists, so can unpickle it")
         return unpickle_data_structure(env_read_run_detail_file)
 
-    fields = "sample_accession%2Crun_accession%2Clibrary_strategy%2Clibrary_source%2Clat%2Clon%2Ccountry%2Cbroad_scale_environmental_context%2Ctax_id%2Cchecklist%2Ccollection_date%2Ctarget_gene"
+    fields = ("sample_accession%2Crun_accession%2Clibrary_strategy%2Clibrary_source%2Clat%2Clon%2Ccountry"
+              "%2Cbroad_scale_environmental_context%2Ctax_id%2Cchecklist%2Ccollection_date%2Ctarget_gene")
 
     query_params_json = get_query_params()
     srv = query_params_json['srv']
@@ -131,6 +142,87 @@ def get_env_sample_ids():
     pickle_data_structure(record_list, env_sample_id_file)
     return record_list
 
+
+def select_first_part(value):
+    """
+    select just the first part of value before the :
+    :param value:
+    :return:
+    """
+
+    my_list = value.split(":")
+    if len(my_list[0]) > 0:
+        return my_list[0]
+    else:
+        return "missing"
+
+    # #ic(value[:value.find(":")])
+    # if value.find(":") >= 0:
+    #     return value[:value.find(":")+1]
+    # else:
+    #     return value
+
+
+def do_geographical(df):
+    df['has_geographical_coordinates'] = True
+    df['has_geographical_coordinates'] = df['has_geographical_coordinates'].mask(df['lat'].isna(), False)
+    ic(df['has_geographical_coordinates'].value_counts())
+    df['has_broad_scale_environmental_context'] = True
+    df['has_broad_scale_environmental_context'] = df['has_broad_scale_environmental_context'].mask(
+        df['broad_scale_environmental_context'] == '', False)
+    print(df.info())
+    ic(df.head())
+    ic(df['has_broad_scale_environmental_context'].value_counts())
+    ic(df['broad_scale_environmental_context'].value_counts())
+    df['country_clean'] = df['country'].apply(select_first_part)
+    ic(df['country_clean'].value_counts().head())
+    ic(df['country'].value_counts())
+    ic("About to call geographical")
+    geography_obj = Geography()
+    df['continent'] = df['country_clean'].apply(geography_obj.get_continent)
+    ic(df['continent'].value_counts())
+
+
+def collection_date_year(value):
+    if value == "":
+        return ""
+    elif re.search("^missing|^not", value):
+        return ""
+    elif re.search("^[0-9]{4}$", value):
+        return value
+    elif re.search("^[0-9]{4}[-/]", value):
+        return value[0:3]
+    elif re.search("^[0-9]{2}/[0-9]{2}/[0-9]{4}", value):
+        return value.split("/")[2]
+    elif re.search("[0-9]{4}$", value):
+        return re.findall("[0-9]{4}$", value)[0]
+    elif re.search("^[0-9]{4}$", value):
+        return re.findall("^[0-9]{4}", value)[0]
+    elif re.search("[0-2][0-9]$", value):
+        return '20' + re.findall("[0-2][0-9]$", value)[0]
+    else:
+        ic(f"no year match for {value}")
+        return ""
+
+
+def experimental_analysis(df):
+    ic(df.columns)
+    ic(df['library_strategy'].value_counts())
+    ic(df['library_source'].value_counts())
+    ic(df.groupby(['library_source', 'library_strategy']).size())
+    ic(df['collection_date'].value_counts())
+
+
+def target_gene_analysis(df):
+    ic(df['target_gene'].value_counts().head())
+
+
+def taxonomic_analysis(df):
+    ic(df['tax_id'].value_counts())
+    tax_id_list = df['tax_id'].unique()
+    ic(len(tax_id_list))
+
+
 def analyse_readrun_detail(env_readrun_detail):
     ic(len(env_readrun_detail))
     # count = 0
@@ -142,30 +234,38 @@ def analyse_readrun_detail(env_readrun_detail):
     #         break
 
     df = pd.DataFrame.from_records(env_readrun_detail)
-    ic(df.dtypes)
+    df['collection_year'] = df['collection_date'].apply(collection_date_year)
+    df['collection_year'] = pd.to_numeric(df['collection_year'], errors = 'coerce')
     df['lat'] = pd.to_numeric(df['lat'], errors = 'coerce')
+    df['lon'] = pd.to_numeric(df['lon'], errors = 'coerce')
+    do_geographical(df)
+    experimental_analysis(df)
 
-    # df[['lat', 'lon']] = df[['lat', 'lon']].apply(pd.to_numeric, errors='ignore')
+    df = df.head(1000)
+    tax_id_list = df['tax_id'].unique()
+    taxonomy_hash_by_tax_id = create_taxonomy_hash_by_tax_id(tax_id_list)
 
+    # ic(taxonomy_hash_by_tax_id)
+    def lineage_lookup(value):
+        # ic(taxonomy_hash_by_tax_id[value])
+        return taxonomy_hash_by_tax_id[value]['lineage']
+
+    def tax_lineage_lookup(value):
+        # ic(taxonomy_hash_by_tax_id[value])
+        return taxonomy_hash_by_tax_id[value]['tax_lineage']
+
+    df['lineage'] = df['tax_id'].apply(lineage_lookup)
+    ic(df['lineage'].value_counts())
+    df['tax_lineage'] = df['tax_id'].apply(tax_lineage_lookup)
+    df['lineage_3'] = df['lineage'].str.extract("^[^;]*;([^;]*);")[0]
+    ic(df['lineage_3'].value_counts())
+
+    taxonomic_analysis(df)
+    ic(df)
     ic(df.dtypes)
 
-    ic(df['lat'])
-    # sys.exit()
-    null_rows = df.query('lat != lat')
-    df['has_geographical_coordinates'] = True
-    df['has_geographical_coordinates'] = df['has_geographical_coordinates'].mask(df['lat'].isna(), False)
-    df['has_geographical_coordinates'] = df['has_geographical_coordinates'].mask(df['lon'].isna(), False)
-    ic(df['has_geographical_coordinates'].value_counts())
-    df['has_broad_scale_environmental_context'] = True
-    df['has_broad_scale_environmental_context'] = df['has_broad_scale_environmental_context'].mask(df['broad_scale_environmental_context'] == '', False)
-    print(df.info())
-    ic(df.head())
-    ic(df['has_broad_scale_environmental_context'])
-    ic(df['has_broad_scale_environmental_context'].value_counts())
-    ic(df['broad_scale_environmental_context'].value_counts())
 
-
-def main(args):
+def main():
     sample_ids = get_env_sample_ids()
     ic(len(sample_ids))
     readrun_ids = get_env_readrun_ids()
@@ -194,4 +294,4 @@ if __name__ == '__main__':
         ic.disable()
     ic(prog_des)
 
-    main(args)
+    main()

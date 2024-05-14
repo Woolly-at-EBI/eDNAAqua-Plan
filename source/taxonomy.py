@@ -196,7 +196,9 @@ def create_taxonomy_hash(tax_list):
     # chunk_size = 500
     tax_hash = []
     # ic(sample_obj_dict)
-    taxonomy_rtn_fields = ['tax_id','tax_division', 'tag','scientific_name']
+    #curl - X POST - H "Content-Type: application/x-www-form-urlencoded" - d
+    # 'result=taxon&query=tax_eq(9606)%20OR%20tax_eq(1080)&fields=tax_id%2Cscientific_name%2Ctax_lineage%2Clineage&format=tsv' "https://www.ebi.ac.uk/ena/portal/api/search"
+    taxonomy_rtn_fields = ['tax_id','tax_division', 'tag','scientific_name', 'tax_lineage','lineage']
     with_obj_type = "taxon"
     ena_portal_api_url = get_ena_portal_url()
     ena_search_url = f"{ena_portal_api_url}search?"
@@ -219,6 +221,27 @@ def create_taxonomy_hash(tax_list):
     #         combined_data += data
 
     return combined_data
+def create_taxonomy_hash_by_tax_id(tax_list):
+    """
+    Example
+                1352': {'lineage': 'Bacteria; Bacillota; Bacilli; Lactobacillales; '
+                                   'Enterococcaceae; Enterococcus; ',
+                        'scientific_name': 'Enterococcus faecium',
+                        'tag': 'pathogen;pathogen:bacterium;priority;pathogen:priority;env_tax:marine',
+                        'tax_division': 'PRO',
+                        'tax_id': '1352',
+                        'tax_lineage': '1;131567;2;1783272;1239;91061;186826;81852;1350;1352'},
+    :param tax_list:
+    :return:
+    """
+    hash_col = create_taxonomy_hash(tax_list)
+    by_tax_id = {}
+    for record in hash_col:
+        by_tax_id[record['tax_id']] = record
+        record['lineage'] = record['lineage'].replace("; ",";")
+    return by_tax_id
+
+
 
 def generate_taxon_collection(tax_id_list):
     ic()
