@@ -99,6 +99,8 @@ class Geography:
 
         if country is None:
             return 'undetermined'
+        elif country in self.ocean_sea_set :
+            return 'ocean'
         elif country in self.europe_country_set:
             return 'europe'
         elif country in self.north_america_set:
