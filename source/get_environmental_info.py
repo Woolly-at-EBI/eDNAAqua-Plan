@@ -10,6 +10,7 @@ chmod a+x get_taxononomy_scientific_name.py
 import json
 import pickle
 import re
+import sys
 import time
 
 import pandas as pd
@@ -33,7 +34,13 @@ def get_query_params():
 
 
 def run_webservice(url):
+    """
+
+    :param url:
+    :return:
+    """
     r = requests.get(url)
+    ic(r.url)
 
     if r.status_code == 200:
         return r.text
@@ -48,7 +55,6 @@ def run_webservice(url):
             return r.text
         else:
             ic(f"Still {r.status_code} so exiting")
-        ic.disable()
         sys.exit(1)
 
 
@@ -162,26 +168,39 @@ def select_first_part(value):
     # else:
     #     return value
 
+def print_value_count_table(df_var):
+    counts = df_var.value_counts()
+    percs = df_var.value_counts(normalize = True)
+    tmp_df = pd.concat([counts, percs], axis = 1, keys = ['count', 'percentage'])
+    tmp_df['percentage'] = pd.Series(["{0:.2f}%".format(val * 100) for val in tmp_df['percentage']], index = tmp_df.index)
+    print(tmp_df)
+
 
 def do_geographical(df):
     df['has_geographical_coordinates'] = True
     df['has_geographical_coordinates'] = df['has_geographical_coordinates'].mask(df['lat'].isna(), False)
-    ic(df['has_geographical_coordinates'].value_counts())
+    print_value_count_table(df.has_geographical_coordinates)
+
     df['has_broad_scale_environmental_context'] = True
     df['has_broad_scale_environmental_context'] = df['has_broad_scale_environmental_context'].mask(
         df['broad_scale_environmental_context'] == '', False)
-    print(df.info())
-    ic(df.head())
-    ic(df['has_broad_scale_environmental_context'].value_counts())
-    ic(df['broad_scale_environmental_context'].value_counts())
+
+    print_value_count_table(df.has_broad_scale_environmental_context)
+    print_value_count_table(df.broad_scale_environmental_context)
+
     df['country_clean'] = df['country'].apply(select_first_part)
-    ic(df['country_clean'].value_counts().head())
+    print_value_count_table(df.country_clean)
     ic(df['country'].value_counts())
     ic("About to call geographical")
     geography_obj = Geography()
     df['continent'] = df['country_clean'].apply(geography_obj.get_continent)
-    ic(df['continent'].value_counts())
+    print_value_count_table(df.continent)
 
+    df['ocean'] = df['country_clean'].apply(geography_obj.get_ocean)
+    tmp_df = df[df['ocean'] != 'undetermined']
+    print_value_count_table(tmp_df.ocean)
+
+    sys.exit()
 
 def collection_date_year(value):
     if value == "":
@@ -238,7 +257,9 @@ def analyse_readrun_detail(env_readrun_detail):
     df['collection_year'] = pd.to_numeric(df['collection_year'], errors = 'coerce')
     df['lat'] = pd.to_numeric(df['lat'], errors = 'coerce')
     df['lon'] = pd.to_numeric(df['lon'], errors = 'coerce')
+
     do_geographical(df)
+    sys.exit()
     experimental_analysis(df)
 
     df = df.head(1000)
@@ -270,6 +291,7 @@ def main():
     ic(len(sample_ids))
     readrun_ids = get_env_readrun_ids()
     ic(len(readrun_ids))
+
     env_readrun_detail = get_env_readrun_detail()
     analyse_readrun_detail(env_readrun_detail)
 
