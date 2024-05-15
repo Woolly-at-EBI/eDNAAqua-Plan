@@ -117,6 +117,21 @@ class Geography:
             return 'australasia'
         return 'undetermined'
 
+    def get_ocean(self, country):
+        """
+        assuming it is the cleaned country term!
+        :param country:
+        :return:
+        """
+        # print(f"inside get_continent: {country}")
+
+        if country is None:
+            return None
+        elif country in self.ocean_sea_set:
+            return country
+        return 'undetermined'
+
+
     def is_insdc_country_in_eu(self, country):
         """
         any eu country
