@@ -20,6 +20,10 @@ from geography import Geography
 from taxonomy import *
 
 
+pd.set_option('display.max_columns', None)
+pd.set_option('max_colwidth', None)
+
+
 def get_query_params():
     my_params = {
         "srv": "https://www.ebi.ac.uk/ena/portal/api/search",
@@ -110,7 +114,7 @@ def get_env_readrun_detail():
         return unpickle_data_structure(env_read_run_detail_file)
 
     fields = ("sample_accession%2Crun_accession%2Clibrary_strategy%2Clibrary_source%2Clat%2Clon%2Ccountry"
-              "%2Cbroad_scale_environmental_context%2Ctax_id%2Cchecklist%2Ccollection_date%2Ctarget_gene")
+              "%2Cbroad_scale_environmental_context%2Ctax_id%2Cchecklist%2Ccollection_date%2Ctarget_gene%2Ctag")
 
     query_params_json = get_query_params()
     srv = query_params_json['srv']
@@ -197,10 +201,10 @@ def do_geographical(df):
     print_value_count_table(df.continent)
 
     df['ocean'] = df['country_clean'].apply(geography_obj.get_ocean)
-    tmp_df = df[df['ocean'] != 'undetermined']
+    tmp_df = df[df['ocean'] != 'not ocean']
     print_value_count_table(tmp_df.ocean)
+    return df
 
-    sys.exit()
 
 def collection_date_year(value):
     if value == "":
@@ -210,36 +214,213 @@ def collection_date_year(value):
     elif re.search("^[0-9]{4}$", value):
         return value
     elif re.search("^[0-9]{4}[-/]", value):
-        return value[0:3]
+        return value[0:4]
     elif re.search("^[0-9]{2}/[0-9]{2}/[0-9]{4}", value):
         return value.split("/")[2]
     elif re.search("[0-9]{4}$", value):
-        return re.findall("[0-9]{4}$", value)[0]
+        return value[:-4]
     elif re.search("^[0-9]{4}$", value):
         return re.findall("^[0-9]{4}", value)[0]
     elif re.search("[0-2][0-9]$", value):
-        return '20' + re.findall("[0-2][0-9]$", value)[0]
+        extract_value = int(value[-2:])
+        if extract_value > 50:
+            return '19' + str(extract_value)
+        else:
+            return '20' + str(extract_value)
     else:
         ic(f"no year match for {value}")
         return ""
 
+def create_year_bins(value):
+    """
+    trying to bin years in 5 year
+    :param value:
+    :return:
+    """
+    min=1950
+    max=2025
+    if isinstance(value, int):
+        if value <= min:
+            return str(min) + "-pre"
+        for x in range(min, max, 5):
+            # 2023 far more likely than min so could try reversing the order
+            # ic(value)
+            if value <= x:
+               return f"{str(x)}-{str(x+5)}"
+    return None
 
-def experimental_analysis(df):
+
+
+
+def experimental_analysis_inc_filtering(df):
     ic(df.columns)
+
+    ic("before filtering")
+    print_value_count_table(df.library_source)
+    print_value_count_table(df.library_strategy)
+
+    strategy_list_to_keep = ['AMPLICON', 'WGS', 'RNA-Seq', 'WGA', 'Targeted-Capture', 'ssRNA-seq', 'miRNA-Seq']
+    ic(strategy_list_to_keep)
+    df = df.loc[df['library_strategy'].isin(strategy_list_to_keep)]
+    ic("after filtering")
+
+    print_value_count_table(df.library_source)
+    print_value_count_table(df.library_strategy)
+
     ic(df['library_strategy'].value_counts())
-    ic(df['library_source'].value_counts())
+    print_value_count_table(df.library_source)
     ic(df.groupby(['library_source', 'library_strategy']).size())
-    ic(df['collection_date'].value_counts())
+    ic(df.groupby(['library_source', 'library_strategy']).size().reset_index())
+    print(df.groupby(['library_source', 'library_strategy']).size().reset_index().to_string(index=False))
+    ic(df.columns)
+
+    return df
 
 
 def target_gene_analysis(df):
     ic(df['target_gene'].value_counts().head())
 
 
+def analyse_environment(df):
+    """
+    needs to be called after taxonomic_analysis
+    :param df:
+    :return:
+    """
+    def process_env_tags(value):
+        my_tag_list = value.split(';')
+
+        my_env_tags = [s for s in my_tag_list if "env_" in s]
+
+        return my_env_tags
+    print_value_count_table(df.tag)
+    ic(df.tag.head(50))
+    #df['env_tax'] = df['tag'].str.extract("(env_tax:[^;]*)")[0]
+    df['env_tag'] = df['tag'].apply(process_env_tags)
+    df['env_tags'] = df['env_tag'].apply(lambda x: ';'.join(x))
+    ic(df['env_tag'].value_counts().head(5))
+    tmp_df = df[df.env_tag.str.len() > 0]
+    # print_value_count_table(tmp_df.env_tag)
+
+    ic(tmp_df['env_tag'].value_counts().head(5))
+    ic(tmp_df['env_tag'].explode().unique())
+
+
+    tmp_df['env_tag_string'] = tmp_df['env_tag'].str.join(';')
+    ic(tmp_df['env_tag_string'].unique())
+    # ic(my_env_lists['env_tag'])
+    #  for tag in tmp_df['env_tag'].unique():
+    #      ic(tag)
+
+    tag_string_assignment = {}
+    # f = tmp_df['env_tag_string'].str.contains("env_geo",na=False)
+    # sys.exit()
+
+    not_assigned = []
+    for tags in tmp_df['env_tag_string'].unique():
+        tag_list = tags.split(';')
+        # ic(tags)
+        # ic(tag_list)
+
+        if 'env_geo' in tags:
+            # ic(f"----------------------{tags}")
+            matches = re.findall(r'env_geo[^;]*', tags)
+            # ic(matches)
+            if len(matches) > 1:
+                ic(f"matches={matches}, tags={tags}")
+                # sys.exit()
+            else:
+                if matches[0] == 'env_geo:marine' and 'env_tax:marine' in tags:
+                    tag_string_assignment[tags] = "marine"
+                elif matches[0] == 'env_geo:freshwater' and 'env_geo:freshwater' in tags:
+                    tag_string_assignment[tags] = "freshwater"
+                elif matches[0] == 'env_geo:coastal' and 'env_geo:coastal' in tags:
+                    tag_string_assignment[tags] = "coastal"
+                elif matches[0] == 'env_geo:brackish' and 'env_geo:brackish' in tags:
+                    tag_string_assignment[tags] = "brackish"
+                elif matches[0] == 'env_geo:terrestrial' and 'env_geo:terrestrial' in tags:
+                    tag_string_assignment[tags] = "terrestrial"
+                else:
+                    #ic(f"Not assigned: {tags}")
+                    not_assigned.append(tags)
+
+            if 'env_tax:marine' in tag_list and 'env_geo:marine' in tag_list:
+                tag_string_assignment[tags] = "marine"
+    ic(tag_string_assignment)
+    ic(not_assigned)
+
+    ic('env_tax:freshwater;env_tax:terrestrial;env_geo:marine')
+    tmp_df = df[df['env_tags'].str.contains('env_tax:freshwater;env_tax:terrestrial;env_geo:marine')]
+    ic(tmp_df['sample_accession'].unique())
+
+    ic(('env_tax:freshwater;env_geo:marine'))
+    tmp_df = df.query('env_tags == "env_tax:freshwater;env_geo:marine"')
+    ic(len(tmp_df['sample_accession'].unique()))
+    ic(tmp_df['sample_accession'].unique())
+    ic(tmp_df['tax_id'].unique())
+    ic(tmp_df['scientific_name'].unique())
+
+
 def taxonomic_analysis(df):
+
+    tax_id_list = df['tax_id'].unique()
+    def lineage_lookup(value):
+        # ic(taxonomy_hash_by_tax_id[value])
+        return taxonomy_hash_by_tax_id[value]['lineage']
+
+    def tax_lineage_lookup(value):
+        # ic(taxonomy_hash_by_tax_id[value])
+        return taxonomy_hash_by_tax_id[value]['tax_lineage']
+
+    def scientific_name_lookup(value):
+        # ic(taxonomy_hash_by_tax_id[value])
+        return taxonomy_hash_by_tax_id[value]['scientific_name']
+
+
+
+
+
+    taxonomy_hash_by_tax_id = create_taxonomy_hash_by_tax_id(tax_id_list)
+
+
+
+    # ic(taxonomy_hash_by_tax_id)
+
+
+    print_value_count_table(df)
+
+    df['scientific_name'] = df['tax_id'].apply(scientific_name_lookup)
+    print_value_count_table(df.scientific_name)
+
+    df['lineage'] = df['tax_id'].apply(lineage_lookup)
+    # ic(df['lineage'].value_counts())
+    print_value_count_table(df.lineage)
+    df['tax_lineage'] = df['tax_id'].apply(tax_lineage_lookup)
+
+    df['lineage_3'] = df['lineage'].str.extract("^[^;]*;([^;]*);")[0]
+    ic(df['lineage_3'].value_counts())
+    print_value_count_table(df.lineage_3)
+    df['lineage_minus2'] = df['lineage'].str.extract("([^;]*);[^;]*$")[0]
+    print_value_count_table(df.lineage_minus2)
+
     ic(df['tax_id'].value_counts())
     tax_id_list = df['tax_id'].unique()
     ic(len(tax_id_list))
+
+    analyse_environment(df)
+
+    sys.exit()
+
+    return df
+
+def clean_dates_in_df(df):
+    df['collection_year'] = df['collection_date'].apply(collection_date_year)
+    df['collection_year'] = pd.to_numeric(df['collection_year'], errors = 'coerce').astype('Int64')
+    df = df.sort_values(by = ['collection_date'])
+    df['collection_year_bin'] = df['collection_year'].apply(create_year_bins)
+
+    return df
+
 
 
 def analyse_readrun_detail(env_readrun_detail):
@@ -253,35 +434,22 @@ def analyse_readrun_detail(env_readrun_detail):
     #         break
 
     df = pd.DataFrame.from_records(env_readrun_detail)
-    df['collection_year'] = df['collection_date'].apply(collection_date_year)
-    df['collection_year'] = pd.to_numeric(df['collection_year'], errors = 'coerce')
+    df = clean_dates_in_df(df)
+
     df['lat'] = pd.to_numeric(df['lat'], errors = 'coerce')
     df['lon'] = pd.to_numeric(df['lon'], errors = 'coerce')
 
-    do_geographical(df)
-    sys.exit()
-    experimental_analysis(df)
 
-    df = df.head(1000)
-    tax_id_list = df['tax_id'].unique()
-    taxonomy_hash_by_tax_id = create_taxonomy_hash_by_tax_id(tax_id_list)
 
-    # ic(taxonomy_hash_by_tax_id)
-    def lineage_lookup(value):
-        # ic(taxonomy_hash_by_tax_id[value])
-        return taxonomy_hash_by_tax_id[value]['lineage']
+    df = experimental_analysis_inc_filtering(df)
+    print_value_count_table(df.collection_year)
+    print_value_count_table(df.collection_year_bin)
 
-    def tax_lineage_lookup(value):
-        # ic(taxonomy_hash_by_tax_id[value])
-        return taxonomy_hash_by_tax_id[value]['tax_lineage']
+    df = do_geographical(df)
 
-    df['lineage'] = df['tax_id'].apply(lineage_lookup)
-    ic(df['lineage'].value_counts())
-    df['tax_lineage'] = df['tax_id'].apply(tax_lineage_lookup)
-    df['lineage_3'] = df['lineage'].str.extract("^[^;]*;([^;]*);")[0]
-    ic(df['lineage_3'].value_counts())
 
-    taxonomic_analysis(df)
+
+    df = taxonomic_analysis(df)
     ic(df)
     ic(df.dtypes)
 
