@@ -15,6 +15,8 @@ import time
 
 import pandas as pd
 import requests
+import plotly.express as px
+import plotly.graph_objects as go
 
 from geography import Geography
 from taxonomy import *
@@ -113,7 +115,7 @@ def get_env_readrun_detail():
         ic(f"{env_read_run_detail_file} exists, so can unpickle it")
         return unpickle_data_structure(env_read_run_detail_file)
 
-    fields = ("sample_accession%2Crun_accession%2Clibrary_strategy%2Clibrary_source%2Clat%2Clon%2Ccountry"
+    fields = ("sample_accession%2Crun_accession%2Clibrary_strategy%2Clibrary_source%2Cinstrument_platform%2Clat%2Clon%2Ccountry"
               "%2Cbroad_scale_environmental_context%2Ctax_id%2Cchecklist%2Ccollection_date%2Ctarget_gene%2Ctag")
 
     query_params_json = get_query_params()
@@ -203,6 +205,20 @@ def do_geographical(df):
     df['ocean'] = df['country_clean'].apply(geography_obj.get_ocean)
     tmp_df = df[df['ocean'] != 'not ocean']
     print_value_count_table(tmp_df.ocean)
+
+    path_list = ['continent', 'country_clean']
+    plot_df = df.groupby(path_list).size().to_frame('record_count').reset_index()
+    plotfile = "../images/geography_sunburst.png"
+    plot_sunburst(plot_df, 'Figure: ENA "Environmental" readrun records, by country', path_list,
+                  'record_count', plotfile)
+
+    path_list = ['ocean']
+    plot_df = df.groupby(path_list).size().to_frame('record_count').reset_index()
+    plot_df = plot_df[plot_df['ocean'] != 'not ocean']
+    plotfile = "../images/ocean_sunburst.png"
+    plot_sunburst(plot_df, 'Figure: ENA "Environmental" readrun records, by ocean', path_list,
+                  'record_count', plotfile)
+
     return df
 
 
@@ -249,7 +265,118 @@ def create_year_bins(value):
                return f"{str(x)}-{str(x+5)}"
     return None
 
+def generate_sankey_chart_data(df, columns: list, sankey_link_weight: str):
 
+    column_values = [df[col] for col in columns]
+    ic(column_values)
+
+    # this generates the labels for the sankey by taking all the unique values
+    labels = sum([list(node_values.unique()) for node_values in column_values], [])
+    ic(labels)
+
+    # initializes a dict of dicts (one dict per tier)
+    link_mappings = {col: {} for col in columns}
+
+    # each dict maps a node to unique number value (same node in different tiers
+    # will have different number values
+    i = 0
+    for col, nodes in zip(columns, column_values):
+        for node in nodes.unique():
+            link_mappings[col][node] = i
+            i = i + 1
+
+    # specifying which columns are serving as sources and which as sources
+    # ie: given 3 df columns (col1 is a source to col2, col2 is target to col1 and
+    # a source to col 3 and col3 is a target to col2
+    source_nodes = column_values[: len(columns) - 1]
+    target_nodes = column_values[1:]
+    source_cols = columns[: len(columns) - 1]
+    target_cols = columns[1:]
+    links = []
+
+    # loop to create a list of links in the format [((src,tgt),wt),(),()...]
+    for source, target, source_col, target_col in zip(source_nodes, target_nodes, source_cols, target_cols):
+        for val1, val2, link_weight in zip(source, target, df[sankey_link_weight]):
+            links.append(
+                (
+                    (
+                        link_mappings[source_col][val1],
+                        link_mappings[target_col][val2]
+                    ),
+                    link_weight,
+                )
+            )
+
+    # creating a dataframe with 2 columns: for the links (src, tgt) and weights
+    df_links = pd.DataFrame(links, columns = ["link", "weight"])
+
+    # aggregating the same links into a single link (by weight)
+    df_links = df_links.groupby(by = ["link"], as_index = False).agg({"weight": sum})
+
+    # generating three lists needed for the sankey visual
+    sources = [val[0] for val in df_links["link"]]
+    targets = [val[1] for val in df_links["link"]]
+    weights = df_links["weight"]
+
+    ic(labels, sources, targets, weights)
+    return labels, sources, targets, weights
+def plot_sankey(df, sankey_link_weight, columns, title, plotfile):
+
+    # list of list: each list are the set of nodes in each tier/column
+
+    (labels, sources, targets, weights) = generate_sankey_chart_data(df, columns, sankey_link_weight)
+
+    color_link = ['#000000', '#FFFF00', '#1CE6FF', '#FF34FF', '#FF4A46',
+                  '#008941', '#006FA6', '#A30059', '#FFDBE5', '#7A4900',
+                  '#0000A6', '#63FFAC', '#B79762', '#004D43', '#8FB0FF',
+                  '#997D87', '#5A0007', '#809693', '#FEFFE6', '#1B4400',
+                  '#4FC601', '#3B5DFF', '#4A3B53', '#FF2F80', '#61615A',
+                  '#BA0900', '#6B7900', '#00C2A0', '#FFAA92', '#FF90C9',
+                  '#B903AA', '#D16100', '#DDEFFF', '#000035', '#7B4F4B',
+                  '#A1C299', '#300018', '#0AA6D8', '#013349', '#00846F',
+                  '#372101', '#FFB500', '#C2FFED', '#A079BF', '#CC0744',
+                  '#C0B9B2', '#C2FF99', '#001E09', '#00489C', '#6F0062',
+                  '#0CBD66', '#EEC3FF', '#456D75', '#B77B68', '#7A87A1',
+                  '#788D66', '#885578', '#FAD09F', '#FF8A9A', '#D157A0',
+                  '#BEC459', '#456648', '#0086ED', '#886F4C', '#34362D',
+                  '#B4A8BD', '#00A6AA', '#452C2C', '#636375', '#A3C8C9',
+                  '#FF913F', '#938A81', '#575329', '#00FECF', '#B05B6F',
+                  '#8CD0FF', '#3B9700', '#04F757', '#C8A1A1', '#1E6E00',
+                  '#7900D7', '#A77500', '#6367A9', '#A05837', '#6B002C',
+                  '#772600', '#D790FF', '#9B9700', '#549E79', '#FFF69F',
+                  '#201625', '#72418F', '#BC23FF', '#99ADC0', '#3A2465',
+                  '#922329', '#5B4534', '#FDE8DC', '#404E55', '#0089A3',
+                  '#CB7E98', '#A4E804', '#324E72', '#6A3A4C'
+                  ]
+
+    ic(df.head(10))
+    #---------------------------------
+    fig = go.Figure(data = [go.Sankey(
+        node = dict(
+            pad = 15,
+            thickness = 20,
+            line = dict(color = "black", width = 0.5),
+            #label = ["A1", "A2", "B1", "B2", "C1", "C2"],
+            label = labels,
+            color = "blue"
+        ),
+        link = dict(
+            # source = [0, 1, 0, 2, 3, 3],  # indices correspond to labels, eg A1, A2, A1, B1, ...
+            # target = [2, 3, 3, 4, 4, 5],
+            # value = [8, 4, 2, 8, 4, 2]
+            source = sources,
+            target = targets,
+            value = weights,
+            color=color_link
+        ))])
+
+
+    fig.update_layout(title_text = title, font_size = 10)
+    if plotfile == "plot":
+            fig.show()
+    else:
+            ic(f"Sankey plot to {plotfile}")
+            fig.write_image(plotfile)
 
 
 def experimental_analysis_inc_filtering(df):
@@ -269,10 +396,15 @@ def experimental_analysis_inc_filtering(df):
 
     ic(df['library_strategy'].value_counts())
     print_value_count_table(df.library_source)
-    ic(df.groupby(['library_source', 'library_strategy']).size())
-    ic(df.groupby(['library_source', 'library_strategy']).size().reset_index())
+
     print(df.groupby(['library_source', 'library_strategy']).size().reset_index().to_string(index=False))
     ic(df.columns)
+    path_list = ['library_source', 'library_strategy', 'instrument_platform', 'collection_year_bin']
+    plot_df = df.groupby(path_list).size().to_frame('record_count').reset_index()
+    plotfile = "../images/experimental_analysis_strategy.png"
+    sankey_link_weight = 'record_count'
+
+    plot_sankey(plot_df, sankey_link_weight, path_list, 'Figure ENA "Environmental" readrun record count: library_source, library_strategy, platform, collection_date', plotfile)
 
     return df
 
@@ -280,13 +412,36 @@ def experimental_analysis_inc_filtering(df):
 def target_gene_analysis(df):
     ic(df['target_gene'].value_counts().head())
 
+def plot_sunburst(df, title, path_list, value_field, plotfile):
+    """
+
+    :param df:
+    :param title:
+    :param path_list:
+    :param value_field:
+    :param plotfile:
+    :return:
+    """
+    fig = px.sunburst(
+            df,
+            path = path_list,
+            values = value_field,
+            title = title,
+        )
+    if plotfile == "plot":
+            fig.show()
+    else:
+            ic(f"Sunburst plot to {plotfile}")
+            fig.write_image(plotfile)
 
 def analyse_environment(df):
     """
-    needs to be called after taxonomic_analysis
+    uses the tags to predict the environment, is rather rough and ready
+    assuming is all terrestrial with a low confidence
     :param df:
-    :return:
+    :return: df        with the addition of ['env_prediction']  ['env_prediction_hl']  ['env_confidence']
     """
+    ic(len(df))
     def process_env_tags(value):
         my_tag_list = value.split(';')
 
@@ -294,20 +449,18 @@ def analyse_environment(df):
 
         return my_env_tags
     print_value_count_table(df.tag)
-    ic(df.tag.head(50))
+    # ic(df.tag.head(50))
     #df['env_tax'] = df['tag'].str.extract("(env_tax:[^;]*)")[0]
     df['env_tag'] = df['tag'].apply(process_env_tags)
     df['env_tags'] = df['env_tag'].apply(lambda x: ';'.join(x))
-    ic(df['env_tag'].value_counts().head(5))
+    # ic(df['env_tag'].value_counts().head(5))
+
     tmp_df = df[df.env_tag.str.len() > 0]
     # print_value_count_table(tmp_df.env_tag)
-
-    ic(tmp_df['env_tag'].value_counts().head(5))
-    ic(tmp_df['env_tag'].explode().unique())
-
-
+    #ic(tmp_df['env_tag'].value_counts().head(5))
+    #ic(tmp_df['env_tag'].explode().unique())
     tmp_df['env_tag_string'] = tmp_df['env_tag'].str.join(';')
-    ic(tmp_df['env_tag_string'].unique())
+    # ic(tmp_df['env_tag_string'].unique())
     # ic(my_env_lists['env_tag'])
     #  for tag in tmp_df['env_tag'].unique():
     #      ic(tag)
@@ -317,6 +470,9 @@ def analyse_environment(df):
     # sys.exit()
 
     not_assigned = []
+    multiples = []
+    aquatic_tag_set = ['env_geo:marine', 'env_geo:freshwater', 'env_geo:brackish', 'env_geo:coastal', 'env_tax:marine',
+                        'env_tax:freshwater', 'env_tax:brackish', 'env_tax:coastal']
     for tags in tmp_df['env_tag_string'].unique():
         tag_list = tags.split(';')
         # ic(tags)
@@ -327,38 +483,144 @@ def analyse_environment(df):
             matches = re.findall(r'env_geo[^;]*', tags)
             # ic(matches)
             if len(matches) > 1:
-                ic(f"matches={matches}, tags={tags}")
-                # sys.exit()
+                msg = f"WARNING, multiple GEO matches={matches}, tags={tags} THAT IS NOT YET HANDLED"
+                if 'env_geo:coastal' in matches and 'env_geo:marine' in matches:
+                    if len(tag_list) == 2:
+                        tag_string_assignment[tags] = {'prediction': 'coastal', 'confidence': 'medium'}
+                    elif ('env_tax:marine' in tags or 'env_tax:coastal' or 'env_tax:brackish' in tags):
+                        tag_string_assignment[tags] = {'prediction': 'coastal', 'confidence': 'high'}
+                    else:
+                        ic(msg)
+                        multiples.append(msg)
+                else:
+                    ic(msg)
+                    multiples.append(msg)
             else:
                 if matches[0] == 'env_geo:marine' and 'env_tax:marine' in tags:
-                    tag_string_assignment[tags] = "marine"
+                    tag_string_assignment[tags] = {'prediction': 'marine', 'confidence': 'high'}
                 elif matches[0] == 'env_geo:freshwater' and 'env_geo:freshwater' in tags:
-                    tag_string_assignment[tags] = "freshwater"
+                    tag_string_assignment[tags] = {'prediction': 'freshwater', 'confidence': 'high'}
                 elif matches[0] == 'env_geo:coastal' and 'env_geo:coastal' in tags:
-                    tag_string_assignment[tags] = "coastal"
+                    tag_string_assignment[tags] = {'prediction': 'coastal', 'confidence': 'high'}
                 elif matches[0] == 'env_geo:brackish' and 'env_geo:brackish' in tags:
-                    tag_string_assignment[tags] = "brackish"
+                    tag_string_assignment[tags] = {'prediction': 'brackish', 'confidence': 'high'}
                 elif matches[0] == 'env_geo:terrestrial' and 'env_geo:terrestrial' in tags:
-                    tag_string_assignment[tags] = "terrestrial"
+                    tag_string_assignment[tags] = {'prediction': 'terrestrial', 'confidence': 'high'}
+                elif len(tag_list) == 2 and 'env_geo:terrestrial' not in tags:
+                    if tag_list[0] in aquatic_tag_set and tag_list[1] in aquatic_tag_set:
+                        tag_string_assignment[tags] = {'prediction': 'mixed_aquatic', 'confidence': 'medium'}
+                elif len(tag_list) == 3 and 'env_geo:terrestrial' not in tags:
+                    if tag_list[0] in aquatic_tag_set and (tag_list[1] in aquatic_tag_set or tag_list[2] in aquatic_tag_set):
+                        tag_string_assignment[tags] = {'prediction': 'mixed_aquatic', 'confidence': 'medium'}
                 else:
-                    #ic(f"Not assigned: {tags}")
+                    ic("________________________________________________________")
+
+                    ic(matches[0])
+                    if len(tag_list) == 1:
+                        value = re.findall(r'env_geo:(.*)', matches[0])[0]
+                        tag_string_assignment[tags] = {'prediction': value, 'confidence': 'medium'}
+                    elif matches[0] == 'env_geo:coastal' and "brackish" in tags:
+                        tag_string_assignment[tags] = {'prediction': 'coastal', 'confidence': 'medium'}
+                    else:
+                        if re.match(r'^(env_tax:freshwater;env_geo:marine|env_tax:freshwater;env_tax:terrestrial;env_geo:marine)$',tags):
+                            not_assigned.append(tags)
+                        else:
+                            ic(f"Not assigned--->{tags} len_tags={len(tag_list)}")
+                            sys.exit()
+        elif len(tag_list) == 1:
+            value = re.findall(r'env_tax:(.*)', tag_list[0])[0]
+            tag_string_assignment[tags] = {'prediction': value, 'confidence': 'medium'}
+        elif len(tag_list) == 2:
+            if tag_list[0] in aquatic_tag_set and tag_list[1] in aquatic_tag_set:
+                tag_string_assignment[tags] = {'prediction': 'mixed_aquatic', 'confidence': 'medium'}
+            elif tag_list[0] in aquatic_tag_set or tag_list[1] in aquatic_tag_set:
+                tag_string_assignment[tags] = {'prediction': 'mixed', 'confidence': 'low'}
+            else:
+                not_assigned.append(tags)
+        elif len(tag_list) == 3:
+                if tag_list[0] in aquatic_tag_set and (
+                        tag_list[1] in aquatic_tag_set or tag_list[2] in aquatic_tag_set):
+                    tag_string_assignment[tags] = {'prediction': 'mixed_aquatic', 'confidence': 'low'}
+                elif tag_list[1] in aquatic_tag_set and (
+                        tag_list[2] in aquatic_tag_set):
+                    tag_string_assignment[tags] = {'prediction': 'mixed_aquatic', 'confidence': 'low'}
+                else:
                     not_assigned.append(tags)
+        elif len(tag_list) == 4:
+                if (tag_list[0] in aquatic_tag_set or tag_list[1] in aquatic_tag_set) and (
+                        tag_list[2] in aquatic_tag_set or tag_list[3] in aquatic_tag_set):
+                    tag_string_assignment[tags] = {'prediction': 'mixed_aquatic', 'confidence': 'low'}
+                else:
+                    not_assigned.append(tags)
+        else:
+            not_assigned.append(tags)
+            ic()
 
-            if 'env_tax:marine' in tag_list and 'env_geo:marine' in tag_list:
-                tag_string_assignment[tags] = "marine"
-    ic(tag_string_assignment)
-    ic(not_assigned)
+    # ic(tag_string_assignment)
+    if len(multiples) > 0:
+        ic("Apologies: you need to address this cases before proceeding")
+        ic(multiples)
+        ic(not_assigned)
+        sys.exit()
+    elif len(not_assigned) > 0:
+        ic("Apologies: you need to address this cases before proceeding")
+        ic(not_assigned)
+        sys.exit()
 
-    ic('env_tax:freshwater;env_tax:terrestrial;env_geo:marine')
-    tmp_df = df[df['env_tags'].str.contains('env_tax:freshwater;env_tax:terrestrial;env_geo:marine')]
-    ic(tmp_df['sample_accession'].unique())
+    # ic('env_tax:freshwater;env_tax:terrestrial;env_geo:marine')
+    # tmp_df = df[df['env_tags'].str.contains('env_tax:freshwater;env_tax:terrestrial;env_geo:marine')]
+    # ic(tmp_df['sample_accession'].unique())
 
-    ic(('env_tax:freshwater;env_geo:marine'))
-    tmp_df = df.query('env_tags == "env_tax:freshwater;env_geo:marine"')
-    ic(len(tmp_df['sample_accession'].unique()))
-    ic(tmp_df['sample_accession'].unique())
-    ic(tmp_df['tax_id'].unique())
-    ic(tmp_df['scientific_name'].unique())
+    def actually_assign_env_info_pred(value):
+        # ic(value)
+        if len(value) > 1:
+            # return tag_string_assignment[value]['prediction'], tag_string_assignment[value]['confidence']
+            return tag_string_assignment[value]['prediction']
+        return "terrestrial_assumed"
+
+    def actually_assign_env_info_conf(value):
+        # ic(value)
+        if len(value) > 1:
+            # return tag_string_assignment[value]['prediction'], tag_string_assignment[value]['confidence']
+            return tag_string_assignment[value]['confidence']
+        return "low"
+
+    aquatic_set = ('marine', 'brackish', 'coastal', 'freshwater', 'mixed_aquatic')
+    def actually_assign_env_info_pred_hl(value):
+        # ic(value)
+        if value != "terrestrial_assumed" and value != None:
+            if value == "terrestrial":
+                   return value
+            elif value in aquatic_set:
+                    return "aquatic"
+            else:
+                   return "mixed"
+            return "terrestrial_assumed"
+        return "terrestrial_assumed"
+
+        #, tag_string_assignment[value]['confidence']
+    ic(len(df))
+
+    df['env_prediction'] = df['env_tags'].apply(actually_assign_env_info_pred)
+    df['env_confidence'] = df['env_tags'].apply(actually_assign_env_info_conf)
+
+    df['env_prediction_hl'] = df['env_prediction'].apply(actually_assign_env_info_pred_hl)
+    print_value_count_table(df['env_prediction'])
+    print_value_count_table(df['env_confidence'])
+    print()
+    print(df.groupby(['env_prediction', 'env_confidence']).size().to_frame().to_string())
+    print_value_count_table(df['env_prediction'])
+    print()
+    print_value_count_table(df['env_prediction_hl'])
+
+
+    path = ['env_prediction_hl', 'env_prediction', 'env_confidence','continent']
+    value_field = 'record_count'
+    plot_df = df.groupby(path).size().to_frame('record_count').reset_index()
+    plotfile = "../images/env_predictions.png"
+    plot_sunburst(plot_df, "Figure: ENA readrun environmental predictions using species and lat/lons (Sunburst Plot)", path, value_field, plotfile)
+
+    return df
 
 
 def taxonomic_analysis(df):
@@ -376,40 +638,60 @@ def taxonomic_analysis(df):
         # ic(taxonomy_hash_by_tax_id[value])
         return taxonomy_hash_by_tax_id[value]['scientific_name']
 
-
-
-
+    analyse_environment(df)
 
     taxonomy_hash_by_tax_id = create_taxonomy_hash_by_tax_id(tax_id_list)
 
-
-
-    # ic(taxonomy_hash_by_tax_id)
-
-
-    print_value_count_table(df)
 
     df['scientific_name'] = df['tax_id'].apply(scientific_name_lookup)
     print_value_count_table(df.scientific_name)
 
     df['lineage'] = df['tax_id'].apply(lineage_lookup)
+
     # ic(df['lineage'].value_counts())
     print_value_count_table(df.lineage)
     df['tax_lineage'] = df['tax_id'].apply(tax_lineage_lookup)
-
+    df['lineage_2'] = df['lineage'].str.extract("^([^;]*);")[0]
     df['lineage_3'] = df['lineage'].str.extract("^[^;]*;([^;]*);")[0]
     ic(df['lineage_3'].value_counts())
     print_value_count_table(df.lineage_3)
     df['lineage_minus2'] = df['lineage'].str.extract("([^;]*);[^;]*$")[0]
+    df['lineage_minus3'] = df['lineage'].str.extract("([^;]*);[^;]*;[^;]*$")[0]
     print_value_count_table(df.lineage_minus2)
 
     ic(df['tax_id'].value_counts())
     tax_id_list = df['tax_id'].unique()
     ic(len(tax_id_list))
 
-    analyse_environment(df)
+    path_list = ['lineage_2', 'lineage_minus2', 'scientific_name']
+    plot_df = df.groupby(path_list).size().to_frame('record_count').reset_index()
+    plotfile = "../images/taxonomic_analysis_sunburst.png"
+    plot_sunburst(plot_df, 'Figure: ENA "Environmental" readrun records, tax lineage(select)', path_list, 'record_count', plotfile)
 
-    sys.exit()
+    path_list = ['lineage_2', 'lineage_minus3', 'lineage_minus2', 'scientific_name', 'lineage']
+    plot_df = df.groupby(path_list).size().to_frame('record_count').reset_index()
+    plot_df = plot_df[plot_df['lineage_2'] == 'Eukaryota']
+    path_list = ['lineage_minus3', 'lineage_minus2', 'scientific_name']
+    plotfile = "../images/taxonomic_analysis_euk_sunburst.png"
+    plot_sunburst(plot_df, 'Figure: ENA "Environmental" readrun records, tax lineage(Euk)', path_list,
+                  'record_count', plotfile)
+
+
+    path_list = ['lineage_2', 'lineage_minus3', 'lineage_minus2', 'scientific_name', 'lineage']
+    plot_df = df.groupby(path_list).size().to_frame('record_count').reset_index()
+    plot_df = plot_df[plot_df['lineage'].str.contains('Vertebrata')]
+    path_list = ['lineage_minus3', 'lineage_minus2', 'scientific_name']
+    plotfile = "../images/taxonomic_analysis_euk_sunburst.png"
+    plot_sunburst(plot_df, 'Figure: ENA "Environmental" readrun records, Vertebrata', path_list,
+              'record_count', plotfile)
+
+
+    path_list = ['library_source', 'library_strategy', 'lineage_2']
+    plot_df = df.groupby(path_list).size().to_frame('record_count').reset_index()
+    plotfile = "../images/experimental_analysis_strategy_tax.png"
+    sankey_link_weight = 'record_count'
+    plot_sankey(plot_df, sankey_link_weight, path_list, 'Figure ENA "Environmental" readrun record count: library_source, library_strategy & tax', plotfile)
+
 
     return df
 
@@ -446,8 +728,6 @@ def analyse_readrun_detail(env_readrun_detail):
     print_value_count_table(df.collection_year_bin)
 
     df = do_geographical(df)
-
-
 
     df = taxonomic_analysis(df)
     ic(df)
