@@ -129,7 +129,7 @@ class Geography:
             return None
         elif country in self.ocean_sea_set:
             return country
-        return 'undetermined'
+        return 'not ocean'
 
 
     def is_insdc_country_in_eu(self, country):
