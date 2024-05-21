@@ -17,6 +17,7 @@ import pandas as pd
 import requests
 import plotly.express as px
 import plotly.graph_objects as go
+from collections import Counter
 
 from geography import Geography
 from taxonomy import *
@@ -199,6 +200,20 @@ def select_first_part(value):
     #     return value[:value.find(":")+1]
     # else:
     #     return value
+
+def get_presence_or_absence_col(df, col_name):
+    # col with and without values
+    # FFS isnull etc. did not work
+    col_list = df[col_name].to_list()
+    absent_count = 0
+    present_count = 0
+    for val in col_list:
+        if val == None:
+            absent_count += 1
+        else:
+            present_count += 1
+    return present_count, absent_count
+
 
 def print_value_count_table(df_var):
     counts = df_var.value_counts()
@@ -436,7 +451,19 @@ def experimental_analysis_inc_filtering(df):
 
 
 def target_gene_analysis(df):
+    """
+    for the target genes as a checklist field
+    :param df:
+    :return:
+    """
+    ic("for the target genes as a checklist field")
     ic(df['target_gene'].value_counts().head())
+    print_value_count_table(df['target_gene'])
+    total = len(df)
+    tmp_df = df[df['target_gene'] != ""]
+    print_value_count_table(tmp_df['target_gene'])
+    total_w_tgs = len(tmp_df)
+    ic(f"total target_gene count = {total_w_tgs} / {total} = {round((100 * total_w_tgs/ total),2)}%")
 
 
 
@@ -822,6 +849,31 @@ def analyse_readrun_detail(env_readrun_detail):
     ic(df)
     ic(df.dtypes)
 
+def delist_col(my_list):
+    """
+    deconvolute a list of list
+    :param my_list:
+    :return: list
+    """
+    gene_list = []
+    for gene_row_list in my_list:
+        for gene in gene_row_list:
+             gene_list.append(gene)
+    return gene_list
+
+def get_percentage_list(gene_list):
+    """
+    Takes
+    :param gene_list:
+    :return:
+    """
+    # ic(Counter(gene_list))
+    c = Counter(gene_list)
+    out = sorted([(i, c[i], str(round(c[i] / len(gene_list) * 100.0, 2)) + "%") for i in c])
+    ic(out)
+    return out
+
+
 def analyse_all_study_details(df):
     """
     Generates a subset of the df, indexed from sample_accession
@@ -849,25 +901,93 @@ def analyse_all_study_details(df):
 
     def get_barcoding_genes(value):
 
-        genes = list(set(re.findall(r'16[Ss] ?rRNA|16[Ss] ?rDNA|18[Ss]|ITS|26[Ss]|5.8[Ss]|RBCL|matK|MATK|COX1|CO1|COI|mtCO', value)))
+        sgenes_pattern = re.compile(r'^([1-9]{2}|5\.8)([sS])[ ]?(r)?([RD]NA)?', flags=0)
+        sgenes_pattern = re.compile(r'^([1-9]{2}|5\.8)([sS])[ ]?r?(RNA|DNA|ribo)?', flags=0)
+        rbcl_pattern = re.compile(r'^(RBCL)', re.IGNORECASE)
+        its_pattern = re.compile(r'^(ITS)([1-2])?')
+        matk_pattern = re.compile(r'^(matk)', re.IGNORECASE)
+        COX1_pattern = re.compile('^COX1|CO1|COI|mtCO|Cytochrome c oxidase|cytochrome oxidase', re.IGNORECASE)
+        def clean_name(my_list):
+            """
+             a clean harmonised list of barcoding gene names
+            :param  list of gene names:
+            :return: harmonised list.
+            """
+            clean_list = []
+            #ic("-----------------------------------------------------------")
+            for my_gene in my_list:
+                #ic(my_gene)
+
+                match = re.search(rbcl_pattern, my_gene)
+                if match:
+                    # ic(f"----------clean=rbcL")
+                    clean_list.append("rbcL")
+                    continue
+                match = re.search(its_pattern, my_gene)
+                if match:
+                    if match.group(2):
+                        # ic(f"----------clean=ITS{match.group(2)}")
+                        clean_list.append("ITS" + match.group(2))
+                    else:
+                        # ic(f"----------clean=ITS")
+                        clean_list.append("ITS")
+                    continue
+                match = re.search(matk_pattern, my_gene)
+                if match:
+                        # ic("----------clean=matK")
+                        clean_list.append("matK")
+                        continue
+                match = re.search(COX1_pattern, my_gene)
+                if match:
+                        # ic("----------clean=COX1")
+                        clean_list.append("COX1")
+                        continue
+
+                match = re.search(sgenes_pattern, my_gene)
+                if match:
+                    # ic(match.group(1))
+                    # ic(match.group(2))
+                    clean_gene_name = match.group(1) + "S"
+                    if match.group(3):
+                        # ic(f"---------------{match.group(3)}")
+                        clean_gene_name += " r" + match.group(3)
+                    clean_list.append(clean_gene_name)
+                    # ic(clean_gene_name)
+                    continue
+
+                ic(f"remaining gene: -->{my_gene}<--")
+                sys.exit()
+
+
+            return clean_list
+        barcode_genes_pattern = re.compile('16[sS][ ]?r?[RD]NA|16[sS][ ]?ribo|18S|ITS[12]?|26[Ss]|5\.8[Ss]|rbcL|rbcl|RBCL|matK|MATK|cox1|co1|COX1|CO1|COI|mtCO|cytochrome c oxidase|cytochrome oxidase')
+        genes = list(set(re.findall(barcode_genes_pattern, value)))
         if len(genes) > 0:
             # ic(genes)
-            return genes
+            return clean_name(genes)
         else:
             genes = list(set(re.findall(r'16[Ss]', value)))
             if len(genes) > 0:
-                return genes
+                return clean_name(genes)
             return None
     barcoding_df['barcoding_genes_from_study'] = barcoding_df.combined_tit_des.apply(get_barcoding_genes)
     ic(barcoding_df['barcoding_genes_from_study'].value_counts())
     print_value_count_table(barcoding_df['barcoding_genes_from_study'])
+
+    gene_list = delist_col(barcoding_df[barcoding_df['barcoding_genes_from_study'].notnull()]['barcoding_genes_from_study'].to_list())
+    get_percentage_list(gene_list)
+    gene_set = set(gene_list)
+    total = len(barcoding_df)
+    present_count, absent_count = get_presence_or_absence_col(barcoding_df, 'barcoding_genes_from_study')
+    ic(f"barcoding_genes_from_study present_count {present_count}  {present_count/total*100:.2f}%")
+    ic(f"barcoding_genes_from_study absent_count {absent_count}   {absent_count/total*100:.2f}%")
 
     return barcoding_df
 
 def main():
     df_all_study_details = analyse_all_study_details(get_all_study_details())
     ic(len(df_all_study_details))
-    sys.exit()
+
     sample_ids = get_env_sample_ids()
     ic(len(sample_ids))
     readrun_ids = get_env_readrun_ids()
