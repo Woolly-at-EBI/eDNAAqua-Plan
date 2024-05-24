@@ -52,7 +52,7 @@ def get_record_summary(record_set, search_term):
             return year_list[0]
 
         # print("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-        logging.info(f"record_set id={record_set['id']} {record_set['attributes']['metadata']['name']} type={record_set['type']}")
+        logging.debug(f"record_set id={record_set['id']} {record_set['attributes']['metadata']['name']} type={record_set['type']}")
         row_hash = {}
         row_hash['search_term'] = search_term
         row_hash['doi'] = record_set['attributes']['doi']
@@ -101,7 +101,7 @@ def get_record_summary(record_set, search_term):
 
 
 def process_query_out_json(my_records, fairshare_json, search_query):
-    logging.debug("inside process_query_out_json")
+    logging.debug(f"inside process_query_out_json starting with {len(my_records)}")
     logging.debug(fairshare_json)
     for record_set in fairshare_json:
         row_hash = get_record_summary(record_set, search_query)
@@ -135,10 +135,9 @@ def merge_on_column(df, col2merge, col2merge_on):
         :param col2merge_on:
         :return: df
     """
-    #logging.info("merge on standard")
-    #logging.info("What is coming in")
+    logging.info(f"merge on standard {col2merge_on}")
+    logging.info(f"What is starting len={len(df)}")
     #logging.info(df.head(2))
-    #logging.info(len(df))
     merge_name = col2merge_on
     cmnts = {}
     for i, row in df.iterrows():
@@ -156,11 +155,64 @@ def merge_on_column(df, col2merge, col2merge_on):
                 cmnts[row[merge_name]] = []
 
     df.drop_duplicates(merge_name, inplace=True)
-    #logging.info("What is leaving")
-    #logging.info(len(df))
+    logging.info(f"What is leaving len={len(df)}")
     df['search_term'] = ['; '.join(v) for v in cmnts.values()]
 
     return df
+
+
+def get_all_data(jwt):
+    logging.info(f"get_all_data")
+
+    logging.info("Doing searches")
+    base_url = "https://api.fairsharing.org/search//fairsharing_records"
+    # base_url = "https://api.fairsharing.org/search/record_types"
+
+    headers = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Authorization': "Bearer {0}".format(jwt),
+    }
+
+    init = 1
+    size = 1
+    max = 4335   #4295
+
+    my_records = []
+    for i in range(init, max, size):
+
+        start = i
+
+        url = 'https://api.fairsharing.org/fairsharing_records/?page[number]=' + str(start) + '&page[size]=' + str(size)
+        logging.info(url)
+        outfile = "../data/biodiversity/all/" + str(start) + "_" + str(size) + ".json"
+
+        # continue
+
+        if os.path.isfile(outfile) and os.path.getsize(outfile) > 500:
+            logging.info(f"  This already exists {outfile} so will omit the search")
+            my_json_file = outfile
+            with open(my_json_file, 'r') as json_file:
+                fairshare_json = json.load(json_file)
+        else:
+            response = requests.request("get", url, headers = headers)
+            test_response(response)
+            fairshare_json = json.loads(response.text)
+
+            logging.info(len(fairshare_json))
+            logging.info(f"writing to {outfile}")
+            with open(outfile, "w") as outfile:
+                json.dump(fairshare_json, outfile)
+
+        my_records = process_query_out_json(my_records, fairshare_json['data'], 'all')
+        logging.info(f"len of my_records={len(my_records)}")
+
+    df = pd.DataFrame(my_records)
+    print(df.head())
+    logging.info(df['Type'].value_counts())
+    outfile = "all_fairshare_records.xlsx"
+    logging.info(outfile)
+    df.to_excel(outfile, index=False)
 
 def mine_existing_data():
     search_query_dict = get_search_query_dict()
@@ -173,7 +225,6 @@ def mine_existing_data():
         fairshare_json = json.load(open(search_query_dict[search_entry]['outfile']))
         my_records = process_query_out_json(my_records, fairshare_json['data'], search_query_dict[search_entry]['query'])
         logging.info(f"len of my_records={len(my_records)}")
-        continue
 
     df = pd.DataFrame(my_records)
 
@@ -185,7 +236,8 @@ def mine_existing_data():
     for type in type_sets:
         print(f"-----------{type}-------------")
         df_standards = df.query('Type == @type')
-        print(df_standards.groupby(['search_term', 'Standard', 'Type']).size().to_frame('record_count').reset_index())
+        if len(df_standards) > 0:
+            print(df_standards.groupby(['search_term', 'Standard', 'Type']).size().to_frame('record_count').reset_index())
         # print(df_standards['Standard'])
 
 
@@ -205,20 +257,45 @@ def get_search_query_dict():
                  "occurrence": {"query": "occurrence", "outfile": "../data/biodiversity/occurrence.json"}
             }
     search_query_dict = {
-             "subject=biodiversity": {"query": "subject=biodiversity", "outfile": "../data/biodiversity/subject_biodiversity.json"},
-            "biodiversity": {"query": "biodiversity", "outfile": "../data/biodiversity/biodiversity.json"},
-        "tax_class": {"query": "Taxonomic classification",
+             "biodiversity": { "query": "biodiversity ", "outfile": "../data/biodiversity/biodiversity.json"},
+        "subjects=biodiversity": {"query": "subjects=biodiversity", "outfile": "../data/biodiversity/subjects_biodiversity.json"},
+            "biodiversity": {"query": "q=biodiversity", "outfile": "../data/biodiversity/biodiversity.json"},
+        "subject=biodiversity": {"query": "subject=biodiversity",
+                                  "outfile": "../data/biodiversity/subject_biodiversity.json"},
+        "biodiversity": {"query": "q=biodiversity", "outfile": "../data/biodiversity/biodiversity.json"},
+        "tax_class": {"query": "q=Taxonomic classification",
                       "outfile": "../data/biodiversity/taxonomic_classification.json"},
-        "ecosystem": {"query": "ecosystem", "outfile": "../data/biodiversity/ecosystem.json"},
-        "biological_sample": {"query": "biological sample", "outfile": "../data/biodiversity/biological_sample.json"},
-        "abundance": {"query": "abundance", "outfile": "../data/biodiversity/abundance.json"},
-        "occurrence": {"query": "occurrence", "outfile": "../data/biodiversity/occurrence.json"}
+        "ecosystem": {"query": "q=ecosystem", "outfile": "../data/biodiversity/ecosystem.json"},
+        "biological_sample": {"query": "q=biological sample", "outfile": "../data/biodiversity/biological_sample.json"},
+        "abundance": {"query": "q=abundance", "outfile": "../data/biodiversity/abundance.json"},
+        "occurrence": {"query": "q=occurrence", "outfile": "../data/biodiversity/occurrence.json"}
     }
+
+    search_query_dict = {
+
+        # "subjects=database": {"query": "q=biodiversity and fairsharing_registry=database",
+        #                           "outfile": "../data/biodiversity/database.json"},
+        # "q=database": {"query": "q=biodiversity&fairsharing_registry=database",
+        #                       "outfile": "../data/biodiversity/bio_database.json"},
+        # "recordType=identifier_schema": {"query": "recordType=identifier_schema",
+        #                "outfile": "../data/biodiversity/identifier_schema.json"}
+        # "recordType=identifier_schema": {"query": "q=identifier_schema",
+        #                                  "outfile": "../data/biodiversity/identifier_schema.json"},
+        "subjects=biodiversity": {"query": "subjects=biodiversity",
+                                  "outfile": "../data/biodiversity/subjects_biodiversity.json"},
+        "biodiversity": {"query": "q=biodiversity", "outfile": "../data/biodiversity/biodiversity.json"}
+    }
+    # search_query_dict = {
+    #     "subject=biodiversity": {"query": "record_type=Policy", "outfile": "../data/biodiversity/policy.json"}
+    #
+    #
+    # }
 
     return search_query_dict
 def do_searches(jwt):
     logging.info("Doing searches")
-    base_url = "https://api.fairsharing.org/search/fairsharing_records"
+    base_url = "https://api.fairsharing.org/search//fairsharing_records"
+    # base_url = "https://api.fairsharing.org/search/record_types"
 
     headers = {
       'Accept': 'application/json',
@@ -231,27 +308,36 @@ def do_searches(jwt):
 
     for search_entry in search_query_dict:
         logging.info("----------------------------------------------------------------------")
+        logging.info(search_query_dict[search_entry])
         search_term = search_query_dict[search_entry]['query']
-        logging.info(f"search_term={search_term}")
-        url = base_url + '?q=' + search_term
-        if search_term.startswith('subject='):
+        logging.info(f"search_term--->{search_term}<---")
+
+        FFS=False
+        if  FFS: # os.path.isfile(search_query_dict[search_entry]['outfile']):
+            logging.info(f"  This already exists {search_query_dict[search_entry]['outfile']} so will omit the search")
+            my_json_file = search_query_dict[search_entry]['outfile']
+            with open(my_json_file, 'r') as json_file:
+                json_response = json.load(json_file)
+        else:
             url = base_url + '?' + search_term
-        logging.info(url)
+            logging.info(url)
 
+            response = requests.request("POST", url, headers = headers)
+            json_response = json.loads(response.text)
+            test_response(response)
+            logging.debug(response.text)
+            logging.info(f"writing to {search_query_dict[search_entry]['outfile']}")
+            with open(search_query_dict[search_entry]['outfile'], "w") as outfile:
+                json.dump(response.json(), outfile)
 
-        response = requests.request("POST", url, headers = headers)
-        test_response(response)
-        logging.debug(response.text)
-        logging.info(f"writing to {search_query_dict[search_entry]['outfile']}")
-        with open(search_query_dict[search_entry]['outfile'], "w") as outfile:
-            json.dump(response.json(), outfile)
-
-        logging.debug(json.dumps(response.json()))
-        logging.info(f"length of response,json={len(response.json())}")
-        my_records = process_query_out_json([], response.json()['data'], search_query_dict[search_entry]['query'])
+        logging.debug(json.dumps(json_response))
+        # logging.info(f"length of response,json={len(json_response)}")
+        my_records = process_query_out_json([], json_response['data'], search_query_dict[search_entry]['query'])
+        logging.info(f"len of my_records={len(my_records)}")
         df = pd.DataFrame(my_records)
         logging.info(df.head(1))
-        logging.info(df['Type'].value_counts())
+        if len(df) >0:
+            logging.info(df['Type'].value_counts())
 def main():
     ###################################################
     url = "https://api.fairsharing.org/users/sign_in"
@@ -277,6 +363,8 @@ def main():
         simple_test(jwt, url)
     elif args.mine:
         mine_existing_data()
+    elif args.all:
+        get_all_data(jwt)
     else:
         do_searches(jwt)
 
@@ -297,6 +385,9 @@ if __name__ == '__main__':
 
     parser.add_argument("-m", "--mine",
                         help = "mine the existing queries",
+                        required = False, action = "store_true")
+    parser.add_argument("-a", "--all",
+                        help = "grab all existing records",
                         required = False, action = "store_true")
     parser.parse_args()
     args = parser.parse_args()
