@@ -17,6 +17,9 @@ import pandas as pd
 import requests
 import plotly.express as px
 import plotly.graph_objects as go
+import logging
+import coloredlogs
+
 from collections import Counter
 
 from geography import Geography
@@ -25,6 +28,24 @@ from taxonomy import *
 
 pd.set_option('display.max_columns', None)
 pd.set_option('max_colwidth', None)
+
+
+my_coloredFormatter = coloredlogs.ColoredFormatter(
+    fmt='[%(name)s] %(asctime)s %(funcName)s %(lineno)-3d  %(message)s',
+    level_styles=dict(
+        debug=dict(color='white'),
+        info=dict(color='green'),
+        warning=dict(color='yellow', bright=True),
+        error=dict(color='red', bold=True, bright=True),
+        critical=dict(color='black', bold=True, background='red'),
+    ),
+    field_styles=dict(
+        name=dict(color='white'),
+        asctime=dict(color='white'),
+        funcName=dict(color='white'),
+        lineno=dict(color='white'),
+    )
+)
 
 
 def get_query_params():
@@ -112,15 +133,32 @@ def get_env_readrun_ids():
     record_list = extract_record_ids_from_json('run_accession', output)
     ic(len(record_list))
     pickle_data_structure(record_list, env_read_run_id_file)
+    sys.exit()
     return record_list
 
 
 def get_env_readrun_detail():
+    """
+curl -X 'POST' \
+  'https://www.ebi.ac.uk/ena/portal/api/search' \
+  -H 'accept: */*' \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d 'excludeAccessionType=&download=false&query=(environmental_sample%253Dtrue%2520OR%2520(CHECKLIST%253D%2522ERC000012%2522%2520OR%2520CHECKLIST%253D%2522ERC000020%2522%2520OR%2520CHECKLIST%253D%2522ERC000021%2522%2520OR%2520CHECKLIST%253D%2522ERC000022%2522%2520OR%2520CHECKLIST%253D%2522ERC000023%2522%2520OR%2520CHECKLIST%253D%2522ERC000024%2522%2520OR%2520CHECKLIST%253D%2522ERC000025%2522%2520OR%2520CHECKLIST%253D%2522ERC000027%2522%2520OR%2520CHECKLIST%253D%2522ERC000055%2522%2520OR%2520CHECKLIST%253D%2522ERC000030%2522%2520OR%2520CHECKLIST%253D%2522ERC000031%2522%2520OR%2520CHECKLIST%253D%2522ERC000036%2522)%2520OR(ncbi_reporting_standard%253D%2522*ENV*%2522%2520ORncbi_reporting_standard%253D%2522*WATER*%2522%2520ORncbi_reporting_standard%253D%2522*SOIL*%2522%2520ORncbi_reporting_standard%253D%2522*AIR*%2522%2520ORncbi_reporting_standard%253D%2522*SEDIMENT*%2522%2520ORncbi_reporting_standard%253D%2522*BUILT%2522%2520))AND%2520not_tax_tree(9606)&excludeAccessions=&includeMetagenomes=false&dataPortal=&includeAccessionType=&includeAccessions=&format=json&fields=sample_accession%252Crun_accession%252Clibrary_strategy%252Clibrary_source%252Cinstrument_platform%252Clat%252Clon%252Ccountry%252Cbroad_scale_environmental_context%252Ctax_id%252Cchecklist%252Ccollection_date%252Cncbi_reporting_standard%252Ctarget_gene%252Ctag%252Cstudy_accession%252Cstudy_title&dccDataOnly=false&&rule=&result=read_run&limit=0' > all.json
+    :return: records list
+    """
+    logger.info("get_env_readrun_detail")
     env_read_run_detail_file = "read_run_ena_detail.pickle"
     env_read_run_detail_file = "read_run_allinsdc_detail.pickle"
+    env_read_run_detail_jsonfile = "read_run_allinsdc_detail.json"
     if os.path.exists(env_read_run_detail_file):
-        ic(f"{env_read_run_detail_file} exists, so can unpickle it")
+        logger.info(f"{env_read_run_detail_file} exists, so can unpickle it")
         return unpickle_data_structure(env_read_run_detail_file)
+    elif os.path.exists(env_read_run_detail_jsonfile):
+        logger.info(f"{env_read_run_detail_jsonfile} exists, so using that")
+        with open(env_read_run_detail_jsonfile, "r") as f:
+            record_list = json.load(f)
+            pickle_data_structure(record_list, env_read_run_detail_file)
+            return record_list
 
     fields = ("sample_accession%2Crun_accession%2Clibrary_strategy%2Clibrary_source%2Cinstrument_platform%2Clat%2Clon%2Ccountry"
               "%2Cbroad_scale_environmental_context%2Ctax_id%2Cchecklist%2Ccollection_date%2Cncbi_reporting_standard%2Ctarget_gene%2Ctag%2Cstudy_accession%2Cstudy_title")
@@ -128,16 +166,16 @@ def get_env_readrun_detail():
     query_params_json = get_query_params()
     srv = query_params_json['srv']
     params = "result=read_run&query=" + query_params_json['query'] + "&fields=" + fields + "&format=json"
-    limit = '&limit=0'
+    limit = '&limit=20000'
     url = srv + '?' + params + limit
-    ic(url)
+    logger.info(url)
 
     output = json.loads(run_webservice(url))
     # sys.exit()
     # ic(output)
     # record_list = extract_record_ids_from_json('run_accession', output)
     # ic(len(record_list))
-    ic(len(output))
+    logger.info(len(output))
     pickle_data_structure(output, env_read_run_detail_file)
     return output
 
@@ -163,7 +201,8 @@ def get_all_study_details():
     return pd.DataFrame.from_records(record_list)
 
 def get_env_sample_ids():
-    env_sample_id_file = "env_sample_id_file.pickle"
+    env_sample_id_file = "env_sample_id_file.pickle9"
+
     if os.path.exists(env_sample_id_file):
         ic("env_sample_id_file exists, so can unpickle it")
         return unpickle_data_structure(env_sample_id_file)
@@ -223,7 +262,12 @@ def print_value_count_table(df_var):
     print(tmp_df)
 
 
-def do_geographical(df):
+def process_geographical_data(old_df):
+    df = old_df.copy()
+    if 'country_clean'  in df.columns:
+        logger.info("geographical data already processed")
+        return df
+
     df['has_geographical_coordinates'] = True
     df['has_geographical_coordinates'] = df['has_geographical_coordinates'].mask(df['lat'].isna(), False)
     print_value_count_table(df.has_geographical_coordinates)
@@ -232,18 +276,29 @@ def do_geographical(df):
     df['has_broad_scale_environmental_context'] = df['has_broad_scale_environmental_context'].mask(
         df['broad_scale_environmental_context'] == '', False)
 
-    print_value_count_table(df.has_broad_scale_environmental_context)
-    print_value_count_table(df.broad_scale_environmental_context)
+    #print_value_count_table(df.has_broad_scale_environmental_context)
+    #print_value_count_table(df.broad_scale_environmental_context)
 
     df['country_clean'] = df['country'].apply(select_first_part)
-    print_value_count_table(df.country_clean)
-    ic(df['country'].value_counts())
     ic("About to call geographical")
     geography_obj = Geography()
     df['continent'] = df['country_clean'].apply(geography_obj.get_continent)
+    df['ocean'] = df['country_clean'].apply(geography_obj.get_ocean)
+
+    return df
+
+
+
+def do_geographical(df):
+    """
+
+    :param df:
+    :return:
+    """
+    df = process_geographical_data(df)
+    print_value_count_table(df.country_clean)
     print_value_count_table(df.continent)
 
-    df['ocean'] = df['country_clean'].apply(geography_obj.get_ocean)
     tmp_df = df[df['ocean'] != 'not ocean']
     print_value_count_table(tmp_df.ocean)
 
@@ -796,7 +851,8 @@ def add_insdc_member_receiver(df):
     return df
 
 
-def analyse_readrun_detail(env_readrun_detail):
+def analyse_readrun_detail(df):
+    logger.info("in analyse_readrun_detail")
     # count = 0
     # for record in env_readrun_detail:
     #
@@ -805,14 +861,13 @@ def analyse_readrun_detail(env_readrun_detail):
     #     if count > 3:
     #         break
 
-    df = pd.DataFrame.from_records(env_readrun_detail)
-    ic(df.columns)
+
     # ['sample_accession', 'run_accession', 'library_strategy',
     #                        'library_source', 'instrument_platform', 'lat', 'lon', 'country',
     #                        'broad_scale_environmental_context', 'tax_id', 'checklist',
     #                        'collection_date', 'ncbi_reporting_standard', 'target_gene', 'tag']
     # dtype = 'object')
-    ic()
+
     # df = df.sample(n=100000)
     # df['sample_accession'] = df['sample_accession'].to_string()
     ic(df['sample_accession'])
@@ -984,23 +1039,118 @@ def analyse_all_study_details(df):
 
     return barcoding_df
 
-def main():
-    df_all_study_details = analyse_all_study_details(get_all_study_details())
-    ic(len(df_all_study_details))
+def filter_for_aquatic(env_readrun_detail):
+    logging.info("filter_for_aquatic")
+    df = pd.DataFrame.from_records(env_readrun_detail)
 
-    sample_ids = get_env_sample_ids()
-    ic(len(sample_ids))
-    readrun_ids = get_env_readrun_ids()
-    ic(len(readrun_ids))
+    # logger.info(df["broad_scale_environmental_context"].value_counts())
+    # outfile = "broad_scale_environmental_context.txt"
+    # with open(outfile, "w") as f:
+    #     f.write(df["broad_scale_environmental_context"].value_counts().to_string())
+    # logger.info(f"wrote {outfile}")
+
+    df = df.head(10000)
+    logger.info(df.columns)
+
+    aquatic_pattern = re.compile('marine|freshwater|coastal|brackish')
+    aquatic_biome_pattern = re.compile('marine|ocean|freshwater|coastal|brackish|estuar|fresh water|groundwater|glacial_spring|^sea|seawater|lake|river|wastewater|waste water|stormwater', re.IGNORECASE)
+
+    def local_process_env_tags(value):
+        my_tag_list = value.split(';')
+
+        my_env_tags = [s for s in my_tag_list if "env_" in s]
+
+        return my_env_tags
+
+    def test_if_aquatic(value):
+        if re.search(aquatic_pattern, value):
+            return True
+
+        return False
+
+    def test_if_ocean(value):
+        if len(value) == 0 or value == 'not ocean':
+            return False
+
+        return True
+
+    def test_if_aquatic_biome_pattern(value):
+        if re.search(aquatic_biome_pattern, value):
+            return True
+
+        return False
+
+    logging.info("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+    #print_value_count_table(df.tag)
+    # ic(df.tag.head(50))
+    #df['env_tax'] = df['tag'].str.extract("(env_tax:[^;]*)")[0]
+    df['env_tag'] = df['tag'].apply(local_process_env_tags)
+    df['env_tags'] = df['env_tag'].apply(lambda x: ';'.join(x))
+    #print_value_count_table(df.env_tags)
+    df['aquatic'] = df['env_tags'].apply(test_if_aquatic)
+    logging.info(f"aquatic= {df['aquatic'].value_counts()}")
+    df_aquatic = df[df['aquatic'] == True]
+    df_remainder = df[df['aquatic'] == False]
+    logging.info(f"total_records={len(df)}, using env_tags aquatic_filtered={len(df_aquatic)} and remainder={len(df_remainder)}")
+
+    logging.info("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+    df_remainder = process_geographical_data(df_remainder)
+    logger.info(df_remainder.columns)
+    logging.info(df_remainder['ocean'].value_counts())
+    df_remainder['aquatic'] = df_remainder['ocean'].apply(test_if_ocean)
+    logging.info(f"ocean: aquatic= {df_remainder['aquatic'].value_counts()}")
+    df_remainder_aquatic = df_remainder[df_remainder['aquatic'] == True]
+    df_remainder_nonaquatic = df_remainder[df_remainder['aquatic'] == False]
+    logging.info(f"after using test_if_ocean aquatic_filtered={len(df_remainder_aquatic)}  not {len(df_remainder_nonaquatic)}")
+    df_aquatic = pd.concat([df_aquatic, df_remainder_aquatic])
+    logging.info(f"len(df_aquatic) = {len(df_aquatic)}")
+
+    logging.info("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+    df_remainder = df_remainder_nonaquatic.copy()
+    df_remainder['aquatic'] = df_remainder['broad_scale_environmental_context'].apply(test_if_aquatic_biome_pattern)
+    logging.info(f"broad_scale_environmental_context aquatic= {df_remainder['aquatic'].value_counts()}")
+    df_remainder_aquatic = df_remainder[df_remainder['aquatic'] == True]
+    df_remainder_nonaquatic = df_remainder[df_remainder['aquatic'] == False]
+    logging.info(f"after using test_if_aquatic_biome_pattern={len(df_remainder_aquatic)}  not {len(df_remainder_nonaquatic)}")
+    logging.info(f"after using broad_scale_environmental_context aquatic_filtered={len(df_remainder_aquatic)}")
+    df_aquatic = pd.concat([df_aquatic, df_remainder_aquatic])
+    logging.info(f"len(df_aquatic) = {len(df_aquatic)}")
+
+    sys.exit()
+
+    return df_aquatic
+
+def main():
+    # df_all_study_details = analyse_all_study_details(get_all_study_details())
+    # ic(len(df_all_study_details))
+    #
+    # sample_ids = get_env_sample_ids()
+    # ic(len(sample_ids))
+    # readrun_ids = get_env_readrun_ids()
+    # ic(len(readrun_ids))
 
     env_readrun_detail = get_env_readrun_detail()
-    ic(len(env_readrun_detail))
-    analyse_readrun_detail(env_readrun_detail)
+    df_env_readrun_detail = filter_for_aquatic(env_readrun_detail)
+    readrun_ids_set = set(df_env_readrun_detail['run_accession'])
+    logging.info(f"readrun_ids_set={len(readrun_ids_set)}")
+    sample_ids_set = set(df_env_readrun_detail['sample_accession'])
+    logging.info(f"sample_ids_set={len(sample_ids_set)}")
+
+    analyse_readrun_detail(df_env_readrun_detail)
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level = logging.INFO)
+    logger = logging.getLogger(name = 'mylogger')
+    coloredlogs.install(logger = logger)
+    logger.propagate = False
+    ch = logging.StreamHandler(stream = sys.stdout)
+    ch.setFormatter(fmt = my_coloredFormatter)
+    logger.addHandler(hdlr = ch)
+    logger.setLevel(level = logging.INFO)
+
     # Read arguments from command line
-    prog_des = "Script to "
+    prog_des = "Script to query ENA(INSDC) resources, but mainly to analyse the eDNA metadata from the different work"
 
     parser = argparse.ArgumentParser(description = prog_des)
 
@@ -1014,8 +1164,9 @@ if __name__ == '__main__':
 
     if args.debug_status:
         ic.enable()
+        logger.setLevel(level = logging.DEBUG)
     else:
         ic.disable()
-    ic(prog_des)
+    logger.info(prog_des)
 
     main()
