@@ -48,20 +48,34 @@ my_coloredFormatter = coloredlogs.ColoredFormatter(
 )
 
 
-def get_query_params():
+def get_query_params(checklist_type):
     my_params = {
         "srv": "https://www.ebi.ac.uk/ena/portal/api/search",
-        "query": '(environmental_sample%3Dtrue%20OR%20(CHECKLIST%3D%22ERC000012%22%20OR%20CHECKLIST%3D%22ERC000020%22'
-                 '%20OR%20CHECKLIST%3D%22ERC000021%22%20OR%20CHECKLIST%3D%22ERC000022%22%20OR%20CHECKLIST%3D'
-                 '%22ERC000023%22%20OR%20CHECKLIST%3D%22ERC000024%22%20OR%20CHECKLIST%3D%22ERC000025%22%20OR'
-                 '%20CHECKLIST%3D%22ERC000027%22%20OR%20CHECKLIST%3D%22ERC000055%22%20OR%20CHECKLIST%3D%22ERC000030'
-                 '%22%20OR%20CHECKLIST%3D%22ERC000031%22%20OR%20CHECKLIST%3D%22ERC000036%22)%20OR'
-                 '(ncbi_reporting_standard%3D%22*ENV*%22%20ORncbi_reporting_standard%3D%22*WATER*%22'
-                 '%20ORncbi_reporting_standard%3D%22*SOIL*%22%20ORncbi_reporting_standard%3D%22*AIR*%22'
-                 '%20ORncbi_reporting_standard%3D%22*SEDIMENT*%22%20ORncbi_reporting_standard%3D%22*BUILT%22%20))'
-                 'AND%20not_tax_tree('
-                 '9606)'
+        "query": ""
     }
+
+
+    # see  https://www.ebi.ac.uk/ena/browser/checklists
+
+    if checklist_type == "environmental_checklists":
+        my_params['query'] = """(environmental_sample%3Dtrue%20OR%20(CHECKLIST%3D%22ERC000012%22%20OR%20CHECKLIST%3D%22ERC000020%22\
+                 %20OR%20CHECKLIST%3D%22ERC000021%22%20OR%20CHECKLIST%3D%22ERC000022%22%20OR%20CHECKLIST%3D\
+                 %22ERC000023%22%20OR%20CHECKLIST%3D%22ERC000024%22%20OR%20CHECKLIST%3D%22ERC000025%22%20OR\
+                 %20CHECKLIST%3D%22ERC000027%22%20OR%20CHECKLIST%3D%22ERC000055%22%20OR%20CHECKLIST%3D%22ERC000030\
+                 %22%20OR%20CHECKLIST%3D%22ERC000031%22%20OR%20CHECKLIST%3D%22ERC000036%22)%20OR\
+                 (ncbi_reporting_standard%3D%22*ENV*%22%20ORncbi_reporting_standard%3D%22*WATER*%22\
+                 %20ORncbi_reporting_standard%3D%22*SOIL*%22%20ORncbi_reporting_standard%3D%22*AIR*%22\
+                 %20ORncbi_reporting_standard%3D%22*SEDIMENT*%22%20ORncbi_reporting_standard%3D%22*BUILT%22%20))\
+                 AND%20not_tax_tree(9606)"""
+    elif checklist_type == "default_checklists":
+
+        # 'result=read_experiment&query=not_tax_eq(9606)%20AND%20(ncbi_reporting_standard%3D%22generic%22%20OR%20(%20checklist%3D%22erc000011%22%20OR%20ncbi_reporting_standard%3D%22generic%22%20))&fields=experiment_accession%2Cexperiment_title%2Ctax_id%2Cncbi_reporting_standard&format=tsv' "https://www.ebi.ac.uk/ena/portal/api/search"
+        my_params['query'] = """not_tax_eq(9606)%20AND%20(ncbi_reporting_standard%3D%22generic%22%20OR%20(%20checklist%3D%22\
+                 erc000011%22%20OR%20ncbi_reporting_standard%3D%22generic%22%20))"""
+    else:
+        logger.error(f"unknown {checklist_type}")
+        sys.exit(-1)
+
 
     return my_params
 
@@ -122,7 +136,7 @@ def get_env_readrun_ids():
         ic("env_read_run_id_file exists, so can unpickle it")
         return unpickle_data_structure(env_read_run_id_file)
 
-    query_params_json = get_query_params()
+    query_params_json = get_query_params("environmental_checklists")
     srv = query_params_json['srv']
     params = "result=read_run&query=" + query_params_json['query'] + "&format=json"
     limit = '&limit=5'
@@ -133,7 +147,6 @@ def get_env_readrun_ids():
     record_list = extract_record_ids_from_json('run_accession', output)
     ic(len(record_list))
     pickle_data_structure(record_list, env_read_run_id_file)
-    sys.exit()
     return record_list
 
 
@@ -145,39 +158,80 @@ curl -X 'POST' \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   -d 'excludeAccessionType=&download=false&query=(environmental_sample%253Dtrue%2520OR%2520(CHECKLIST%253D%2522ERC000012%2522%2520OR%2520CHECKLIST%253D%2522ERC000020%2522%2520OR%2520CHECKLIST%253D%2522ERC000021%2522%2520OR%2520CHECKLIST%253D%2522ERC000022%2522%2520OR%2520CHECKLIST%253D%2522ERC000023%2522%2520OR%2520CHECKLIST%253D%2522ERC000024%2522%2520OR%2520CHECKLIST%253D%2522ERC000025%2522%2520OR%2520CHECKLIST%253D%2522ERC000027%2522%2520OR%2520CHECKLIST%253D%2522ERC000055%2522%2520OR%2520CHECKLIST%253D%2522ERC000030%2522%2520OR%2520CHECKLIST%253D%2522ERC000031%2522%2520OR%2520CHECKLIST%253D%2522ERC000036%2522)%2520OR(ncbi_reporting_standard%253D%2522*ENV*%2522%2520ORncbi_reporting_standard%253D%2522*WATER*%2522%2520ORncbi_reporting_standard%253D%2522*SOIL*%2522%2520ORncbi_reporting_standard%253D%2522*AIR*%2522%2520ORncbi_reporting_standard%253D%2522*SEDIMENT*%2522%2520ORncbi_reporting_standard%253D%2522*BUILT%2522%2520))AND%2520not_tax_tree(9606)&excludeAccessions=&includeMetagenomes=false&dataPortal=&includeAccessionType=&includeAccessions=&format=json&fields=sample_accession%252Crun_accession%252Clibrary_strategy%252Clibrary_source%252Cinstrument_platform%252Clat%252Clon%252Ccountry%252Cbroad_scale_environmental_context%252Ctax_id%252Cchecklist%252Ccollection_date%252Cncbi_reporting_standard%252Ctarget_gene%252Ctag%252Cstudy_accession%252Cstudy_title&dccDataOnly=false&&rule=&result=read_run&limit=0' > all.json
     :return: records list
+
+    # This is for the default_checklist
+    ## curl 'https://www.ebi.ac.uk/ena/portal/api/search?result=read_run&query=not_tax_eq(9606)%20AND%20(ncbi_reporting_standard%3D%22generic%22%20OR%20(%20checklist%3D%22erc000011%22%20OR%20ncbi_reporting_standard%3D%22generic%22%20))&fields=sample_accession%2Crun_accession%2Clibrary_strategy%2Clibrary_source%2Cinstrument_platform%2Clat%2Clon%2Ccountry%2Cbroad_scale_environmental_context%2Ctax_id%2Cchecklist%2Ccollection_date%2Cncbi_reporting_standard%2Ctarget_gene%2Ctag%2Cstudy_accession%2Cstudy_title&format=json&limit=0' > default.json
     """
     logger.info("get_env_readrun_detail")
-    env_read_run_detail_file = "read_run_ena_detail.pickle"
-    env_read_run_detail_file = "read_run_allinsdc_detail.pickle"
-    env_read_run_detail_jsonfile = "read_run_allinsdc_detail.json"
-    if os.path.exists(env_read_run_detail_file):
-        logger.info(f"{env_read_run_detail_file} exists, so can unpickle it")
-        return unpickle_data_structure(env_read_run_detail_file)
-    elif os.path.exists(env_read_run_detail_jsonfile):
-        logger.info(f"{env_read_run_detail_jsonfile} exists, so using that")
-        with open(env_read_run_detail_jsonfile, "r") as f:
-            record_list = json.load(f)
+
+
+    def setup_run_api_call(query_params_json):
+        out_fields = (
+            "sample_accession%2Crun_accession%2Clibrary_strategy%2Clibrary_source%2Cinstrument_platform%2Clat%2Clon%2Ccountry"
+            "%2Cbroad_scale_environmental_context%2Ctax_id%2Cchecklist%2Ccollection_date%2Cncbi_reporting_standard%2Ctarget_gene%2Ctag%2Cstudy_accession%2Cstudy_title")
+
+
+        srv = query_params_json['srv']
+        params = "result=read_run&query=" + query_params_json['query'] + "&fields=" + out_fields + "&format=json"
+        limit = '&limit=5'
+        url = srv + '?' + params + limit
+        logger.info(url)
+
+        output = json.loads(run_webservice(url))
+        # sys.exit()
+        # ic(output)
+        # record_list = extract_record_ids_from_json('run_accession', output)
+        # ic(len(record_list))
+        logger.info(len(output))
+        return output
+
+    checklist_types = ["environmental_checklists", "default_checklists"]
+    checklist_types = ["default_checklists"]
+    #checklist_types = ["environmental_checklists"]
+    for checklist_type in checklist_types:
+        logger.info(f"Doing the main search of environmental data via {checklist_type}")
+        if checklist_type == "default_checklists":
+            env_read_run_detail_file = "read_run_allinsdc_defaultgeneric.json.pickle"
+            env_read_run_detail_jsonfile = "read_run_allinsdc_defaultgeneric.json"
+        else:
+            env_read_run_detail_file = "read_run_ena_detail.pickle"
+            env_read_run_detail_file = "read_run_allinsdc_detail.pickle"
+            env_read_run_detail_jsonfile = "read_run_allinsdc_detail.json"
+
+
+        if os.path.exists(env_read_run_detail_file):
+             logger.info(f"{env_read_run_detail_file} exists, so can unpickle it")
+             return unpickle_data_structure(env_read_run_detail_file)
+        elif os.path.exists(env_read_run_detail_jsonfile):
+             logger.info(f"{env_read_run_detail_jsonfile} exists, so using that")
+             with open(env_read_run_detail_jsonfile, "r") as f:
+                 record_list = json.load(f)
+                 length = len(record_list)
+                 for i in range(length):
+                     # record = record_list[i]
+                     record_list[i]["query_type"] = checklist_type
+                 pickle_data_structure(record_list, env_read_run_detail_file)
+                 # sys.exit()
+                 return record_list
+        else:
+            query_params_json = get_query_params(checklist_type)
+            logger.info(f"Doing the main search of environmental data via {checklist_type}, \n  query: {query_params_json}")
+            record_list = setup_run_api_call(query_params_json)
+            logger.info(f"Finished running {checklist_type}")
+
+            logger.info(f"got {len(record_list)} records")
+            # record_list = record_list[0:5]
+            length = len(record_list)
+            for i in range(length):
+                # record = record_list[i]
+                record_list[i]["query_type"] = checklist_type
+            logger.info(f"Writing records to {env_read_run_detail_file}")
             pickle_data_structure(record_list, env_read_run_detail_file)
-            return record_list
 
-    fields = ("sample_accession%2Crun_accession%2Clibrary_strategy%2Clibrary_source%2Cinstrument_platform%2Clat%2Clon%2Ccountry"
-              "%2Cbroad_scale_environmental_context%2Ctax_id%2Cchecklist%2Ccollection_date%2Cncbi_reporting_standard%2Ctarget_gene%2Ctag%2Cstudy_accession%2Cstudy_title")
+    #logger.info(record_list)
 
-    query_params_json = get_query_params()
-    srv = query_params_json['srv']
-    params = "result=read_run&query=" + query_params_json['query'] + "&fields=" + fields + "&format=json"
-    limit = '&limit=20000'
-    url = srv + '?' + params + limit
-    logger.info(url)
-
-    output = json.loads(run_webservice(url))
     # sys.exit()
-    # ic(output)
-    # record_list = extract_record_ids_from_json('run_accession', output)
-    # ic(len(record_list))
-    logger.info(len(output))
-    pickle_data_structure(output, env_read_run_detail_file)
-    return output
+    return record_list
 
 def get_all_study_details():
     study_details_file = "study_details.pickle"
@@ -187,9 +241,9 @@ def get_all_study_details():
         return pd.DataFrame.from_records(record_list)
 
     #'result=study&fields=study_accession%2Cstudy_title%2Cstudy_description&format=tsv'
-    query_params_json = get_query_params()
+    query_params_json = get_query_params("environmental_checklists")
     srv = query_params_json['srv']
-    fields = ("study_accession%2Cstudy_title%2Cstudy_description")
+    fields = "study_accession%2Cstudy_title%2Cstudy_description"
     params = "result=study" + "&fields=" + fields + "&format=json"
     limit = '&limit=0'
     url = srv + '?' + params + limit
@@ -207,7 +261,7 @@ def get_env_sample_ids():
         ic("env_sample_id_file exists, so can unpickle it")
         return unpickle_data_structure(env_sample_id_file)
 
-    query_params_json = get_query_params()
+    query_params_json = get_query_params("environmental_checklists")
     srv = query_params_json['srv']
     params = "result=sample&query=" + query_params_json['query'] + "&format=json"
     limit = '&limit=5'
@@ -259,7 +313,7 @@ def print_value_count_table(df_var):
     percs = df_var.value_counts(normalize = True)
     tmp_df = pd.concat([counts, percs], axis = 1, keys = ['count', 'percentage'])
     tmp_df['percentage'] = pd.Series(["{0:.2f}%".format(val * 100) for val in tmp_df['percentage']], index = tmp_df.index)
-    print(tmp_df)
+    logger.info(tmp_df)
 
 
 def process_geographical_data(old_df):
@@ -511,14 +565,14 @@ def target_gene_analysis(df):
     :param df:
     :return:
     """
-    ic("for the target genes as a checklist field")
-    ic(df['target_gene'].value_counts().head())
-    print_value_count_table(df['target_gene'])
+    logger.info("for the target genes as a checklist field")
+    logger.debug(df['target_gene'].value_counts().head())
+    # print_value_count_table(df['target_gene'])
     total = len(df)
     tmp_df = df[df['target_gene'] != ""]
-    print_value_count_table(tmp_df['target_gene'])
+    # print_value_count_table(tmp_df['target_gene'])
     total_w_tgs = len(tmp_df)
-    ic(f"total target_gene count = {total_w_tgs} / {total} = {round((100 * total_w_tgs/ total),2)}%")
+    logger.info(f"total target_gene count = {total_w_tgs} / {total} = {round((100 * total_w_tgs/ total),2)}%")
 
 
 
@@ -541,7 +595,7 @@ def plot_sunburst(df, title, path_list, value_field, plotfile):
     if plotfile == "plot":
             fig.show()
     else:
-            ic(f"Sunburst plot to {plotfile}")
+            logger.info(f"Sunburst plot to {plotfile}")
             fig.write_image(plotfile)
 
 def analyse_environment(df):
@@ -554,40 +608,49 @@ def analyse_environment(df):
     ic(len(df))
     def process_env_tags(value):
         my_tag_list = value.split(';')
-
         my_env_tags = [s for s in my_tag_list if "env_" in s]
-
         return my_env_tags
+
     print_value_count_table(df.tag)
     # ic(df.tag.head(50))
-    #df['env_tax'] = df['tag'].str.extract("(env_tax:[^;]*)")[0]
     df['env_tag'] = df['tag'].apply(process_env_tags)
-    df['env_tags'] = df['env_tag'].apply(lambda x: ';'.join(x))
+    df['env_tag_string'] = df['env_tag'].apply(lambda x: ';'.join(x))
     # ic(df['env_tag'].value_counts().head(5))
+    cp_df = df.copy()
+    def is_w_env_tags(value_list):
+        if len(value_list) == 0:
+            return False
+        return True
 
-    tmp_df = df[df.env_tag.str.len() > 0]
+    # tmp_df = cp_df[len(cp_df.env_tag)> 0]
+    df['is_env_tags'] = df['env_tag'].apply(is_w_env_tags)
+    logger.debug(f"{df['env_tag'].value_counts().head()}")
+    logger.info(f"{df.columns}")
+    tmp_df = df[df['is_env_tags'] == True]
     # print_value_count_table(tmp_df.env_tag)
-    #ic(tmp_df['env_tag'].value_counts().head(5))
-    #ic(tmp_df['env_tag'].explode().unique())
-    tmp_df['env_tag_string'] = tmp_df['env_tag'].str.join(';')
+    logger.debug(tmp_df['env_tag'].value_counts().head(5))
+    logger.debug(tmp_df['env_tag'].explode().unique())
+    # tmp_df['env_tag_string'] = tmp_df['env_tag'].apply(lambda x: ';'.join(x))
+    # tmp_df['env_tag_string'] = tmp_df['env_tag'].str.join(';')
     # ic(tmp_df['env_tag_string'].unique())
     # ic(my_env_lists['env_tag'])
     #  for tag in tmp_df['env_tag'].unique():
     #      ic(tag)
+    logger.info(f"starting len={len(df)} filtered len={len(tmp_df)}")
 
     tag_string_assignment = {}
     # f = tmp_df['env_tag_string'].str.contains("env_geo",na=False)
     # sys.exit()
 
+    logger.info("++++++++++++++++++++++++++++++++++++++++++++++++")
     not_assigned = []
     multiples = []
     aquatic_tag_set = ['env_geo:marine', 'env_geo:freshwater', 'env_geo:brackish', 'env_geo:coastal', 'env_tax:marine',
                         'env_tax:freshwater', 'env_tax:brackish', 'env_tax:coastal']
     terrestrial_tag_set = ['env_geo:terrestrial', 'env_tax:terrestrial']
     for tags in tmp_df['env_tag_string'].unique():
+        logger.debug(tags)
         tag_list = tags.split(';')
-        # ic(tags)
-        # ic(tag_list)
 
         if 'env_geo' in tags:
             # ic(f"----------------------{tags}")
@@ -601,10 +664,26 @@ def analyse_environment(df):
                     elif ('env_tax:marine' in tags or 'env_tax:coastal' or 'env_tax:brackish' in tags):
                         tag_string_assignment[tags] = {'prediction': 'coastal', 'confidence': 'high'}
                     else:
-                        ic(msg)
+                        logger.debug(msg)
                         multiples.append(msg)
+                elif 'env_geo:terrestrial' in tags:
+                    if 'env_geo:freshwater' in tags:
+                        tag_string_assignment[tags] = {'prediction': 'freshwater', 'confidence': 'low'}
+                    elif 'env_geo:coastal' in tags:
+                        tag_string_assignment[tags] = {'prediction': 'terrestrial', 'confidence': 'medium'}
+                    else:
+                        multiples.append(msg)
+                elif 'env_geo:marine' in tags:
+                        if 'env_tax:marine' in tags:
+                            tag_string_assignment[tags] = {'prediction': 'marine', 'confidence': 'medium'}
+                        elif 'env_geo:freshwater' in tags and 'env_tax:freshwater' in tags:
+                            tag_string_assignment[tags] = {'prediction': 'freshwater', 'confidence': 'medium'}
+                        elif 'env_geo:freshwater' in tags:
+                            tag_string_assignment[tags] = {'prediction': 'brackish', 'confidence': 'low'}
+                        else:
+                            multiples.append(msg)
                 else:
-                    ic(msg)
+                    logger.debug(matches)
                     multiples.append(msg)
             else:  # ie. one match
                 if matches[0] == 'env_geo:marine' and 'env_tax:marine' in tags:
@@ -628,9 +707,8 @@ def analyse_environment(df):
                     else:
                         tag_string_assignment[tags] = {'prediction': 'mixed', 'confidence': 'low'}
                 else:
-                    ic("________________________________________________________")
-
-                    ic(matches[0])
+                    logger.debug("________________________________________________________")
+                    logger.debug(matches[0])
                     if len(tag_list) == 1:
                         value = re.findall(r'env_geo:(.*)', matches[0])[0]
                         tag_string_assignment[tags] = {'prediction': value, 'confidence': 'medium'}
@@ -644,7 +722,7 @@ def analyse_environment(df):
                         if re.match(r'^(env_tax:freshwater;env_geo:marine|env_tax:freshwater;env_tax:terrestrial;env_geo:marine)$',tags):
                             not_assigned.append(tags)
                         else:
-                            ic(f"Not assigned--->{tags} len_tags={len(tag_list)}")
+                            logger.error(f"Not assigned--->{tags} len_tags={len(tag_list)}")
                             sys.exit()
 
         # the following are where there are no env_geo: tgs
@@ -683,22 +761,25 @@ def analyse_environment(df):
                     not_assigned.append(tags)
         else:
             not_assigned.append(tags)
-            ic()
+            logger.debug(f"Not assigned--->{tags} len_tags={len(tag_list)}")
+    # END OF FOR
+    logger.info("finished big for loop")
 
     # ic(tag_string_assignment)
     if len(multiples) > 0:
-        ic("Apologies: you need to address this cases before proceeding")
-        ic(multiples)
-        ic(not_assigned)
+        logger.error("Apologies: you need to address these cases before proceeding")
+        logger.error(f"multiples:{multiples}")
+        logger.error(f"not_assigned: {not_assigned}")
         sys.exit()
     elif len(not_assigned) > 0:
-        ic("Apologies: you need to address this cases before proceeding")
-        ic(not_assigned)
+        logger.error("Apologies: you need to address these cases before proceeding")
+        logger.error(f"not_assigned: {not_assigned}")
         sys.exit()
 
     # ic('env_tax:freshwater;env_tax:terrestrial;env_geo:marine')
     # tmp_df = df[df['env_tags'].str.contains('env_tax:freshwater;env_tax:terrestrial;env_geo:marine')]
     # ic(tmp_df['sample_accession'].unique())
+    logger.info("about to do a bunch of assignments")
 
     def actually_assign_env_info_pred(value):
         # ic(value)
@@ -715,6 +796,8 @@ def analyse_environment(df):
         return "low"
 
     aquatic_set = ('marine', 'brackish', 'coastal', 'freshwater', 'mixed_aquatic')
+    logger.info(f"aquatic_set: {aquatic_set}")
+
     def actually_assign_env_info_pred_hl(value):
         # ic(value)
         if value != "terrestrial_assumed" and value != None:
@@ -737,9 +820,7 @@ def analyse_environment(df):
     print_value_count_table(df['env_prediction'])
     print_value_count_table(df['env_confidence'])
     print()
-    print(df.groupby(['env_prediction', 'env_confidence']).size().to_frame().to_string())
-    print_value_count_table(df['env_prediction'])
-    print()
+    logger.info("\n" + df.groupby(['env_prediction', 'env_confidence']).size().to_frame().to_string())
     print_value_count_table(df['env_prediction_hl'])
 
 
@@ -749,6 +830,7 @@ def analyse_environment(df):
     plotfile = "../images/env_predictions.png"
     plot_sunburst(plot_df, "Figure: ENA readrun environmental predictions using species and lat/lons (Sunburst Plot)", path, value_field, plotfile)
 
+    logger.info("finished All the analysis for the environmental predictions<-------------------")
     return df
 
 
@@ -773,22 +855,17 @@ def taxonomic_analysis(df):
 
 
     df['scientific_name'] = df['tax_id'].apply(scientific_name_lookup)
-    print_value_count_table(df.scientific_name)
+    # print_value_count_table(df.scientific_name)
 
     df['lineage'] = df['tax_id'].apply(lineage_lookup)
-
-    # ic(df['lineage'].value_counts())
-    print_value_count_table(df.lineage)
+    # print_value_count_table(df.lineage)
     df['tax_lineage'] = df['tax_id'].apply(tax_lineage_lookup)
     df['lineage_2'] = df['lineage'].str.extract("^([^;]*);")[0]
     df['lineage_3'] = df['lineage'].str.extract("^[^;]*;([^;]*);")[0]
-    ic(df['lineage_3'].value_counts())
-    print_value_count_table(df.lineage_3)
+    # print_value_count_table(df.lineage_3)
     df['lineage_minus2'] = df['lineage'].str.extract("([^;]*);[^;]*$")[0]
     df['lineage_minus3'] = df['lineage'].str.extract("([^;]*);[^;]*;[^;]*$")[0]
     print_value_count_table(df.lineage_minus2)
-
-    ic(df['tax_id'].value_counts())
     tax_id_list = df['tax_id'].unique()
     ic(len(tax_id_list))
 
@@ -879,16 +956,11 @@ def analyse_readrun_detail(df):
     # df.sample_accession.to_csv(outfile)
     target_gene_analysis(df)
 
-    sys.exit()
     print('NCBI "checklists":')
     print_value_count_table(df.ncbi_reporting_standard)
     print('ENA "checklists":')
     print_value_count_table(df.checklist)
 
-
-
-
-    sys.exit()
     df = clean_dates_in_df(df)
 
     df['lat'] = pd.to_numeric(df['lat'], errors = 'coerce')
@@ -939,6 +1011,7 @@ def analyse_all_study_details(df):
     :param df:
     :return: barcoding_df
     """
+    logger.info("in analyse_all_study_details---------------------------")
     ic(len(df))
     barcoding_pattern = '16S|18S|ITS|26S|5.8S|RBCL|rbcL|matK|MATK|COX1|CO1|mtCO|barcod'
     barcoding_title_df = df[df.study_title.str.contains(barcoding_pattern, regex= True, na=False)]
@@ -1049,7 +1122,7 @@ def filter_for_aquatic(env_readrun_detail):
     #     f.write(df["broad_scale_environmental_context"].value_counts().to_string())
     # logger.info(f"wrote {outfile}")
 
-    df = df.head(10000)
+    # df = df.head(10000)
     logger.info(df.columns)
 
     aquatic_pattern = re.compile('marine|freshwater|coastal|brackish')
@@ -1115,8 +1188,6 @@ def filter_for_aquatic(env_readrun_detail):
     logging.info(f"after using broad_scale_environmental_context aquatic_filtered={len(df_remainder_aquatic)}")
     df_aquatic = pd.concat([df_aquatic, df_remainder_aquatic])
     logging.info(f"len(df_aquatic) = {len(df_aquatic)}")
-
-    sys.exit()
 
     return df_aquatic
 
