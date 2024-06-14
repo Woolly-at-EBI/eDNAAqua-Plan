@@ -192,7 +192,7 @@ def chunk_portal_api_call_w_ands(url, with_obj_type, return_fields, and_accessio
                 "fields": ','.join(return_fields),
                 "limit": 0
             }
-        print(f"{url}, {params}, {with_obj_type}, {','.join(return_fields)}")
+        # print(f"{url}, {params}, {with_obj_type}, {','.join(return_fields)}")
         (data, response) = ena_portal_api_call(url, params, with_obj_type, chunk)
         # print(f"data={data}")
 
