@@ -176,6 +176,19 @@ def do_portal_api_tax_call(result_object_type, query_accession_ids, return_field
     # curl   'https://www.ebi.ac.uk/ena/portal/api/search?result=taxon&fields=tax_id%2Cscientific_name%2Ctag%2Cdescription%2Ctax_division&includeAccessionType=taxon&includeAccessions=9606%2C8802%2C8888%2C1&format=tsv'
     return data
 
+def clean_tax_list(mylist):
+    """
+    remove duff entries from list
+    :param mylist:
+    :return: cleanlist
+    """
+    newlist = []
+    for id in mylist:
+        if ';' in id:
+            print(f"Warning bad tax id entry, ignoring: {id}")
+        else:
+            newlist.append(id)
+    return newlist
 
 def create_taxonomy_hash(tax_list):
     """
@@ -192,6 +205,7 @@ def create_taxonomy_hash(tax_list):
                 'tax_division': 'HUM',
                 'tax_id': '9606'}]
     """
+    tax_list = clean_tax_list(tax_list)
     # iterator = iter(tax_list)
     # chunk_size = 500
     tax_hash = []
