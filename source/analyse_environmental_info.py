@@ -115,6 +115,25 @@ def experimental_analysis_inc_filtering(df):
 
     return df
 
+def get_filtered_study_details(df):
+    """
+    get_filtered_study_details provides a data frame on a limited set of study details
+    :param df: where "study_accession" is a field
+    :return: df_filtered_study_details
+    """
+    logger.info(df.columns)
+    study_accession_list = list(set(df['study_accession'].unique()))
+    logger.debug(f"study_accession_list from  all studies total={len(study_accession_list)}")
+
+
+    df_all_study_details = get_all_study_details()
+    all_aquatic_study_accession_list = list(set(df_all_study_details['study_accession'].to_list()))
+    logger.debug(f"Number of TOTAL aquatic studies: {len(all_aquatic_study_accession_list)}")
+
+    df_filtered_study_details = df_all_study_details[df_all_study_details['study_accession'].isin(study_accession_list)]
+    logger.debug(f"Number of FILTERED aquatic study IDS: {len(all_aquatic_study_accession_list)}")
+
+    return df_filtered_study_details
 
 def target_gene_analysis(df):
     """
@@ -123,9 +142,8 @@ def target_gene_analysis(df):
     :return:
     """
 
-    df_all_study_details = get_all_study_details()
-    logger.info(f"Number of studies: {len(df_all_study_details)}")
-    analyse_barcode_study_details(df_all_study_details)
+    df_filtered_study_details = get_filtered_study_details(df)
+    analyse_barcode_study_details(df_filtered_study_details)
     sys.exit()
 
     logger.info("for the target genes as a checklist field")
