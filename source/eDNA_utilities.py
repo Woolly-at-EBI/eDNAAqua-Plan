@@ -13,6 +13,7 @@ import random
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+from collections import Counter
 
 logger = logging.getLogger(name = 'mylogger')
 
@@ -114,7 +115,11 @@ def print_value_count_table(df_var):
     percs = df_var.value_counts(normalize = True)
     tmp_df = pd.concat([counts, percs], axis = 1, keys = ['count', 'percentage'])
     tmp_df['percentage'] = pd.Series(["{0:.2f}%".format(val * 100) for val in tmp_df['percentage']], index = tmp_df.index)
-    logger.info(tmp_df)
+
+    if len(tmp_df) < 20:
+        logger.info(tmp_df)
+    else:
+        logger.info(tmp_df.to_string(min_rows=20,max_rows=20))
 
 
     
