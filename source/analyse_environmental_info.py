@@ -28,6 +28,8 @@ from taxonomy import *
 from eDNA_utilities import pickle_data_structure, unpickle_data_structure,  print_value_count_table,\
     plot_sankey, get_percentage_list, my_coloredFormatter
 
+from get_environmental_info import get_all_study_details
+
 logger = logging.getLogger(name = 'mylogger')
 pd.set_option('display.max_columns', None)
 pd.set_option('max_colwidth', None)
@@ -216,16 +218,32 @@ def target_gene_analysis(df):
     :param df:
     :return:
     """
+
+    df_all_study_details = get_all_study_details()
+    logger.info(f"Number of studies: {len(df_all_study_details)}")
+    analyse_barcode_study_details(df_all_study_details)
+    sys.exit()
+
     logger.info("for the target genes as a checklist field")
     logger.debug(df['target_gene'].value_counts().head())
     # print_value_count_table(df['target_gene'])
     total = len(df)
+
+    df["target_gene_clean_set"] = df["target_gene"].apply(get_barcoding_genes)
+
     tmp_df = df[df['target_gene'] != ""]
-    # print_value_count_table(tmp_df['target_gene'])
+    print_value_count_table(tmp_df['target_gene'])
+
+    print_value_count_table(tmp_df['target_gene_clean_set'])
+
     total_w_tgs = len(tmp_df)
     logger.info(f"total target_gene count = {total_w_tgs} / {total} = {round((100 * total_w_tgs/ total),2)}%")
+    logger.info("---------------+++++++++++++++++++----------------")
 
 
+
+
+    return
 
 def plot_sunburst(df, title, path_list, value_field, plotfile):
     """
@@ -659,9 +677,86 @@ def delist_col(my_list):
              gene_list.append(gene)
     return gene_list
 
+def get_barcoding_genes(value):
+        """
+        method to get barcoding genes
+        it is typically run as an apply on a dataframe
+        It is used for both analysing the target_genes from the defined metadata and the text in the study description.
+        :param value: a string of one or more barcoding gene names
+        :return: a set of cleaner values
+        """
+
+        sgenes_pattern = re.compile(r'^([1-9]{2}|5\.8)([sS])[ ]?(r)?([RD]NA)?', flags=0)
+        sgenes_pattern = re.compile(r'^([1-9]{2}|5\.8)([sS])[ ]?r?(RNA|DNA|ribo)?', flags=0)
+        rbcl_pattern = re.compile(r'^(RBCL)', re.IGNORECASE)
+        its_pattern = re.compile(r'^(ITS)([1-2])?')
+        matk_pattern = re.compile(r'^(matk)', re.IGNORECASE)
+        COX1_pattern = re.compile('^COX1|CO1|COI|mtCO|Cytochrome c oxidase|cytochrome oxidase', re.IGNORECASE)
+        def clean_name(my_list):
+            """
+             a clean harmonised list of barcoding gene names
+            :param  list of gene names:
+            :return: harmonised list.
+            """
+            clean_set = set()
+            #logger.info("-----------------------------------------------------------")
+            for my_gene in my_list:
+                #logger.info(my_gene)
+
+                match = re.search(rbcl_pattern, my_gene)
+                if match:
+                    # logger.info(f"----------clean=rbcL")
+                    clean_set.add("rbcL")
+                    continue
+                match = re.search(its_pattern, my_gene)
+                if match:
+                    if match.group(2):
+                        # logger.info(f"----------clean=ITS{match.group(2)}")
+                        clean_set.add("ITS" + match.group(2))
+                    else:
+                        # logger.info(f"----------clean=ITS")
+                        clean_set.add("ITS")
+                    continue
+                match = re.search(matk_pattern, my_gene)
+                if match:
+                        # logger.info("----------clean=matK")
+                        clean_set.add("matK")
+                        continue
+                match = re.search(COX1_pattern, my_gene)
+                if match:
+                        # logger.info("----------clean=COX1")
+                        clean_set.add("COX1")
+                        continue
+
+                match = re.search(sgenes_pattern, my_gene)
+                if match:
+                    # logger.info(match.group(1))
+                    # logger.info(match.group(2))
+                    clean_gene_name = match.group(1) + "S"
+                    if match.group(3):
+                        # logger.info(f"---------------{match.group(3)}")
+                        clean_gene_name += " r" + match.group(3)
+                    clean_set.add(clean_gene_name)
+                    # logger.info(clean_gene_name)
+                    continue
+
+                logger.error(f"remaining gene in get_barcoding_genes -->{my_gene}<--")
+                sys.exit()
 
 
-def analyse_all_study_details(df):
+            return clean_set
+        barcode_genes_pattern = re.compile('16[sS][ ]?r?[RD]NA|16[sS][ ]?ribo|18S|ITS[12]?|26[Ss]|5\.8[Ss]|rbcL|rbcl|RBCL|matK|MATK|cox1|co1|COX1|CO1|COI|mtCO|cytochrome c oxidase|cytochrome oxidase')
+        genes = list(set(re.findall(barcode_genes_pattern, value)))
+        if len(genes) > 0:
+            # logger.info(genes)
+            return list(clean_name(genes))
+        else:
+            genes = list(set(re.findall(r'16[Ss]', value)))
+            if len(genes) > 0:
+                return list(clean_name(genes))
+            return None
+
+def analyse_barcode_study_details(df):
     """
     Generates a subset of the df, indexed from sample_accession
     Plus annotates two columns using
@@ -673,6 +768,7 @@ def analyse_all_study_details(df):
     """
     logger.info("in analyse_all_study_details---------------------------")
     logger.info(len(df))
+    logger.info(df.columns)
     barcoding_pattern = '16S|18S|ITS|26S|5.8S|RBCL|rbcL|matK|MATK|COX1|CO1|mtCO|barcod'
     barcoding_title_df = df[df.study_title.str.contains(barcoding_pattern, regex= True, na=False)]
     logger.info(f"'study_title' with barcoding genes total={len(barcoding_title_df)}")
@@ -687,77 +783,6 @@ def analyse_all_study_details(df):
     barcoding_df['combined_tit_des'] = barcoding_df['study_title'] + barcoding_df['study_description']
     barcoding_df['is_barcoding_experiment_probable'] = True
 
-    def get_barcoding_genes(value):
-
-        sgenes_pattern = re.compile(r'^([1-9]{2}|5\.8)([sS])[ ]?(r)?([RD]NA)?', flags=0)
-        sgenes_pattern = re.compile(r'^([1-9]{2}|5\.8)([sS])[ ]?r?(RNA|DNA|ribo)?', flags=0)
-        rbcl_pattern = re.compile(r'^(RBCL)', re.IGNORECASE)
-        its_pattern = re.compile(r'^(ITS)([1-2])?')
-        matk_pattern = re.compile(r'^(matk)', re.IGNORECASE)
-        COX1_pattern = re.compile('^COX1|CO1|COI|mtCO|Cytochrome c oxidase|cytochrome oxidase', re.IGNORECASE)
-        def clean_name(my_list):
-            """
-             a clean harmonised list of barcoding gene names
-            :param  list of gene names:
-            :return: harmonised list.
-            """
-            clean_list = []
-            #logger.info("-----------------------------------------------------------")
-            for my_gene in my_list:
-                #logger.info(my_gene)
-
-                match = re.search(rbcl_pattern, my_gene)
-                if match:
-                    # logger.info(f"----------clean=rbcL")
-                    clean_list.append("rbcL")
-                    continue
-                match = re.search(its_pattern, my_gene)
-                if match:
-                    if match.group(2):
-                        # logger.info(f"----------clean=ITS{match.group(2)}")
-                        clean_list.append("ITS" + match.group(2))
-                    else:
-                        # logger.info(f"----------clean=ITS")
-                        clean_list.append("ITS")
-                    continue
-                match = re.search(matk_pattern, my_gene)
-                if match:
-                        # logger.info("----------clean=matK")
-                        clean_list.append("matK")
-                        continue
-                match = re.search(COX1_pattern, my_gene)
-                if match:
-                        # logger.info("----------clean=COX1")
-                        clean_list.append("COX1")
-                        continue
-
-                match = re.search(sgenes_pattern, my_gene)
-                if match:
-                    # logger.info(match.group(1))
-                    # logger.info(match.group(2))
-                    clean_gene_name = match.group(1) + "S"
-                    if match.group(3):
-                        # logger.info(f"---------------{match.group(3)}")
-                        clean_gene_name += " r" + match.group(3)
-                    clean_list.append(clean_gene_name)
-                    # logger.info(clean_gene_name)
-                    continue
-
-                logger.info(f"remaining gene: -->{my_gene}<--")
-                sys.exit()
-
-
-            return clean_list
-        barcode_genes_pattern = re.compile('16[sS][ ]?r?[RD]NA|16[sS][ ]?ribo|18S|ITS[12]?|26[Ss]|5\.8[Ss]|rbcL|rbcl|RBCL|matK|MATK|cox1|co1|COX1|CO1|COI|mtCO|cytochrome c oxidase|cytochrome oxidase')
-        genes = list(set(re.findall(barcode_genes_pattern, value)))
-        if len(genes) > 0:
-            # logger.info(genes)
-            return clean_name(genes)
-        else:
-            genes = list(set(re.findall(r'16[Ss]', value)))
-            if len(genes) > 0:
-                return clean_name(genes)
-            return None
     barcoding_df['barcoding_genes_from_study'] = barcoding_df.combined_tit_des.apply(get_barcoding_genes)
     logger.info(barcoding_df['barcoding_genes_from_study'].value_counts())
     print_value_count_table(barcoding_df['barcoding_genes_from_study'])
@@ -921,23 +946,6 @@ def experimental_analysis_inc_filtering(df):
     plot_sankey(plot_df, sankey_link_weight, path_list, 'Figure ENA "Environmental" readrun record count: library_source, library_strategy, platform, collection_date', plotfile)
 
     return df
-
-
-def target_gene_analysis(df):
-    """
-    for the target genes as a checklist field
-    :param df:
-    :return:
-    """
-    logger.info("for the target genes as a checklist field")
-    logger.debug(df['target_gene'].value_counts().head())
-    # print_value_count_table(df['target_gene'])
-    total = len(df)
-    tmp_df = df[df['target_gene'] != ""]
-    # print_value_count_table(tmp_df['target_gene'])
-    total_w_tgs = len(tmp_df)
-    logger.info(f"total target_gene count = {total_w_tgs} / {total} = {round((100 * total_w_tgs/ total),2)}%")
-
 
 
 def plot_sunburst(df, title, path_list, value_field, plotfile):
@@ -1228,6 +1236,8 @@ def analyse_readrun_detail(df):
     # df.sample_accession.to_csv(outfile)
     target_gene_analysis(df)
 
+    sys.exit()
+
     print('NCBI "checklists":')
     print_value_count_table(df.ncbi_reporting_standard)
     print('ENA "checklists":')
@@ -1252,7 +1262,7 @@ def analyse_readrun_detail(df):
 
 
 def main():
-    # df_all_study_details = analyse_all_study_details(get_all_study_details())
+    # df_all_study_details = analyse_barcode_study_details(get_all_study_details())
     # logger.info(len(df_all_study_details))
     #
     # sample_ids = get_env_sample_ids()
