@@ -1,4 +1,7 @@
 # eDNAqua-Plan
+
+![image](images/eDNAqua-Plan_Logo_1.0.png)
+
 eDNAqua-Plan code and data used for some of the deliverables of the overall eDNAAquaPlan.
 N.B. This cose is very rough and ready! It is generated tables and plots for the report.
 
@@ -7,7 +10,7 @@ This currently focuses on the needs of T2.2 in WP2. D2.2: Report containing an i
 Much data is being generated collated by the bioinformatics team of WP2, including:
 Yannis Kavakiotis and Dawid Krawczyk.
 
- Biodiveristy and marine guidance from Joana Pauperio and Stephane Pesant.
+ Biodiversity and marine guidance from Joana Pauperio and Stephane Pesant.
 
 ## Focus on ENA environmental DNA
 ```mermaid
@@ -25,3 +28,6 @@ flowchart TD
       
 
 ```
+
+![image](images/experimental_analysis_strategy_tax.png)
+
