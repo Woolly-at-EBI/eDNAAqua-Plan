@@ -66,24 +66,25 @@ def select_first_part(value):
     # else:
     #     return value
 
+def isNaN(num):
+    return num != num
+
 def get_presence_or_absence_col(df, col_name):
     # col with and without values
     # FFS isnull etc. did not work
     col_list = df[col_name].to_list()
     absent_count = 0
     present_count = 0
+
     for val in col_list:
-        if val == None:
+        logger.debug("val: {}".format(val))
+        if val == None or isNaN(val):
+            absent_count += 1
+        elif type(val) == list and len(val) == 0:
             absent_count += 1
         else:
             present_count += 1
     return present_count, absent_count
-
-
-
-
-
-
 
 
 def experimental_analysis_inc_filtering(df):
@@ -141,10 +142,10 @@ def target_gene_analysis(df):
     :param df:
     :return:
     """
+    logger.info(f"Coming into target gene analysis have total tows of {len(df)}")
 
-    df_filtered_study_details = get_filtered_study_details(df)
-    analyse_barcode_study_details(df_filtered_study_details)
-    sys.exit()
+
+    analyse_barcode_study_details(df)
 
     logger.info("for the target genes as a checklist field")
     logger.debug(df['target_gene'].value_counts().head())
@@ -375,47 +376,52 @@ def analyse_barcode_study_details(df):
     barcoding_df['is_barcoding_experiment_probable'] = True
 
     :param df:
-    :return: barcoding_df
+    :return: df: with extra annotations
     """
-    logger.info("in analyse_all_study_details---------------------------")
-    logger.info(len(df))
-    logger.info(df.columns)
+    dff = get_filtered_study_details(df)
+    logger.info(f"in analyse_all_study_details for study_total={len(dff)} total unique study_accession={dff['study_accession'].nunique()}")
+    logger.info(dff.columns)
     barcoding_pattern = '16S|18S|ITS|26S|5.8S|RBCL|rbcL|matK|MATK|COX1|CO1|mtCO|barcod'
-    barcoding_title_df = df[df.study_title.str.contains(barcoding_pattern, regex= True, na=False)]
+    barcoding_title_df = dff[dff.study_title.str.contains(barcoding_pattern, regex= True, na=False)]
     logger.info(f"'study_title' with barcoding genes total={len(barcoding_title_df)}")
-    logger.info(barcoding_title_df['study_title'].sample(n=10))
+    logger.debug(barcoding_title_df['study_title'].sample(n=3))
 
-    barcoding_description_df = df[df.study_description.str.contains(barcoding_pattern, regex= True, na=False)]
+    barcoding_description_df = dff[dff.study_description.str.contains(barcoding_pattern, regex= True, na=False)]
     logger.info(f"'study_description' with barcoding genes total={len(barcoding_description_df)}")
-    logger.info(barcoding_description_df['study_description'].sample(n=5))
+    logger.debug(barcoding_description_df['study_description'].sample(n=3))
 
+    # This will cope with the obvious use cases: including where genes may be in title, but not description
     barcoding_df = pd.concat([barcoding_title_df, barcoding_description_df]).drop_duplicates().reset_index(drop=True)
     logger.info(f"barcoding total = {len(barcoding_df)}")
     barcoding_df['combined_tit_des'] = barcoding_df['study_title'] + barcoding_df['study_description']
     barcoding_df['is_barcoding_experiment_probable'] = True
 
     barcoding_df['barcoding_genes_from_study'] = barcoding_df.combined_tit_des.apply(get_barcoding_genes)
-    logger.info(barcoding_df['barcoding_genes_from_study'].value_counts())
+    logger.debug(barcoding_df['barcoding_genes_from_study'].value_counts())
     print_value_count_table(barcoding_df['barcoding_genes_from_study'])
 
-    gene_list = delist_col(barcoding_df[barcoding_df['barcoding_genes_from_study'].notnull()]['barcoding_genes_from_study'].to_list())
-    get_percentage_list(gene_list)
-    gene_set = set(gene_list)
-    total = len(barcoding_df)
-    present_count, absent_count = get_presence_or_absence_col(barcoding_df, 'barcoding_genes_from_study')
+    # merge all the findings back into the main
+    df = pd.merge(df, barcoding_df[['study_accession','barcoding_genes_from_study','is_barcoding_experiment_probable']], on='study_accession', how='left')
+    # df[['barcoding_genes_from_study']].fillna(value=[], inplace=True)
+    df.loc[df['barcoding_genes_from_study'].isnull()] = df.loc[df['barcoding_genes_from_study'].isnull()].apply(lambda x: [])
+
+    logger.info("---The following are all whole filtered dataframe, not by study----")
+    total = len(df)
+    present_count, absent_count = get_presence_or_absence_col(df, 'barcoding_genes_from_study')
     logger.info(f"barcoding_genes_from_study present_count {present_count}  {present_count/total*100:.2f}%")
     logger.info(f"barcoding_genes_from_study absent_count {absent_count}   {absent_count/total*100:.2f}%")
 
-    return barcoding_df
-
-
-
-
+    print_value_count_table(df['barcoding_genes_from_study'])
+    df = df[['is_barcoding_experiment_probable']].fillna(value = False)
+    logger.info(f"len of def being returned is {len(df)}")
+    logger.info(df['is_barcoding_experiment_probable'].value_counts())
+    logger.info("-------------------------------------------------------------------------------------------")
+    return df
     
 def add_insdc_member_receiver(df):
     logger.info("adding insdc member receiver")
     #df = df.sample(n=100)
-    logger.info(df.dtypes)
+    logger.debug(df.dtypes)
     def get_insdc_member_receiver(value):
         if value.startswith('SAMN'):
             return 'NCBI'
@@ -427,7 +433,7 @@ def add_insdc_member_receiver(df):
             return None
 
     df['insdc_member_receiver'] = df['sample_accession'].apply(get_insdc_member_receiver)
-    logger.info("exiting add_insdc_member_receiver")
+    logger.debug("exiting add_insdc_member_receiver")
     return df
 
 
