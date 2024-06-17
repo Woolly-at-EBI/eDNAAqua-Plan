@@ -488,8 +488,6 @@ def create_year_bins(value):
     return None
 
 
-
-
 def analyse_environment(df):
     """
     uses the tags to predict the environment, is rather rough and ready
