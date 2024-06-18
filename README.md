@@ -30,4 +30,6 @@ flowchart TD
 ```
 
 ![image](images/experimental_analysis_strategy_tax.png)
-[Overview of the aquatic filtering](docs/details/aquatic_filtering.md)
+Other Information
+- [Overview of the aquatic filtering](docs/details/aquatic_filtering.md)
+- [Where eDNA archives fit, overview](docs/details/where_eDNA_archives_fit.md)
