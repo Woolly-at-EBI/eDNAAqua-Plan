@@ -30,4 +30,4 @@ flowchart TD
 ```
 
 ![image](images/experimental_analysis_strategy_tax.png)
-
+[Overview of the aquatic filtering](docs/details/aquatic_filtering.md)
