@@ -15,21 +15,41 @@ Yannis Kavakiotis and Dawid Krawczyk.
 ## Focus on ENA environmental DNA
 ```mermaid
 flowchart TD
-      overall("run_ena_get_filter_analysis.py")-->get("1) get_environmental_info.py.")
+
+      overall("run_ena_get_filter_analysis.py"):::startclass-->get("1) get_environmental_info.py"):::startclass
       Filter<-->tax("taxonomy.py")
       Filter<-->geog("geography.py")
-      get-->Filter{Filter for aquatic}
-      Filter-->analyse("2) analyse_environmental_info.py")
+      get-->Filter{Filter for aquatic}:::aquaticclass
+      Filter-->analyse("2) analyse_environmental_info.py"):::decisionclass
       analyse<-->tax
       analyse<-->geog
       analyse-->tables["tables"]
       analyse-->plots["plots"]
-      
-      
+
+      classDef startclass fill:#66ff99
+      classDef decisionclass fill:#f96
+      classDef aquaticclass fill:#66ccff
 
 ```
+## Focus on general environmental DNA
+```mermaid
+flowchart TD
 
-![image](images/experimental_analysis_strategy_tax.png)
-Other Information
+      eDNA_explore-->bix_db:::decisionclass
+      eDNA_explore-->qu:::decisionclass
+      bix_db("mine_bionformatics_eval.py")-->tables["tables"]
+      bix_db-->plots["plots"]
+      
+      qu(mine_questionnaire_eval.py)-->tables
+      qu-->plots
+      
+      classDef startclass fill:#66ff99
+      classDef decisionclass fill:#f96
+      classDef aquaticclass fill:#66ccff
+```
+## Other Information
 - [Overview of the aquatic filtering](docs/details/aquatic_filtering.md)
 - [Where eDNA archives fit, overview](docs/details/where_eDNA_archives_fit.md)
+- Plot of experiment related info
+
+![image](images/experimental_analysis_strategy_tax.png)
