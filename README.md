@@ -16,7 +16,7 @@ Yannis Kavakiotis and Dawid Krawczyk.
 ```mermaid
 flowchart TD
 
-      overall("run_ena_get_filter_analysis.py"):::startclass-->get("1) get_environmental_info.py"):::startclass
+      overall("run_ena_get_filter_analysis.py"):::startclass-->get('1- get_environmental_info.py'):::startclass
       Filter<-->tax("taxonomy.py")
       Filter<-->geog("geography.py")
       get-->Filter{Filter for aquatic}:::aquaticclass
@@ -37,7 +37,7 @@ flowchart TD
 
       eDNA_explore-->bix_db:::decisionclass
       eDNA_explore-->qu:::decisionclass
-      bix_db("mine_bionformatics_eval.py")-->tables["tables"]
+      bix_db("mine_bioinformatics_eval.py")-->tables["tables"]
       bix_db-->plots["plots"]
       
       qu(mine_questionnaire_eval.py)-->tables

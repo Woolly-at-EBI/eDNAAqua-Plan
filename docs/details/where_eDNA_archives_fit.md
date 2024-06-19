@@ -24,5 +24,5 @@ flowchart TD
       classDef startclass fill:#66ff99
       classDef decisionclass fill:#f96
       classDef aquaticclass fill:#66ccff
-      classDef ednaclass fill:#66ffcc
+      classDef ednaclass fill:#800080
 ```
