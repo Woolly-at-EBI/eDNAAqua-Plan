@@ -14,6 +14,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from collections import Counter
+import pprint
 
 logger = logging.getLogger(name = 'mylogger')
 
@@ -34,6 +35,12 @@ my_coloredFormatter = coloredlogs.ColoredFormatter(
     )
 )
 
+def clean_list_replace_nan(data):
+    return ['missing' if pd.isna(item) else item for item in data]
+
+def mv_df_col2front(df, col2move):
+    df = df[[col2move] + [col for col in df.columns if col != col2move]]
+    return df
 
 def pickle_data_structure(data_structure, filename):
     try:
@@ -78,6 +85,15 @@ def run_webservice(url):
             logger.info(f"Still {r.status_code} so exiting")
         sys.exit(1)
 
+def un_split_list(list):
+    clean_list = []
+    for item in list:
+        if item != item:
+            continue
+        item = item.strip().replace('[', '').replace(']', '')
+        local_list = item.split(';')
+        clean_list.extend(local_list)
+    return clean_list
 
 def get_shorter_list(record_list, k):
         """
@@ -96,6 +112,38 @@ def get_shorter_list(record_list, k):
         logger.info(f"shortened_list to {k} from {len(record_list)}")
         return shortened_list
 
+def get_lists_from_df_column(df, col):
+    my_list = df[col].to_list()
+    # logger.info(f"\n{my_list}")
+    my_list = un_split_list(my_list)
+    # logger.info(f"\n{my_list}")
+    print(f"Total of {len(my_list)} in col={col} , unique count= {len(set(my_list))}")
+    duplist = get_duplicates_in_list(my_list)
+    print(f"\nDuplicated {col} list:  {duplist}")
+    print(pprint.pprint(dict(Counter(my_list)), width=4))
+
+    return my_list
+
+def get_duplicates_in_list(mylist):
+    newlist = []  # empty list to hold unique elements from the list
+    duplist = []  # empty list to hold the duplicate elements from the list
+    for i in mylist:
+        if i not in newlist:
+            newlist.append(i)
+        else:
+            duplist.append(i)
+    return sorted(set(duplist))
+    
+def list_freq_pie(my_list, label, my_title, outfile):
+    my_counter = Counter(my_list)
+    pprint.pprint(dict(my_counter))
+    my_df = pd.DataFrame(dict(my_counter).items(),
+                         columns = [label, 'count']).sort_values(by = label, ascending = True)
+    logger.info(f"\n{my_df.to_string(index = False)}")
+    fig = px.pie(my_df, values = 'count', names = label, title = my_title)
+    logger.info(f"{outfile}")
+    fig.write_image(outfile)
+    
 
 def get_percentage_list(gene_list):
     """

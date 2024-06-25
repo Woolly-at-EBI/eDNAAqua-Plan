@@ -22,7 +22,10 @@ import matplotlib.pyplot as plt
 
 from pygments.lexers import go
 
-from eDNA_utilities import logger, my_coloredFormatter, coloredlogs
+from eDNA_utilities import logger, my_coloredFormatter, coloredlogs,\
+    list_freq_pie, get_lists_from_df_column, un_split_list,\
+    get_duplicates_in_list, clean_list_replace_nan
+
 
 pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)
@@ -55,44 +58,18 @@ def get_dataframe():
     # logger.info(f"\n{not_raw_list}")
     df = df[not_raw_list]
 
+
     return df
 
 
-def un_split_list(list):
-    clean_list = []
-    for item in list:
-        if item != item:
-            continue
-        item = item.strip().replace('[', '').replace(']', '')
-        local_list = item.split(';')
-        clean_list.extend(local_list)
-    return clean_list
 
 
-def get_duplicates_in_list(mylist):
-    newlist = []  # empty list to hold unique elements from the list
-    duplist = []  # empty list to hold the duplicate elements from the list
-    for i in mylist:
-        if i not in newlist:
-            newlist.append(i)
-        else:
-            duplist.append(i)
-    return sorted(set(duplist))
 
 
-def get_lists_from_df_column(df, col):
-    my_list = df[col].to_list()
-    # logger.info(f"\n{my_list}")
-    my_list = un_split_list(my_list)
-    # logger.info(f"\n{my_list}")
-    print(f"Total of {len(my_list)} in col={col} , unique count= {len(set(my_list))}")
-    duplist = get_duplicates_in_list(my_list)
-    print(f"\nDuplicated {col} list:  {duplist}")
-    print("+++++++++++++++++++++++++++++++++++++++++++++++++")
-    print(pprint.pprint(dict(Counter(my_list)), width=4))
-    print("+++++++++++++++++++++++++++++++++++++++++++++++++")
 
-    return my_list
+
+
+
 
 
 def analyse_projects(df):
@@ -223,15 +200,6 @@ def analyse_europe(df):
     location_list = get_lists_from_df_column(df, 'Europe')
 
 
-def list_freq_pie(my_list, label, my_title, outfile):
-    my_counter = Counter(my_list)
-    pprint.pprint(dict(my_counter))
-    my_df = pd.DataFrame(dict(my_counter).items(),
-                         columns = [label, 'count']).sort_values(by = label, ascending = True)
-    logger.info(f"\n{my_df.to_string(index = False)}")
-    fig = px.pie(my_df, values = 'count', names = label, title = my_title)
-    logger.info(f"{outfile}")
-    fig.write_image(outfile)
 
 def analyse_environment(df):
         label = 'Environment'
@@ -361,6 +329,26 @@ def visualize_graph(G, my_title, plotfile):
     plt.savefig(plotfile)
 
 
+def analyse_repository(df):
+    label = 'ProcessedRepository_Simplified'
+    my_list = get_lists_from_df_column(df, label)
+    my_title = "Survey: Aquatic :" + label
+
+    logger.info(f"\n{my_list} type={type(my_list)}")
+    my_unif_list = []
+    for key in my_list:
+        logger.info(f"\n{key}")
+        if key.startswith("NCBI"):
+            new_key = "NCBI"
+        elif key.startswith("EBI"):
+            new_key = "ENA"
+        else:
+            new_key = key
+        my_unif_list.append(new_key)
+
+    logger.info(f"\n{my_unif_list}")
+
+    list_freq_pie(my_unif_list, label, my_title, "../images/survey_" + label + ".png")
 
 def analyse_processed_metadata(df):
     label = 'Processed_Metadata'
@@ -370,7 +358,7 @@ def analyse_processed_metadata(df):
 
     #print(df[label].value_counts())
     my_df = df.groupby(label).size().reset_index(name="counts")
-    logger.info(f"{my_df}")
+    logger.debug(f"{my_df}")
 
     my_list = df[label].to_list()
     org_len = len(my_list)
@@ -381,6 +369,26 @@ def analyse_processed_metadata(df):
     g = create_weighted_graph(my_list)
     print(g)
     visualize_graph(g, "Figure: survey \"" + label + "\" frequency co-occurrence graph", "../images/survey_" + label + "_graph.png")
+
+    label = 'Processed_MetadataStandard'
+    location_list = get_lists_from_df_column(df, label)
+    my_title = "Survey: Aquatic :" + label
+
+    label = 'Processed_MetadataStandard_Structure'
+    my_list = df[label].to_list()
+    orig_len = len(my_list)
+    my_list = clean_list_replace_nan(my_list)
+    logger.info(f"orig len = {orig_len} cleaned len = {len(my_list)}")
+    logger.info(my_list)
+
+    my_title = "Survey: Aquatic :" + label
+    list_freq_pie(my_list, label, my_title, "../images/survey_" + label + ".png")
+
+def analyse_read_runs(df):
+    label = 'NReads_Simplified'
+    my_list = get_lists_from_df_column(df, label)
+    my_title = "Survey: Aquatic :" + label
+    list_freq_pie(my_list, label, my_title, "../images/survey_" + label + ".png")
 
 
 def analyse_answer(df):
@@ -409,13 +417,15 @@ def mine_questionnaire_eval():
     proj_list = un_split_list(proj_list)
     print(f"This many questionnaire evaluations were done: {len(df)} covering {len(proj_list)} projects")
     # analyse_answer(df)
-    #analyse_projects(df)
-    #analyse_location(df)
-    #analyse_europe(df)
+    # analyse_projects(df)
+    # analyse_location(df)
+    # analyse_europe(df)
     # analyse_environment(df)
     # analyse_barcode(df)
-    #analyse_sequencing_technologies(df)
-    analyse_processed_metadata(df)
+    # analyse_sequencing_technologies(df)
+    analyse_read_runs(df)
+    # analyse_processed_metadata(df)
+    # analyse_repository(df)
 
 
 
