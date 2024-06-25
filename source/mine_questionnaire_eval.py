@@ -7,21 +7,31 @@ __docformat___ = 'reStructuredText'
 
 """
 
-
+import os
 import pandas as pd
 import sys
 import logging
+import re
+import numpy as np
+import json
+import pprint
+import plotly.express as px
 from collections import Counter
-from eDNA_utilities import logger,  my_coloredFormatter, coloredlogs
+import networkx as nx
+import matplotlib.pyplot as plt
+
+from pygments.lexers import go
+
+from eDNA_utilities import logger, my_coloredFormatter, coloredlogs
 
 pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.width', 1000)
 
 
-
 def get_dataframe():
-    ss_url = r'https://docs.google.com/spreadsheets/d/1bll3zzMJHv0gbe2xH4h7a9wTCMy3INtV/edit?usp=sharing&ouid=112917721394157806879&rtpof=true&sd=true'
+    ss_url = (r'https://docs.google.com/spreadsheets/d/1bll3zzMJHv0gbe2xH4h7a9wTCMy3INtV/edit?usp=sharing&ouid'
+              r'=112917721394157806879&rtpof=true&sd=true')
     sheet_id = '1bll3zzMJHv0gbe2xH4h7a9wTCMy3INtV'
     ss_url = f'https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv'
     ss_url = 'eDNA_Survey-Data.xlsx'
@@ -42,13 +52,13 @@ def get_dataframe():
     logger.info("-------------------------------------------")
     logger.info(f"len of col_list={len(col_list)}")
     not_raw_list = list(filter(filter_not_raw, col_list))
-    logger.info(f"\n{not_raw_list}")
+    # logger.info(f"\n{not_raw_list}")
     df = df[not_raw_list]
 
     return df
 
-def un_split_list(list):
 
+def un_split_list(list):
     clean_list = []
     for item in list:
         if item != item:
@@ -57,6 +67,7 @@ def un_split_list(list):
         local_list = item.split(';')
         clean_list.extend(local_list)
     return clean_list
+
 
 def get_duplicates_in_list(mylist):
     newlist = []  # empty list to hold unique elements from the list
@@ -77,18 +88,315 @@ def get_lists_from_df_column(df, col):
     print(f"Total of {len(my_list)} in col={col} , unique count= {len(set(my_list))}")
     duplist = get_duplicates_in_list(my_list)
     print(f"\nDuplicated {col} list:  {duplist}")
-    print(Counter(my_list))
+    print("+++++++++++++++++++++++++++++++++++++++++++++++++")
+    print(pprint.pprint(dict(Counter(my_list)), width=4))
+    print("+++++++++++++++++++++++++++++++++++++++++++++++++")
+
     return my_list
 
+
 def analyse_projects(df):
-    project_list = get_lists_from_df_column(df,'Project')
-    print(Counter(project_list))
+    project_list = get_lists_from_df_column(df, 'Project')
+    print(json.dumps(Counter(project_list)))
+
+def plot_countries(my_f_dict, location, my_title, plot_file_name):
+    logger.info(f"\n{my_f_dict}")
+    df = pd.DataFrame(my_f_dict.items(), columns = ['country', 'count'])
+
+    logger.info(f"\n{df}")
+
+
+    database = px.data.gapminder().query('year == 2007')
+
+    df = pd.merge(database, df, how = 'inner', on = 'country')
+    url = (
+        "https://raw.githubusercontent.com/python-visualization/folium/master/examples/data"
+    )
+
+    if location == 'all':
+        geojson_file = f"{url}/world-countries.json"
+    else:
+        geojson_file = f"../images/european-countries.json"
+    geojson_file = f"../images/world-countries.json"
+    geojson_file = f"{url}/world-countries.json"
+    logger.info(f"\n{geojson_file}")
+    if os.path.exists(geojson_file):
+        logger.info(f"path exists for {geojson_file}")
+    # see https://github.com/python-visualization/folium/tree/main/examples
+
+    fig = px.choropleth(df,
+                        title = my_title,
+                        locations = "country",  # "iso_alpha",
+                        locationmode = "country names",  # "ISO-3",
+                        geojson = geojson_file,
+                        scope = "europe",
+                        color = "count"
+                        )
+
+    # fig.show()
+    logger.info(f"\nWriting {plot_file_name}")
+    fig.write_image(plot_file_name)
 
 def analyse_location(df):
+    logger.info("Analysing location<------------------------------------------------------------")
     location_list = get_lists_from_df_column(df, 'Location')
+    tmp_list = sorted(set(location_list))
+    # txt = "|".join(tmp_list).replace('_', '|').replace('.', '|').replace(' ', '|')
+    # tmp_list = sorted(set(txt.split('|')))
+    # logger.info(f"\nTMPLIST--------------{tmp_list}")
+    #
+    # def remove_features(my_list): features_pat = re.compile(
+    # r'Mountains|Lagoon|River|sea|^sur|^shelf|^fresh|lake|gulf|ocean|island|Eco|ridge|foreland|atlantic|pacific',
+    # flags=re.IGNORECASE) new_list = [] for value in my_list: if re.match(features_pat, value): logger.info(
+    # f"\tremoving--->{value}") continue else: new_list.append(value)
+    #
+    #     return new_list
+    # tmp_list = remove_features(tmp_list)
+    logger.info(f"{location_list}")
+    europe_pats = re.compile(
+        r'Oleron|Danube|deVeys|Douro|English|Europe|Ferrol|Finland|France|French|Ferrol|Georgia|Germany|Greece|Heraklion|Léman|Iberia'
+        r'|Italy|Karpathos|Kristineberg|Léman|Malta|Mediterranean|Minho|Naples|Netherlands|Norway|Norwegian|OsloFjord'
+        r'|Poland|Portugal|Sicily|Slovak|Slovakia|Spain|StAbbs|Svalbard|Sweden|Tatra|Thau|Thessaloniki|UK|Wallonia'
+        r'|Bay_Biscay|Gulf_Naples|Cardigan|Minho|Svalbard|OsloFjord|Heraklion|Oleron|StAbbs',
+        flags = re.IGNORECASE)
+    special_cases_pats = re.compile( r'UK|English|Slovak|StAbbs|Tatra|Douro|OsloFjord|Ferrol|deVeys|Léman|Karpathos|Kristineberg|Oleron|StAbbs|Thau|Wallonia|Heraklion|Thessaloniki|EnglishChannel|Mediterranean|Norwegian_shelf|Bay_Biscay|Gulf_Naples|Cardigan|Minho_River|ArcticOcean_Svalbard', flags = re.IGNORECASE)
+    special_cases_dict = {
+        'Kristineberg': 'Sweden',
+        'Minho_River': "Portugal",
+        'Heraklion': "Greece",
+        'Thessaloniki': "Greece",
+        'Karpathos': "Greece",
+        'Wallonia': "Belgium",
+        'Thau': "France",
+        "Tatra": "Poland", # could be Slovakia
+        'Léman': "Switzerland",
+        'Slovak': "Slovakia",
+        'Douro': "Portugal",
+        'Ferrol': "Spain",
+        'Oleron': "France",
+        'StAbbs': 'United Kingdom',
+        'UK': 'United Kingdom',
+        'ArcticOcean_Svalbard': "sea(European)",
+        'Bay_Biscay': "sea(European)",
+        'Norwegian_shelf': "sea(European)",
+        'EnglishChannel': "sea(European)",
+        'English': "sea(European)",
+        'Cardigan': "sea(European)",
+        'Mediterranean': "sea(European)",
+        'OsloFjord': "sea(European)",
+        'deVeys': "sea(European)",
+        'Gulf_Naples': "sea(European)"
+
+        }
+    europe_list = []
+    non_europe_list = []
+    for location in location_list:
+        match = europe_pats.search(location)
+        if match is not None:
+            logger.info(f"match found match={match} in location={location}")
+            smatch = special_cases_pats.search(location)
+            if smatch is not None:
+                logger.info(f"match found smatch={smatch.group(0)} in location={location}")
+                if smatch.group(0) in special_cases_dict:
+                    europe_list.append(special_cases_dict[smatch.group(0)])
+                else:
+                    europe_list.append(smatch.group(0))
+                # sys.exit()
+            else:
+                europe_list.append(match.group(0))
+        else:
+            non_europe_list.append(location)
+    print(f"Europe: {len(europe_list)} non-europe: {len(non_europe_list)}")
+
+    my_euro_counter = Counter(europe_list)
+    pprint.pprint(my_euro_counter)
+
+    df = pd.DataFrame(my_euro_counter.items(), columns = ['country', 'count']).sort_values(by='country', ascending=True)
+    logger.info(f"\n{df.to_string(index=False)}")
+
+    plot_countries(dict(my_euro_counter),'europe', "Reported eDNA related DB location in Europe Frequencies", "../images/survey_europe_countries.png")
+
+
+
 
 def analyse_europe(df):
     location_list = get_lists_from_df_column(df, 'Europe')
+
+
+def list_freq_pie(my_list, label, my_title, outfile):
+    my_counter = Counter(my_list)
+    pprint.pprint(dict(my_counter))
+    my_df = pd.DataFrame(dict(my_counter).items(),
+                         columns = [label, 'count']).sort_values(by = label, ascending = True)
+    logger.info(f"\n{my_df.to_string(index = False)}")
+    fig = px.pie(my_df, values = 'count', names = label, title = my_title)
+    logger.info(f"{outfile}")
+    fig.write_image(outfile)
+
+def analyse_environment(df):
+        label = 'Environment'
+        location_list = get_lists_from_df_column(df, label)
+        # logger.info(f"\n{location_list}")
+        my_title = "Survey: Aquatic Environments"
+        list_freq_pie(location_list,'Environment', my_title, "../images/survey_europe_environments.png" )
+
+        label = 'Substrate_Simplified'
+        location_list = get_lists_from_df_column(df, label)
+        # logger.info(f"\n{location_list}")
+        my_title = "Survey: Aquatic Environments:" + label
+        list_freq_pie(location_list, 'Substrate_Simplified', my_title, "../images/survey_substrate_simplified_environments.png")
+
+        label = 'Substrate.Env'
+        location_list = get_lists_from_df_column(df, label)
+        # logger.info(f"\n{location_list}")
+        my_title = "Survey: Aquatic :" + label
+        list_freq_pie(location_list, label, my_title, "../images/survey_" + label + ".png")
+
+def get_barcode2tax():
+    # from Markers proposed to include in searching DNA barcode repositories
+    get_barcode2tax = {
+        "12S_rRNA": "fish, amphibians",
+        "16S_rRNA": "bacteria",
+        "18S_rRNA": "nematodes and many microeukaryota",
+        "23S_rRNA": "microalgae / algae",
+        "MATK": "plants",
+        "matK": "plants",
+        "28S_rRNA": "protists",
+        "COX1": "invertebrates, vertebrates",
+        "Cytb": "fish",
+        "ITS1-5.8S-ITS2": "fungi",
+        "ITS": "fungi",
+        "ITS1": "fungi",
+        "ITS2": "fungi",
+        "LSU": "fungi",
+        "Metagenome": "",
+        "Metatranscriptome": "",
+        "TROLL": "",
+        "anaC": "",
+        "anaF": "",
+        "cyrA": "",
+        "cyrB": "",
+        "cyrC": "",
+        "cyrJ": "",
+        "mcyA": "",
+        "mcyB": "",
+        "mcyC": "",
+        "mcyD": "",
+        "mcyE": "",
+        "mcyF": "",
+        "mcyG": "",
+        "mtDNA_ControlRegion": "",
+        "pca": "",
+        "rbcl": "diatoms/plants",
+        "rbcL": "diatoms/plants",
+        "sxtA": "",
+        "sxtG": "",
+        "sxtH": "",
+        "sxtI": ""
+    }
+    return get_barcode2tax
+
+def analyse_tax_from_barcode_list(barcode_list):
+    logger.info(f"inside barcode_list")
+
+    barcode_dict = get_barcode2tax()
+    logger.info(f"inside barcode_dict{barcode_dict}<------------------------------------")
+    label = "barcode"
+    barcode_counter = Counter(barcode_list)
+    # logger.info(f"inside barcode_counter{barcode_counter}")
+    my_df = pd.DataFrame(barcode_counter.items(),
+                         columns = [label, 'count']).sort_values(by = 'count', ascending = False)
+    logger.info(f"\n{my_df.to_string(index=False)}")
+    my_df['barcode_species'] = my_df['barcode'].map(barcode_dict)
+
+    logger.info(f"\n{my_df.to_string(index=False)}")
+
+def analyse_barcode(df):
+    label = 'Markers_Simplified'
+    location_list = get_lists_from_df_column(df, label)
+    # logger.info(f"\n{location_list}")
+    my_title = "Survey: Aquatic :" + label
+    list_freq_pie(location_list, label, my_title, "../images/survey_" + label + ".png")
+    analyse_tax_from_barcode_list(location_list)
+
+def analyse_sequencing_technologies(df):
+    label = 'Seq_Platform'
+    location_list = get_lists_from_df_column(df, label)
+    # logger.info(f"\n{location_list}")
+    my_title = "Survey: Aquatic :" + label
+    list_freq_pie(location_list, label, my_title, "../images/survey_" + label + ".png")
+
+
+def create_weighted_graph(paths):
+    G = nx.Graph()
+
+    for path in paths:
+        nodes = path.split(';')
+        for i in range(len(nodes) - 1):
+            node1 = nodes[i]
+            node2 = nodes[i + 1]
+            weight = 1  # Each connection counts as 1
+            if G.has_edge(node1, node2):
+                G[node1][node2]['weight'] += weight
+            else:
+                G.add_edge(node1, node2, weight = weight)
+
+    return G
+
+
+def visualize_graph(G, my_title, plotfile):
+    pos = nx.spring_layout(G, seed = 42, k =3)  # For consistent layout
+    edge_labels = nx.get_edge_attributes(G, 'weight')
+
+    # Calculate edge widths based on weights
+    edge_widths = [G[u][v]['weight'] for u, v in G.edges()]
+
+    plt.figure(figsize = (12, 8))
+    plt.title(my_title)
+    nx.draw(G, pos, with_labels = True, node_color = 'skyblue', node_size = 3000, font_color='green', font_size = 10, font_weight = 'bold',
+            width = edge_widths, edge_color="lightgreen")
+    nx.draw_networkx_edge_labels(G, pos, edge_labels = edge_labels, font_color = 'red')
+
+    logger.info("Visualizing graph to " + plotfile)
+    plt.savefig(plotfile)
+
+
+
+def analyse_processed_metadata(df):
+    label = 'Processed_Metadata'
+    location_list = get_lists_from_df_column(df, label)
+    my_title = "Survey: Aquatic :" + label
+    list_freq_pie(location_list, label, my_title, "../images/survey_" + label + ".png")
+
+    #print(df[label].value_counts())
+    my_df = df.groupby(label).size().reset_index(name="counts")
+    logger.info(f"{my_df}")
+
+    my_list = df[label].to_list()
+    org_len = len(my_list)
+    my_list = [x for x in my_list if str(x) != 'nan']
+    clean_len = len(my_list)
+    print(f"Total db collections = {org_len}, total collections with metadata types recorded = {clean_len}, collections without = {org_len - clean_len}")
+    logger.debug(my_list)
+    g = create_weighted_graph(my_list)
+    print(g)
+    visualize_graph(g, "Figure: survey \"" + label + "\" frequency co-occurrence graph", "../images/survey_" + label + "_graph.png")
+
+
+def analyse_answer(df):
+    answer_list = get_lists_from_df_column(df, 'Answer')
+    df['row_num'] = range(len(df))
+    logger.info(f"\n{df.head(3)}")
+
+
+    tmp_df = df[['row_num','Answer', 'Project']].set_index(['row_num','Answer']).drop_duplicates()
+
+    answer_df = tmp_df.stack().str.split(';', expand=True).stack().unstack(-2).reset_index(-1, drop=True).reset_index()
+    logger.info(f"\n{answer_df}")
+
+    print(f"Total questionnaire submitters: {len(df)}, and total dbs: {len(answer_df)}")
+    print(f"mean # {len(answer_df)/len(df)}   median # of dbs submitted.by submitter: {answer_df.groupby('Answer').count().apply(np.median)}")
+    sys.exit()
 
 
 def mine_questionnaire_eval():
@@ -100,18 +408,21 @@ def mine_questionnaire_eval():
     proj_list = df['Project'].to_list()
     proj_list = un_split_list(proj_list)
     print(f"This many questionnaire evaluations were done: {len(df)} covering {len(proj_list)} projects")
-    # analyse_projects(df)
-    # analyse_location(df)
-    analyse_europe(df)
-
-
-
+    # analyse_answer(df)
+    #analyse_projects(df)
+    #analyse_location(df)
+    #analyse_europe(df)
+    # analyse_environment(df)
+    # analyse_barcode(df)
+    #analyse_sequencing_technologies(df)
+    analyse_processed_metadata(df)
 
 
 
 def main():
     print("FFS")
     mine_questionnaire_eval()
+
 
 if __name__ == '__main__':
     logging.basicConfig(level = logging.INFO)
@@ -122,6 +433,5 @@ if __name__ == '__main__':
     ch.setFormatter(fmt = my_coloredFormatter)
     logger.addHandler(hdlr = ch)
     logger.setLevel(level = logging.INFO)
-
 
     main()
