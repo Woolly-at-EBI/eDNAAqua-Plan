@@ -4,7 +4,7 @@
 ___author___ = "woollard@ebi.ac.uk"
 ___start_date___ = 2024-05-09
 __docformat___ = 'reStructuredText'
-chmod a+x get_taxononomy_scientific_name.py
+
 """
 
 import json
@@ -195,7 +195,7 @@ def get_all_study_details():
     if os.path.exists(study_details_file):
          logger.info("env_sample_id_file exists, so can unpickle it")
          record_list = unpickle_data_structure(study_details_file)
-         logger.info(f"Number of redords= {len(record_list)} records")
+         logger.info(f"Number of study_details records= {len(record_list)}")
          return pd.DataFrame.from_records(record_list)
     elif os.path.exists(study_details_json):
          logger.info(f"{study_details_json} exists,")
@@ -209,8 +209,7 @@ def get_all_study_details():
     # curl 'https://www.ebi.ac.uk/ena/portal/api/search?result=study&fields=study_accession%2Cstudy_title%2Cstudy_description&format=json&limit=0' >stud
     # curl 'https://www.ebi.ac.uk/ena/portal/api/search?result=study&fields=study_accession%2Cstudy_title%2Cstudy_description&format=json&limit=5'
 
-    limit_size="0"
-    limit_size="5"
+    limit_size = "0"
     logger.info(f"Reading study details for this many {limit_size}")
     #'result=study&fields=study_accession%2Cstudy_title%2Cstudy_description&format=tsv'
     # gets all study data, so only need to do once,
@@ -430,6 +429,37 @@ def analyse_all_study_details(df):
 
     return barcoding_df
 
+
+def process_geographical_data(old_df):
+    """
+    process geographical data, used in both this and the analysis script!
+    :param old_df:
+    :return:
+    """
+    df = old_df.copy()
+    if 'country_clean'  in df.columns:
+        logger.info("geographical data already processed")
+        return df
+
+    df['has_geographical_coordinates'] = True
+    df['has_geographical_coordinates'] = df['has_geographical_coordinates'].mask(df['lat'].isna(), False)
+    print_value_count_table(df.has_geographical_coordinates)
+
+    df['has_broad_scale_environmental_context'] = True
+    df['has_broad_scale_environmental_context'] = df['has_broad_scale_environmental_context'].mask(
+        df['broad_scale_environmental_context'] == '', False)
+
+    #print_value_count_table(df.has_broad_scale_environmental_context)
+    #print_value_count_table(df.broad_scale_environmental_context)
+
+    df['country_clean'] = df['country'].apply(select_first_part)
+    logger.info("About to call geographical")
+    geography_obj = Geography()
+    df['continent'] = df['country_clean'].apply(geography_obj.get_continent)
+    df['ocean'] = df['country_clean'].apply(geography_obj.get_ocean)
+
+    return df
+
 def filter_for_aquatic(env_readrun_detail):
     logging.info("filter_for_aquatic")
     df = pd.DataFrame.from_records(env_readrun_detail)
@@ -523,7 +553,7 @@ def main():
 
     df_aquatic_env_readrun_detail_pickle = "df_aquatic_env_readrun_detail.pickle"
     env_readrun_detail = get_env_readrun_detail(10000)
-    df_env_readrun_detail = filter_for_aquatlogger.info(env_readrun_detail)
+    df_env_readrun_detail = filter_for_aquatic(env_readrun_detail)
     pickle_data_structure(df_env_readrun_detail, df_aquatic_env_readrun_detail_pickle)
     logger.info("WTF")
     # sys.exit()
@@ -536,7 +566,7 @@ def main():
     # sample_ids_set = set(df_env_readrun_detail['sample_accession'])
     # logging.info(f"sample_ids_set={len(sample_ids_set)}")
     #
-    # analyse_readrun_detail(df_env_readrun_detail)
+    #analyse_readrun_detail(df_env_readrun_detail)
 
 
 if __name__ == '__main__':

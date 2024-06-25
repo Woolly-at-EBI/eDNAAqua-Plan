@@ -24,7 +24,7 @@ from pygments.lexers import go
 
 from eDNA_utilities import logger, my_coloredFormatter, coloredlogs,\
     list_freq_pie, get_lists_from_df_column, un_split_list,\
-    get_duplicates_in_list, clean_list_replace_nan
+    get_duplicates_in_list, clean_list_replace_nan, plot_countries
 
 
 pd.set_option('display.max_rows', 500)
@@ -62,57 +62,11 @@ def get_dataframe():
     return df
 
 
-
-
-
-
-
-
-
-
-
-
 def analyse_projects(df):
     project_list = get_lists_from_df_column(df, 'Project')
     print(json.dumps(Counter(project_list)))
 
-def plot_countries(my_f_dict, location, my_title, plot_file_name):
-    logger.info(f"\n{my_f_dict}")
-    df = pd.DataFrame(my_f_dict.items(), columns = ['country', 'count'])
 
-    logger.info(f"\n{df}")
-
-
-    database = px.data.gapminder().query('year == 2007')
-
-    df = pd.merge(database, df, how = 'inner', on = 'country')
-    url = (
-        "https://raw.githubusercontent.com/python-visualization/folium/master/examples/data"
-    )
-
-    if location == 'all':
-        geojson_file = f"{url}/world-countries.json"
-    else:
-        geojson_file = f"../images/european-countries.json"
-    geojson_file = f"../images/world-countries.json"
-    geojson_file = f"{url}/world-countries.json"
-    logger.info(f"\n{geojson_file}")
-    if os.path.exists(geojson_file):
-        logger.info(f"path exists for {geojson_file}")
-    # see https://github.com/python-visualization/folium/tree/main/examples
-
-    fig = px.choropleth(df,
-                        title = my_title,
-                        locations = "country",  # "iso_alpha",
-                        locationmode = "country names",  # "ISO-3",
-                        geojson = geojson_file,
-                        scope = "europe",
-                        color = "count"
-                        )
-
-    # fig.show()
-    logger.info(f"\nWriting {plot_file_name}")
-    fig.write_image(plot_file_name)
 
 def analyse_location(df):
     logger.info("Analysing location<------------------------------------------------------------")
@@ -192,8 +146,6 @@ def analyse_location(df):
     logger.info(f"\n{df.to_string(index=False)}")
 
     plot_countries(dict(my_euro_counter),'europe', "Reported eDNA related DB location in Europe Frequencies", "../images/survey_europe_countries.png")
-
-
 
 
 def analyse_europe(df):
@@ -418,7 +370,7 @@ def mine_questionnaire_eval():
     print(f"This many questionnaire evaluations were done: {len(df)} covering {len(proj_list)} projects")
     # analyse_answer(df)
     # analyse_projects(df)
-    # analyse_location(df)
+    analyse_location(df)
     # analyse_europe(df)
     # analyse_environment(df)
     # analyse_barcode(df)

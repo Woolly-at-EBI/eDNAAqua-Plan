@@ -26,7 +26,7 @@ from collections import Counter
 from geography import Geography
 from taxonomy import *
 from eDNA_utilities import pickle_data_structure, unpickle_data_structure,  print_value_count_table,\
-    plot_sankey, get_percentage_list, my_coloredFormatter
+    plot_sankey, get_percentage_list, my_coloredFormatter, plot_countries
 
 from get_environmental_info import get_all_study_details, process_geographical_data
 
@@ -162,9 +162,6 @@ def target_gene_analysis(df):
     total_w_tgs = len(tmp_df)
     logger.info(f"total target_gene count = {total_w_tgs} / {total} = {round((100 * total_w_tgs/ total),2)}%")
     logger.info("---------------+++++++++++++++++++----------------")
-
-
-
 
     return
 
@@ -455,13 +452,31 @@ def do_geographical(df):
     path_list = ['continent', 'country_clean']
     plot_df = df.groupby(path_list).size().to_frame('record_count').reset_index()
     plotfile = "../images/geography_sunburst.png"
+    logger.info(f"plotting\n{plotfile}")
     plot_sunburst(plot_df, 'Figure: ENA "Environmental" readrun records, by country', path_list,
                   'record_count', plotfile)
 
+    logger.info(f"plotting {plot_df.head()}")
+    country_record_count_dict = dict(zip(plot_df.country_clean, plot_df.record_count))
+
+
+    plot_countries(country_record_count_dict, 'europe', "Reported eDNA related ALL readrun in Europe Frequencies",
+               "../images/ena_european_countries.png")
+
+
+    for key in country_record_count_dict.keys():
+        print(key)
+        if key == "USA":
+            country_record_count_dict["United States of America"] = country_record_count_dict[key]
+    plot_countries(country_record_count_dict, 'all', "Reported eDNA related ALL readrun in Europe Frequencies",
+                   "../images/ena_all_countries.png")
+
+    sys.exit()
     path_list = ['ocean']
     plot_df = df.groupby(path_list).size().to_frame('record_count').reset_index()
     plot_df = plot_df[plot_df['ocean'] != 'not ocean']
     plotfile = "../images/ocean_sunburst.png"
+    logger.info(f"plotting {plotfile}")
     plot_sunburst(plot_df, 'Figure: ENA "Environmental" readrun records, by ocean', path_list,
                   'record_count', plotfile)
 
@@ -776,9 +791,9 @@ def analyse_readrun_detail(df):
     # outfile = all_sample_accessions.tsv"
     # logger.info(outfile)
     # df.sample_accession.to_csv(outfile)
-    target_gene_analysis(df)
 
-    sys.exit()
+    # uncomment when running for real
+    # target_gene_analysis(df)
 
     print('NCBI "checklists":')
     print_value_count_table(df.ncbi_reporting_standard)
@@ -796,10 +811,12 @@ def analyse_readrun_detail(df):
 
     logger.info("-------------about to do geographical------------------------")
     df = do_geographical(df)
+    sys.exit("PREMATURE")
     logger.info("-------------about to do taxonomic_analysis------------------------")
     df = taxonomic_analysis(df)
     logger.info(df)
     logger.info(df.dtypes)
+    logger.info("-------------end of analyse_readrun_detail------------------------")
     
 
 
@@ -822,7 +839,7 @@ def main():
     # logger.info("WTF")
     # sys.exit()
     pickle_file = 'df_aquatic_env_readrun_detail.pickle-keep'
-    df_aquatic_env_readrun_detail_pickle = pd.read_pickle(pickle_file)
+    df_aquatic_env_readrun_detail = pd.read_pickle(pickle_file)
     logger.info(f"unpickled to {pickle_file}")
     #
     #
@@ -832,7 +849,7 @@ def main():
     # sample_ids_set = set(df_env_readrun_detail['sample_accession'])
     # logging.info(f"sample_ids_set={len(sample_ids_set)}")
     #
-    # analyse_readrun_detail(df_env_readrun_detail)
+    analyse_readrun_detail(df_aquatic_env_readrun_detail)
 
     
     

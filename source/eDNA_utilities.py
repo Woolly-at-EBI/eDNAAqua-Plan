@@ -15,6 +15,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 from collections import Counter
 import pprint
+import plotly.express as px
+import os
 
 logger = logging.getLogger(name = 'mylogger')
 
@@ -285,3 +287,42 @@ def plot_sankey(df, sankey_link_weight, columns, title, plotfile):
             logger.info(f"Sankey plot to {plotfile}")
             fig.write_image(plotfile)
 
+
+def plot_countries(my_f_dict, location, my_title, plot_file_name):
+    """
+    Scope is quite limited, just europe or world
+    """
+    
+    
+    logger.info(f"\n{my_f_dict}")
+    df = pd.DataFrame(my_f_dict.items(), columns = ['country', 'count'])
+    logger.info(f"\n{df}")
+    database = px.data.gapminder().query('year == 2007')
+
+    df = pd.merge(database, df, how = 'inner', on = 'country')
+    url = (
+        "https://raw.githubusercontent.com/python-visualization/folium/master/examples/data"
+    )
+
+    if location == 'europe':
+        scope = location
+    else:
+        scope = "world"
+    geojson_file = f"{url}/world-countries.json"
+    logger.info(f"\n{geojson_file}")
+    if os.path.exists(geojson_file):
+        logger.info(f"path exists for {geojson_file}")
+    # see https://github.com/python-visualization/folium/tree/main/examples
+
+    fig = px.choropleth(df,
+                        title = my_title,
+                        locations = "country",  # "iso_alpha",
+                        locationmode = "country names",  # "ISO-3",
+                        geojson = geojson_file,
+                        scope = scope,
+                        color = "count"
+                        )
+
+    # fig.show()
+    logger.info(f"\nWriting {plot_file_name}")
+    fig.write_image(plot_file_name)     
