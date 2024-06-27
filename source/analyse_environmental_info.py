@@ -181,6 +181,14 @@ def plot_sunburst(df, title, path_list, value_field, plotfile):
             values = value_field,
             title = title,
         )
+    # fig.update_layout(legend = dict(
+    #     orientation = 'h',
+    #     yanchor = 'bottom',
+    #     y = 1.02,
+    #     xanchor = 'right',
+    #     x = 1
+    # ))
+    # fig.show()
     if plotfile == "plot":
             fig.show()
     else:
@@ -434,8 +442,6 @@ def add_insdc_member_receiver(df):
     return df
 
 
-
-
 def do_geographical(df):
     """
 
@@ -443,20 +449,32 @@ def do_geographical(df):
     :return:
     """
     df = process_geographical_data(df)
+    logger.info(f"after process_geographical_data count: {len(df)}")
+
+    # logger.info(f"after process_geographical_data total: {df['country_clean'].value_counts()}")
+    # logger.info(f"after process_geographical_data total: {df['country'].value_counts()}")
     print_value_count_table(df.country_clean)
+
+
     print_value_count_table(df.continent)
 
     tmp_df = df[df['ocean'] != 'not ocean']
+    logger.info(f"after process_geographical_data count: {len(tmp_df)}")
+    print("Oceans Count and Percentage")
     print_value_count_table(tmp_df.ocean)
 
     path_list = ['continent', 'country_clean']
     plot_df = df.groupby(path_list).size().to_frame('record_count').reset_index()
+    plot_df = plot_df.sort_values(by=['record_count'], ascending=False)
+    logger.info(f"after process_geographical_data count: {len(plot_df)}")
     plotfile = "../images/geography_sunburst.png"
     logger.info(f"plotting\n{plotfile}")
-    plot_sunburst(plot_df, 'Figure: ENA "Environmental" readrun records, by country', path_list,
+    plot_sunburst(plot_df, 'Figure: ENA Aquatic "Environmental" readrun records, by country', path_list,
                   'record_count', plotfile)
 
-    logger.info(f"plotting {plot_df.head()}")
+    tmp_df = plot_df[['country_clean', 'record_count']]
+    logger.info(f"\n{tmp_df.head(20).to_string(index=False)}")
+    #print_value_count_table(df.country_clean)
     country_record_count_dict = dict(zip(plot_df.country_clean, plot_df.record_count))
 
 
@@ -464,20 +482,22 @@ def do_geographical(df):
                "../images/ena_european_countries.png")
 
 
-    for key in country_record_count_dict.keys():
-        print(key)
-        if key == "USA":
-            country_record_count_dict["United States of America"] = country_record_count_dict[key]
-    plot_countries(country_record_count_dict, 'all', "Reported eDNA related ALL readrun in Europe Frequencies",
+    #for key in country_record_count_dict.keys():
+    US_KEY = "United States of America"
+    if US_KEY in country_record_count_dict:
+        # logger.info(f"GREAT: -->{US_KEY}<-- found")
+        # country_record_count_dict["USA"] = country_record_count_dict[US_KEY]
+        country_record_count_dict["United States"] = country_record_count_dict[US_KEY] # by trial and error found this "std" is expected
+
+    plot_countries(country_record_count_dict, 'all', "Reported eDNA related ALL readrun in World Frequencies",
                    "../images/ena_all_countries.png")
 
-    sys.exit()
     path_list = ['ocean']
     plot_df = df.groupby(path_list).size().to_frame('record_count').reset_index()
     plot_df = plot_df[plot_df['ocean'] != 'not ocean']
     plotfile = "../images/ocean_sunburst.png"
     logger.info(f"plotting {plotfile}")
-    plot_sunburst(plot_df, 'Figure: ENA "Environmental" readrun records, by ocean', path_list,
+    plot_sunburst(plot_df, 'Figure: ENA Aquatic "Environmental" readrun records, by ocean', path_list,
                   'record_count', plotfile)
 
     return df
@@ -526,8 +546,7 @@ def create_year_bins(value):
                return f"{str(x)}-{str(x+5)}"
     return None
 
-
-def analyse_environment(df):
+def detailed_environmental_analysis(df):
     """
     uses the tags to predict the environment, is rather rough and ready
     assuming is all terrestrial with a low confidence
@@ -724,6 +743,14 @@ def analyse_environment(df):
             return tag_string_assignment[value]['confidence']
         return "low"
 
+    def add_ocean_evidence(vec):
+        env_prediction = vec[0]
+        ocean_evidence = vec[1]
+        if ocean_evidence != "not ocean" and env_prediction in ['terrestrial', 'mixed']:
+            logger.debug(f"ocean_evidence: {ocean_evidence}")
+            return "marine"
+        return env_prediction
+
     aquatic_set = ('marine', 'brackish', 'coastal', 'freshwater', 'mixed_aquatic')
     logger.info(f"aquatic_set: {aquatic_set}")
 
@@ -744,20 +771,22 @@ def analyse_environment(df):
 
     df['env_prediction'] = df['env_tags'].apply(actually_assign_env_info_pred)
     df['env_confidence'] = df['env_tags'].apply(actually_assign_env_info_conf)
+    df['env_prediction'] = df[['env_prediction', 'ocean']].apply(add_ocean_evidence, axis=1)
+
 
     df['env_prediction_hl'] = df['env_prediction'].apply(actually_assign_env_info_pred_hl)
-    print_value_count_table(df['env_prediction'])
-    print_value_count_table(df['env_confidence'])
     print()
     logger.info("\n" + df.groupby(['env_prediction', 'env_confidence']).size().to_frame().to_string())
     print_value_count_table(df['env_prediction_hl'])
 
+    #
 
-    path = ['env_prediction_hl', 'env_prediction', 'env_confidence','continent']
+
+    path = ['env_prediction_hl', 'env_prediction', 'env_confidence','ocean']
     value_field = 'record_count'
     plot_df = df.groupby(path).size().to_frame('record_count').reset_index()
     plotfile = "../images/env_predictions.png"
-    plot_sunburst(plot_df, "Figure: ENA readrun environmental predictions using species and lat/lons (Sunburst Plot)", path, value_field, plotfile)
+    plot_sunburst(plot_df, "Figure: ENA readrun Aquatic environmental predictions using species and lat/lons (Sunburst Plot)", path, value_field, plotfile)
 
     logger.info("finished All the analysis for the environmental predictions<-------------------")
     return df
@@ -767,6 +796,12 @@ def analyse_environment(df):
 
 def analyse_readrun_detail(df):
     logger.info("in analyse_readrun_detail")
+
+    # doing some testing .... delete these when done
+    df = do_geographical(df)
+    df = detailed_environmental_analysis(df)
+    sys.exit()
+
     # count = 0
     # for record in env_readrun_detail:
     #
@@ -784,6 +819,7 @@ def analyse_readrun_detail(df):
 
     # df = df.sample(n=100000)
     # df['sample_accession'] = df['sample_accession'].to_string()
+    logger.info("cols:{}".format(df.columns))
     logger.info(df['sample_accession'])
     df = add_insdc_member_receiver(df)
     print_value_count_table(df.insdc_member_receiver)
@@ -806,16 +842,19 @@ def analyse_readrun_detail(df):
     df['lon'] = pd.to_numeric(df['lon'], errors = 'coerce')
 
     df = experimental_analysis_inc_filtering(df)
+    logger.info(f"after experimental_analysis_inc_filtering filtered: rownum={len(df)}")
     print_value_count_table(df.collection_year)
     print_value_count_table(df.collection_year_bin)
 
     logger.info("-------------about to do geographical------------------------")
     df = do_geographical(df)
-    sys.exit("PREMATURE")
-    logger.info("-------------about to do taxonomic_analysis------------------------")
-    df = taxonomic_analysis(df)
-    logger.info(df)
-    logger.info(df.dtypes)
+    # sys.exit("PREMATURE")
+    # logger.info("-------------about to do taxonomic_analysis------------------------")
+    # df = taxonomic_analysis(df)
+    # logger.info(df)
+    # logger.info(df.dtypes)
+    logger.info("-------------about to do detailed_environmental_analysis------------------------")
+    df = detailed_environmental_analysis(df)
     logger.info("-------------end of analyse_readrun_detail------------------------")
     
 
@@ -839,8 +878,10 @@ def main():
     # logger.info("WTF")
     # sys.exit()
     pickle_file = 'df_aquatic_env_readrun_detail.pickle-keep'
+    pickle_file = 'df_aquatic_env_readrun_detail.pickle'
     df_aquatic_env_readrun_detail = pd.read_pickle(pickle_file)
-    logger.info(f"unpickled to {pickle_file}")
+    logger.info(f"unpickled from {pickle_file} row total={len(df_aquatic_env_readrun_detail)}")
+    logger.info(f"columns={df_aquatic_env_readrun_detail.columns}")
     #
     #
     # This is what used to be run!
