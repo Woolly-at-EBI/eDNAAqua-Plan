@@ -30,7 +30,7 @@ from eDNA_utilities import pickle_data_structure, unpickle_data_structure, my_co
 logger = logging.getLogger(name = 'mylogger')
 pd.set_option('display.max_columns', None)
 pd.set_option('max_colwidth', None)
-
+# pd.set_option("display.max_rows", None)
 
 def get_query_params(checklist_type):
     my_params = {
@@ -260,8 +260,15 @@ def select_first_part(value):
     """
 
     my_list = value.split(":")
-    if len(my_list[0]) > 0:
-        return my_list[0]
+    if my_list[0] == "GAZ":
+        target_term = my_list[1]
+    else:
+        target_term = my_list[0]
+    val1_list = target_term.split(";")
+    val1 = val1_list[0]
+
+    if len(val1) > 0:
+        return val1
     else:
         return "missing"
 
@@ -287,10 +294,6 @@ def get_presence_or_absence_col(df, col_name):
 
 
     return df
-
-
-
-
 
 
 def delist_col(my_list):
@@ -436,10 +439,12 @@ def process_geographical_data(old_df):
     :param old_df:
     :return:
     """
+    logger.info(f"process geographical data rows in={len(old_df)}")
+
     df = old_df.copy()
-    if 'country_clean'  in df.columns:
-        logger.info("geographical data already processed")
-        return df
+    # if 'country_clean' in df.columns:
+    #     logger.info("geographical data already processed, so skip and return df")
+    #     return df
 
     df['has_geographical_coordinates'] = True
     df['has_geographical_coordinates'] = df['has_geographical_coordinates'].mask(df['lat'].isna(), False)
@@ -452,12 +457,102 @@ def process_geographical_data(old_df):
     #print_value_count_table(df.has_broad_scale_environmental_context)
     #print_value_count_table(df.broad_scale_environmental_context)
 
-    df['country_clean'] = df['country'].apply(select_first_part)
-    logger.info("About to call geographical")
     geography_obj = Geography()
+    insdc_country_set = geography_obj.get_insdc_full_country_set()
+    insdc_country_set.add("United States of America")
+    insdc_country_set.add("missing")
+    logger.debug(f"insdc_country_list: {sorted(insdc_country_set)}")
+    lower_country_dict = {}
+    for country in insdc_country_set:
+        #logger.info(f"country: --->{country}<----")
+        lc_country = str(country).lower()
+        lower_country_dict[lc_country] = country
+    countries_re = re.compile("|".join(insdc_country_set), re.IGNORECASE)
+    blank_re = re.compile("^[,.] ?$|^$")
+    special_country_dict = {
+        "USA": "United States of America",
+        "United States": "United States of America",
+        "US": "United States of America",
+        "UK": "United Kingdom",
+        "England": "United Kingdom",
+        "Wales": "United Kingdom",
+        "Scotland": "United Kingdom",
+        "Macedonia": "Northern Macedonia",
+        "Tasmania": "Australia",
+        "Yenisei river": "Mongolia",
+        "NULL": "missing",
+        "MISSING": "missing",
+        "Cote d'Ivoire": "Cote d'Ivoire",
+        "Faroe": "Faroe Islands",
+        "Temperate Northern Atlantic": "Atlantic Ocean",
+        "Atlantic": "Atlantic Ocean",
+        "Antarctic Peninsula": "Antarctica",
+        "PuertoRico": "Puerto Rico",
+        "Korea": 'South Korea',
+        "KOREA": 'South Korea',
+        "korea": 'South Korea',
+        "Darwin, Norther Territory": "Australia",
+        'Vietnam': 'Viet Nam',
+        "Nabanhe": "China",
+        "Hanzhong": "China"
+    }
+    special_country_list = list(special_country_dict.keys())
+    special_countries_re = re.compile("|".join(special_country_list), re.IGNORECASE)
+
+    def extra_country_clean(value):
+        """
+        extra country clean to do a level of cleaning ip in addition to the easy ones.
+        :param value:
+        :return:
+        """
+        if value in special_country_dict:
+            return special_country_dict[value]
+        elif value in insdc_country_set:
+            return value
+
+        match = countries_re.search(value)
+        if match:
+            match_group = match.group()
+            logger.debug(f"insdc_country_clean: {value} and {match} and '{match_group}'")
+            if match_group in special_country_dict:
+                return special_country_dict[match_group]
+            elif match_group.lower() in lower_country_dict:  # copes with all upper and all lower case countries
+                return lower_country_dict[match_group.lower()]
+
+            return match.group()
+
+        match = special_countries_re.search(value)
+        if match:
+            logger.debug(f"special_country_clean: {value} and {match} and '{match.group()}'")
+            if match.group() in special_country_dict:
+                return special_country_dict[match.group()]
+            return match.group()
+        elif blank_re.search(value):
+            return("Unknown")
+        else:
+            logger.debug(f"insdc_country_clean:, not match for '{value}'")
+            return value
+
+    df['country_clean'] = df['country'].apply(select_first_part)
+    df['country_clean'] = df['country_clean'].apply(extra_country_clean)
+
+    # tmp_df = df.groupby(['country_clean','country']).size().to_frame('record_count').reset_index().sort_values(by='record_count', ascending=False)
+    # tmp_df = tmp_df.query("country_clean == 'GAZ'")
+    # print(tmp_df)
+    # sys.exit()
+
+    logger.info(f"country_clean={df['country_clean'].value_counts()}")
+    df_country_clean_count = df['country_clean'].value_counts().to_frame('count').reset_index()
+
+    outfile = "clean_country.tsv"
+    logger.info(f"df_country_clean_count={df_country_clean_count} the cleaner list is here {outfile}")
+    df_country_clean_count.to_csv(outfile, sep='\t', index=False)
+    logger.info("About to call geographical")
+
     df['continent'] = df['country_clean'].apply(geography_obj.get_continent)
     df['ocean'] = df['country_clean'].apply(geography_obj.get_ocean)
 
+    logger.info(f"process geographical data rows out={len(df)}")
     return df
 
 def filter_for_aquatic(env_readrun_detail):

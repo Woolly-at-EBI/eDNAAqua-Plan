@@ -161,6 +161,7 @@ def get_percentage_list(gene_list):
 
     
 def print_value_count_table(df_var):
+    logger.debug(f"type={type(df_var)} value={df_var}")
     counts = df_var.value_counts()
     percs = df_var.value_counts(normalize = True)
     tmp_df = pd.concat([counts, percs], axis = 1, keys = ['count', 'percentage'])
@@ -291,12 +292,19 @@ def plot_sankey(df, sankey_link_weight, columns, title, plotfile):
 def plot_countries(my_f_dict, location, my_title, plot_file_name):
     """
     Scope is quite limited, just europe or world
+    had to hard code the ranges in to get the filters to approximate useful
+
+    :param my_f_dict:
+    :param location:
+    :param my_title:
+    :param plot_file_name:
+    :return:
     """
+
     
-    
-    logger.info(f"\n{my_f_dict}")
+    logger.debug(f"\n{my_f_dict}")
     df = pd.DataFrame(my_f_dict.items(), columns = ['country', 'count'])
-    logger.info(f"\n{df}")
+    logger.debug(f"\n{df}")
     database = px.data.gapminder().query('year == 2007')
 
     df = pd.merge(database, df, how = 'inner', on = 'country')
@@ -306,12 +314,11 @@ def plot_countries(my_f_dict, location, my_title, plot_file_name):
 
     if location == 'europe':
         scope = location
+        max_colour = 25000
     else:
         scope = "world"
+        max_colour = 250000
     geojson_file = f"{url}/world-countries.json"
-    logger.info(f"\n{geojson_file}")
-    if os.path.exists(geojson_file):
-        logger.info(f"path exists for {geojson_file}")
     # see https://github.com/python-visualization/folium/tree/main/examples
 
     fig = px.choropleth(df,
@@ -320,6 +327,7 @@ def plot_countries(my_f_dict, location, my_title, plot_file_name):
                         locationmode = "country names",  # "ISO-3",
                         geojson = geojson_file,
                         scope = scope,
+                        range_color=(0,max_colour),
                         color = "count"
                         )
 

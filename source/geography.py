@@ -39,7 +39,7 @@ def clean_insdc_country_term(country):
             # simpler
             return string.capitalize()
 
-    clean_country = remove_before(country, ":")
+    clean_country = remove_before(country, ":").remove_before(country, ";")
     clean_country = capitalise(clean_country)
     return clean_country
 
@@ -219,13 +219,11 @@ class Geography:
         self.eu_set = set(eu_list)
         self.none_eu_europe_set = self.europe_all_set.difference(self.eu_set)
         self.north_america_set = {'Saint Barthelemy','Navassa Island', 'Virgin Islands', 'Anguilla', 'Antigua and Barbuda', 'Bahamas', 'Barbados', 'Belize', 'Bermuda',
-                                  'Canada',
-                                  'Cayman Islands', 'Costa Rica', 'Dominica', 'Dominican Republic', 'Ecuador',
-                                  'El Salvador', 'Greenland', 'Grenada', 'Guatemala', 'Martinique', 'Mexico',
-                                  'Nicaragua',
+                                  'Canada', 'Cayman Islands', 'Costa Rica', 'Dominica', 'Dominican Republic', 'Ecuador',
+                                  'El Salvador', 'Greenland', 'Grenada', 'Guatemala', 'Martinique', 'Mexico', 'Nicaragua',
                                   'Niger', 'Nigeria', 'Saint Kitts and Nevis', 'Saint Lucia', 'Saint Martin',
                                   'Saint Pierre and Miquelon', 'Saint Vincent and the Grenadines', 'Sint Maarten',
-                                  'Trinidad and Tobago', 'Turks and Caicos Islands', 'USA', 'Puerto Rico'}
+                                  'Trinidad and Tobago', 'Turks and Caicos Islands', 'USA', 'United States of America', 'Puerto Rico'}
         self.africa_set = {'Cote d&#8217;Ivoire','Europa Island', 'Reunion', 'Juan de Nova Island', 'Sao Tome and Principe', 'Malawi', 'Sierra Leone', 'Eritrea', 'Western Sahara', 'Syria', 'Benin', 'Algeria',  'Lesotho', 'Liberia',  'Comoros',  'Tunisia',  'Djibouti', 'Republic of the Congo', 'Nauru', 'Cameroon', 'Honduras', 'Mauritius', 'Guinea-Bissau',  'Gambia', 'South Africa', 'Ghana', 'Democratic Republic of the Congo', 'Central African Republic', 'Botswana', 'Chad','Kiribati', 'Rwanda', 'Libya', 'Somalia', 'Gabon', 'Mauritania', 'Senegal', 'Togo', 'Sri Lanka', 'Sudan', 'Egypt', 'Burundi', "Cote d'Ivoire", 'Madagascar', 'Equatorial Guinea', 'Guinea', 'Angola', 'French Guiana', 'Morocco', 'South Sudan', 'Tanzania', 'Zimbabwe', 'Namibia','Kenya', 'Saint Helena', 'Uganda', 'Mozambique', 'Ethiopia', 'Zambia'}
         self.australasia_set = {'Australia','New Zealand', 'Cook Islands','Papua New Guinea','New Caledonia'}
         self.asia_set = {'Paracel Islands','Gaza Strip', 'Spratly Islands', 'Georgia', 'Palau', 'Tuvalu', 'Singapore', 'Thailand', 'Azerbaijan', 'Turkey', 'Fiji', 'Taiwan', 'Kuwait', 'Israel', 'Kazakhstan', 'Guam', 'British Virgin Islands', 'China', 'American Samoa', 'Northern Mariana Islands', 'South Korea',  'Saudi Arabia', 'Armenia', 'Wallis and Futuna', 'French Southern and Antarctic Lands', 'Malaysia', 'Bangladesh', 'Iraq', 'Eswatini', 'Myanmar', 'Federated States of', 'Jamaica', 'Afghanistan', 'Glorioso Islands', 'Christmas Island', 'Timor-Leste', 'Bahrain', 'Philippines', 'Yemen', 'Oman', 'United Arab Emirates', 'Mongolia', 'Palmyra Atoll', 'Cuba', 'State of Palestine', 'Micronesia', 'Nepal', 'Indonesia', 'Maldives', 'North Korea', 'Seychelles', 'Johnston Atoll', 'Mayotte', 'Solomon Islands', 'Iran', 'Guadeloupe', 'Macau', 'Jarvis Island', 'Tromelin Island', 'Lebanon', 'Kingman Reef', 'Falkland Islands (Islas Malvinas)', 'Heard Island and McDonald Islands', 'Turkmenistan', 'Clipperton Island', 'Faroe Islands', 'French Polynesia', 'Niue', 'West Bank', 'Qatar', 'Burkina Faso', 'Jordan', 'Japan', 'Line Islands', 'Samoa', 'Borneo', 'Uzbekistan', 'Tokelau', 'Bouvet Island', 'Ashmore and Cartier Islands', 'Haiti', 'Uruguay', 'Tajikistan', 'Kyrgyzstan', 'Guyana', 'South Georgia and the South Sandwich Islands', 'Norfolk Island', 'Viet Nam', 'Mali', 'Pakistan', 'Vanuatu', 'India', 'Bassas da India', 'Bhutan', 'Montserrat', 'Cape Verde', 'Tonga',  'Kosovo', 'Howland Island', 'Laos', 'Hong Kong', 'Brunei', 'Wake Island', 'Cambodia'}
@@ -246,6 +244,9 @@ class Geography:
         # sys.exit()
         self.ocean_sea_set = ocean_sea_set
         self.country_set = country_set
+
+    def get_insdc_full_country_set(self):
+        return self.insdc_full_set
 
     def print_summary(self):
 
