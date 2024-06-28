@@ -94,6 +94,7 @@ def experimental_analysis_inc_filtering(df):
     print_value_count_table(df.library_source)
     print_value_count_table(df.library_strategy)
 
+
     strategy_list_to_keep = ['AMPLICON', 'WGS', 'RNA-Seq', 'WGA', 'Targeted-Capture', 'ssRNA-seq', 'miRNA-Seq']
     logger.info(strategy_list_to_keep)
     df = df.loc[df['library_strategy'].isin(strategy_list_to_keep)]
@@ -102,17 +103,27 @@ def experimental_analysis_inc_filtering(df):
     print_value_count_table(df.library_source)
     print_value_count_table(df.library_strategy)
 
+
     logger.info(df['library_strategy'].value_counts())
     print_value_count_table(df.library_source)
+
+    logger.info(df.columns)
+    logger.info(df['library_strategy'].value_counts())
+    logger.info(f"type = {type(df)}")
+    logger.info(df['instrument_platform'])
+    plot_df = df.groupby(['instrument_platform']).size().to_frame('record_count').reset_index().sort_values(by=['record_count'], ascending=False)
+    logger.info(f"Instruments\n{plot_df.to_string(index=False)}")
 
     print(df.groupby(['library_source', 'library_strategy']).size().reset_index().to_string(index=False))
     logger.info(df.columns)
     path_list = ['library_source', 'library_strategy', 'instrument_platform', 'collection_year_bin']
     plot_df = df.groupby(path_list).size().to_frame('record_count').reset_index()
     plotfile = "../images/experimental_analysis_strategy.png"
+    logger.info(f"plotting {plotfile}")
     sankey_link_weight = 'record_count'
-
-    plot_sankey(plot_df, sankey_link_weight, path_list, 'Figure ENA "Environmental" readrun record count: library_source, library_strategy, platform, collection_date', plotfile)
+    plot_sankey(plot_df, sankey_link_weight, path_list,
+                'Figure ENA Aquatic "Environmental" readrun record count: library_source, library_strategy, platform, collection_date',
+                plotfile)
 
     return df
 
@@ -229,7 +240,7 @@ def taxonomic_analysis(df):
             return ""
 
     logger.info("About to analyse_environment")
-    analyse_environment(df)
+    #analyse_environment(df)
     logger.info("RETURNED FROM analyse_environment")
 
     logger.info("about to create_taxonomy_hash_by_tax_id")
@@ -259,6 +270,7 @@ def taxonomic_analysis(df):
     path_list = ['lineage_2', 'lineage_minus3', 'lineage_minus2', 'scientific_name', 'lineage']
     plot_df = df.groupby(path_list).size().to_frame('record_count').reset_index()
     plot_df = plot_df[plot_df['lineage_2'] == 'Eukaryota']
+    logger.info(f"\n{plot_df}")
     path_list = ['lineage_minus3', 'lineage_minus2', 'scientific_name']
     plotfile = "../images/taxonomic_analysis_euk_sunburst.png"
     plot_sunburst(plot_df, 'Figure: ENA "Environmental" readrun records, tax lineage(Euk)', path_list,
@@ -798,9 +810,6 @@ def analyse_readrun_detail(df):
     logger.info("in analyse_readrun_detail")
 
     # doing some testing .... delete these when done
-    df = do_geographical(df)
-    df = detailed_environmental_analysis(df)
-    sys.exit()
 
     # count = 0
     # for record in env_readrun_detail:
@@ -841,16 +850,18 @@ def analyse_readrun_detail(df):
     df['lat'] = pd.to_numeric(df['lat'], errors = 'coerce')
     df['lon'] = pd.to_numeric(df['lon'], errors = 'coerce')
 
-    df = experimental_analysis_inc_filtering(df)
-    logger.info(f"after experimental_analysis_inc_filtering filtered: rownum={len(df)}")
     print_value_count_table(df.collection_year)
     print_value_count_table(df.collection_year_bin)
+    logger.info(f"before experimental_analysis_inc_filtering filtered: rownum={len(df)}")
+    df = experimental_analysis_inc_filtering(df)
+    logger.info(f"after experimental_analysis_inc_filtering filtered: rownum={len(df)}")
+
 
     logger.info("-------------about to do geographical------------------------")
     df = do_geographical(df)
     # sys.exit("PREMATURE")
-    # logger.info("-------------about to do taxonomic_analysis------------------------")
-    # df = taxonomic_analysis(df)
+    logger.info("-------------about to do taxonomic_analysis------------------------")
+    df = taxonomic_analysis(df)
     # logger.info(df)
     # logger.info(df.dtypes)
     logger.info("-------------about to do detailed_environmental_analysis------------------------")
