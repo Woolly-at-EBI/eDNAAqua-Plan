@@ -21,12 +21,14 @@ def clean_insdc_country_term(country):
     """
 
     def remove_before(string, suffix):
-        if ':' not in string:
+        # Trims anything after the first "suffix", uses that is the wrong terminology...
+        if suffix not in string:
             return string
         else:
             return string[:string.index(suffix) + (len(suffix) - 1)]
 
     def capitalise(string):
+        # Capitalising any of the first words or after a white space, ignores "and" though
         if " " in string:
             mylist = []
             for sub_str in string.split(' '):
@@ -39,7 +41,8 @@ def clean_insdc_country_term(country):
             # simpler
             return string.capitalize()
 
-    clean_country = remove_before(country, ":").remove_before(country, ";")
+    clean_country = remove_before(country, ":")
+    clean_country = remove_before(clean_country, ";")
     clean_country = capitalise(clean_country)
     return clean_country
 
@@ -51,6 +54,7 @@ class Geography:
         self.europe_country_set = {}
         self.europe_all_set = {}
         self.eu_set = {}
+        self.europe_sea_set = {}
         self.none_eu_europe_set = {}
         self.north_america_set = {}
         self.ocean_sea_set = {}
@@ -67,12 +71,26 @@ class Geography:
         else:
             return False
 
+
+    
+    def is_sea_in_europe(self, country):
+        """
+        any eu country or sea
+        assumes that you have cleaned the country term!
+       """
+        if country in self.europe_sea_set:
+            return True
+        else:
+            return False
+
+        
+
     def is_insdc_country_in_europe(self, country):
         """
         any european country or seas around europe
         assumes that you have cleaned the country term!
        """
-        print(f"is_insdc_country_in_europe {country}")
+        # print(f"is_insdc_country_in_europe {country}")
         if country in self.europe_all_set:
             return True
         return False
@@ -143,6 +161,7 @@ class Geography:
             return False
 
     def build_insdc_lists(self):
+        print("inside build_insdc_lists:")
 
         # cmd="curl 'https://www.insdc.org/submitting-standards/country-qualifier-vocabulary/' 2> /dev/null | tr '\n'
         # '@' | sed 's/^.*the-world-factbook\/<\/a><\/p>//;s/<p class.*//;s/<\/ul>.*//' | tr '@' '\n' | sed 's/^[
@@ -203,7 +222,7 @@ class Geography:
         ocean_sea_set = set()
         country_set = set()
         for term in sorted(insdc_full_list):
-            if re.search(r"Sea|Ocean", term):
+            if re.search(r"Sea|Ocean|Gulf|English Channel|Bay of Biscay", term):
                 ocean_sea_set.add(term)
             else:
                 country_set.add(term)
@@ -214,8 +233,10 @@ class Geography:
                 not_europe_set.add(country)
         self.not_europe_set = not_europe_set
         self.europe_country_set = set(europe_list)
-        european_sea_list = ['Mediterranean Sea', 'North Sea', 'Baltic Sea']
-        self.europe_all_set = self.europe_country_set.union(set(european_sea_list))
+        europe_sea_list = ['Mediterranean Sea', 'North Sea', 'Baltic Sea', 'Black Sea', 'Sea of Azov', 'Caspian Sea', 'White Sea', 'Barents Sea','Norwegian Sea', 'North Atlantic Ocean', 'North-east Atlantic Ocean', 'Kattegat', 'Iceland Sea', 'English Channel', 'Irish Sea', 'Bay of Biscay', 'Iberian Coast', 'Adriatic Sea', 'Ionian Sea', 'Aegean-Levantine Sea']
+        self.europe_sea_set = set(europe_sea_list)
+        
+        self.europe_all_set = self.europe_country_set.union(self.europe_sea_set)
         self.eu_set = set(eu_list)
         self.none_eu_europe_set = self.europe_all_set.difference(self.eu_set)
         self.north_america_set = {'Saint Barthelemy','Navassa Island', 'Virgin Islands', 'Anguilla', 'Antigua and Barbuda', 'Bahamas', 'Barbados', 'Belize', 'Bermuda',
@@ -224,7 +245,7 @@ class Geography:
                                   'Niger', 'Nigeria', 'Saint Kitts and Nevis', 'Saint Lucia', 'Saint Martin',
                                   'Saint Pierre and Miquelon', 'Saint Vincent and the Grenadines', 'Sint Maarten',
                                   'Trinidad and Tobago', 'Turks and Caicos Islands', 'USA', 'United States of America', 'Puerto Rico'}
-        self.africa_set = {'Cote d&#8217;Ivoire','Europa Island', 'Reunion', 'Juan de Nova Island', 'Sao Tome and Principe', 'Malawi', 'Sierra Leone', 'Eritrea', 'Western Sahara', 'Syria', 'Benin', 'Algeria',  'Lesotho', 'Liberia',  'Comoros',  'Tunisia',  'Djibouti', 'Republic of the Congo', 'Nauru', 'Cameroon', 'Honduras', 'Mauritius', 'Guinea-Bissau',  'Gambia', 'South Africa', 'Ghana', 'Democratic Republic of the Congo', 'Central African Republic', 'Botswana', 'Chad','Kiribati', 'Rwanda', 'Libya', 'Somalia', 'Gabon', 'Mauritania', 'Senegal', 'Togo', 'Sri Lanka', 'Sudan', 'Egypt', 'Burundi', "Cote d'Ivoire", 'Madagascar', 'Equatorial Guinea', 'Guinea', 'Angola', 'French Guiana', 'Morocco', 'South Sudan', 'Tanzania', 'Zimbabwe', 'Namibia','Kenya', 'Saint Helena', 'Uganda', 'Mozambique', 'Ethiopia', 'Zambia'}
+        self.africa_set = {'Cote d&#8217;Ivoire',"Cote d'Ivoire",'Europa Island', 'Reunion', 'Juan de Nova Island', 'Sao Tome and Principe', 'Malawi', 'Sierra Leone', 'Eritrea', 'Western Sahara', 'Syria', 'Benin', 'Algeria',  'Lesotho', 'Liberia',  'Comoros',  'Tunisia',  'Djibouti', 'Republic of the Congo', 'Nauru', 'Cameroon', 'Honduras', 'Mauritius', 'Guinea-Bissau',  'Gambia', 'South Africa', 'Ghana', 'Democratic Republic of the Congo', 'Central African Republic', 'Botswana', 'Chad','Kiribati', 'Rwanda', 'Libya', 'Somalia', 'Gabon', 'Mauritania', 'Senegal', 'Togo', 'Sri Lanka', 'Sudan', 'Egypt', 'Burundi', "Cote d'Ivoire", 'Madagascar', 'Equatorial Guinea', 'Guinea', 'Angola', 'French Guiana', 'Morocco', 'South Sudan', 'Tanzania', 'Zimbabwe', 'Namibia','Kenya', 'Saint Helena', 'Uganda', 'Mozambique', 'Ethiopia', 'Zambia'}
         self.australasia_set = {'Australia','New Zealand', 'Cook Islands','Papua New Guinea','New Caledonia'}
         self.asia_set = {'Paracel Islands','Gaza Strip', 'Spratly Islands', 'Georgia', 'Palau', 'Tuvalu', 'Singapore', 'Thailand', 'Azerbaijan', 'Turkey', 'Fiji', 'Taiwan', 'Kuwait', 'Israel', 'Kazakhstan', 'Guam', 'British Virgin Islands', 'China', 'American Samoa', 'Northern Mariana Islands', 'South Korea',  'Saudi Arabia', 'Armenia', 'Wallis and Futuna', 'French Southern and Antarctic Lands', 'Malaysia', 'Bangladesh', 'Iraq', 'Eswatini', 'Myanmar', 'Federated States of', 'Jamaica', 'Afghanistan', 'Glorioso Islands', 'Christmas Island', 'Timor-Leste', 'Bahrain', 'Philippines', 'Yemen', 'Oman', 'United Arab Emirates', 'Mongolia', 'Palmyra Atoll', 'Cuba', 'State of Palestine', 'Micronesia', 'Nepal', 'Indonesia', 'Maldives', 'North Korea', 'Seychelles', 'Johnston Atoll', 'Mayotte', 'Solomon Islands', 'Iran', 'Guadeloupe', 'Macau', 'Jarvis Island', 'Tromelin Island', 'Lebanon', 'Kingman Reef', 'Falkland Islands (Islas Malvinas)', 'Heard Island and McDonald Islands', 'Turkmenistan', 'Clipperton Island', 'Faroe Islands', 'French Polynesia', 'Niue', 'West Bank', 'Qatar', 'Burkina Faso', 'Jordan', 'Japan', 'Line Islands', 'Samoa', 'Borneo', 'Uzbekistan', 'Tokelau', 'Bouvet Island', 'Ashmore and Cartier Islands', 'Haiti', 'Uruguay', 'Tajikistan', 'Kyrgyzstan', 'Guyana', 'South Georgia and the South Sandwich Islands', 'Norfolk Island', 'Viet Nam', 'Mali', 'Pakistan', 'Vanuatu', 'India', 'Bassas da India', 'Bhutan', 'Montserrat', 'Cape Verde', 'Tonga',  'Kosovo', 'Howland Island', 'Laos', 'Hong Kong', 'Brunei', 'Wake Island', 'Cambodia'}
         self.south_america_set = {'Curacao', 'Aruba', 'Brazil', 'Paraguay', 'Panama', 'Suriname', 'Bolivia', 'Peru', 'Colombia', 'Argentina', 'Chile', 'Venezuela'}
@@ -264,16 +285,48 @@ class Geography:
 
 
 def main():
+    print("running main in geography.py")
     geography = Geography()
     print(geography.print_summary())
 
-    for test_term in ['France', 'FRANCE', 'France:Paris', 'UK', 'Australia', 'North Sea', "North sea",
-                      'Antigua and Barbuda']:
+    print("\n-------------Some Simple Tests----------")
+    test_hash = {
+        'France': {"in_europe": True, "in_eu": True, "insdc_country": True, "sea_in_europe": False},
+        'FRANCE': {"in_europe": True, "in_eu": True, "insdc_country": True, "sea_in_europe": False},
+        'France:Paris': {"in_europe": True, "in_eu": True, "insdc_country": True, "sea_in_europe": False},
+        'United Kingdom;London': {"in_europe": True, "in_eu": False, "insdc_country": True, "sea_in_europe": False},
+        'Australia': {"in_europe": False, "in_eu": False, "insdc_country": True, "sea_in_europe": False},
+        'North Sea': {"in_europe": True, "in_eu": False, "insdc_country": True, "sea_in_europe": True},
+        "North sea": {"in_europe": True, "in_eu": False, "insdc_country": True, "sea_in_europe": True},
+        "Pacific Ocean": {"in_europe": False, "in_eu": False, "insdc_country": True, "sea_in_europe": False},
+        'Antigua and Barbuda': {"in_europe": False, "in_eu": False, "insdc_country": True, "sea_in_europe": False}
+        }
+
+    test_terms = test_hash.keys()
+    for test_term in test_terms:
         ic(test_term)
         clean_term = clean_insdc_country_term(test_term)
+        print(f"clean_version:-->{clean_term}<--")
         ic(geography.is_insdc_country_in_europe(clean_term))
+        if test_hash[test_term]['in_europe'] != geography.is_insdc_country_in_europe(clean_term):
+            print("ERROR")
+            print(f"test_hash[test_term]['in_europe'] = {test_hash[test_term]['in_europe'] }")
+            sys.exit()
         ic(geography.is_insdc_country_in_eu(clean_term))
+        if test_hash[test_term]['in_eu'] != geography.is_insdc_country_in_eu(clean_term):
+            print("ERROR")
+            print(f"test_hash[test_term]['in_eu'] = {test_hash[test_term]['in_eu'] }")
+            sys.exit()
         ic(geography.is_insdc_country(clean_term))
+        if test_hash[test_term]['insdc_country'] != geography.is_insdc_country(clean_term):
+            print("ERROR")
+            print(f"test_hash[test_term]['indsc_country'] = {test_hash[test_term]['insdc_country'] }")
+            sys.exit()
+        ic(geography.is_sea_in_europe(clean_term))
+        if test_hash[test_term]['sea_in_europe'] != geography.is_sea_in_europe(clean_term):
+            print("ERROR")
+            print(f"test_hash[test_term]['sea_in_europe'] = {test_hash[test_term]['sea_in_europe'] }")
+            sys.exit()
         ic("+++++++++++++++++++++++++++++++++++")
 
 

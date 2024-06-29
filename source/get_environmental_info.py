@@ -553,6 +553,8 @@ def process_geographical_data(old_df):
     df['ocean'] = df['country_clean'].apply(geography_obj.get_ocean)
 
     logger.info(f"process geographical data rows out={len(df)}")
+
+    sys.exit("process geographical data rows out={}".format(len(df)))
     return df
 
 def filter_for_aquatic(env_readrun_detail):
