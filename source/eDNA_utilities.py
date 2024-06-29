@@ -334,3 +334,18 @@ def plot_countries(my_f_dict, location, my_title, plot_file_name):
     # fig.show()
     logger.info(f"\nWriting {plot_file_name}")
     fig.write_image(plot_file_name)     
+
+
+def capitalise(string):
+    # Capitalising any of the first words or after a white space, ignores "and" though
+    if " " in string:
+        mylist = []
+        for sub_str in string.split(' '):
+            if sub_str == 'and':
+                mylist.append(sub_str)
+            else:
+                mylist.append(sub_str.capitalize())
+        return ' '.join(mylist)
+    else:
+        # simpler
+        return string.capitalize()
