@@ -11,14 +11,15 @@ import logging
 import coloredlogs
 import random
 import pandas as pd
-import plotly.express as px
+import numpy as np
 import plotly.graph_objects as go
 from collections import Counter
 import pprint
 import plotly.express as px
-import os
-
-
+import sys
+import time
+import icecream as ic
+import requests
 
 logger = logging.getLogger(name = 'mylogger')
 
@@ -52,29 +53,32 @@ def tsv2dict(tsv_file, col1, col2):
 # ena_checklist_dict = tsv2dict("ena_checklists.tsv", 'CHECKLIST_ID', 'CHECKLIST_NAME')
 # print(ena_checklist_dict)
 def get_ena_checklist_dict():
-    ena_checklist_dict = {'ERC000045': 'COMPARE-ECDC-EFSA pilot food-associated reporting standard',
-     'ERC000044': 'COMPARE-ECDC-EFSA pilot human-associated reporting standard', 'ERC000026': 'EGA default checklist',
-     'ERC000035': 'ENA Crop Plant sample enhanced annotation checklist',
-     'ERC000041': 'ENA Global Microbial Identifier Proficiency Test (GMI PT) checklist',
-     'ERC000029': 'ENA Global Microbial Identifier reporting standard checklist GMI_MDM:1.1',
-     'ERC000032': 'ENA Influenza virus reporting standard checklist', 'ERC000043': 'ENA Marine Microalgae Checklist',
-     'ERC000027': 'ENA Micro B3', 'ERC000037': 'ENA Plant Sample Checklist', 'ERC000042': 'ENA RNA-Seq Checklist',
-     'ERC000038': 'ENA Shellfish Checklist', 'ERC000030': 'ENA Tara Oceans',
-     'ERC000040': 'ENA UniEuk_EukBank Checklist', 'ERC000050': 'ENA binned metagenome',
-     'ERC000011': 'ENA default sample checklist', 'ERC000034': 'ENA mutagenesis by carcinogen treatment checklist',
-     'ERC000039': 'ENA parasite sample checklist', 'ERC000028': 'ENA prokaryotic pathogen minimal sample checklist',
-     'ERC000036': 'ENA sewage checklist', 'ERC000033': 'ENA virus pathogen reporting standard checklist',
-     'ERC000047': 'GSC MIMAGS', 'ERC000048': 'GSC MISAGS', 'ERC000049': 'GSC MIUVIGS',
-     'ERC000056': 'GSC MIxS Food and Production',
-     'ERC000058': 'GSC MIxS Hydrocarbon', 'ERC000057': 'GSC MIxS Symbiont', 'ERC000055': 'GSC MIxS agriculture',
-     'ERC000012': 'GSC MIxS air', 'ERC000031': 'GSC MIxS built environment', 'ERC000013': 'GSC MIxS host associated',
-     'ERC000014': 'GSC MIxS human associated', 'ERC000015': 'GSC MIxS human gut', 'ERC000016': 'GSC MIxS human oral',
-     'ERC000017': 'GSC MIxS human skin', 'ERC000018': 'GSC MIxS human vaginal',
-     'ERC000019': 'GSC MIxS microbial mat biolfilm',
-     'ERC000025': 'GSC MIxS miscellaneous natural or artificial environment', 'ERC000020': 'GSC MIxS plant associated',
-     'ERC000021': 'GSC MIxS sediment', 'ERC000022': 'GSC MIxS soil', 'ERC000023': 'GSC MIxS wastewater sludge',
-     'ERC000024': 'GSC MIxS water', 'ERC000052': 'HoloFood Checklist', 'ERC000051': 'PDX Checklist',
-     'ERC000046': 'Pan Prostate sample checklist', 'ERC000053': 'Tree of Life Checklist'}
+    ena_checklist_dict = {
+        'ERC000045': 'COMPARE-ECDC-EFSA pilot food-associated reporting standard',
+        'ERC000044': 'COMPARE-ECDC-EFSA pilot human-associated reporting standard',
+        'ERC000026': 'EGA default checklist',
+        'ERC000035': 'ENA Crop Plant sample enhanced annotation checklist',
+        'ERC000041': 'ENA Global Microbial Identifier Proficiency Test (GMI PT) checklist',
+        'ERC000029': 'ENA Global Microbial Identifier reporting standard checklist GMI_MDM:1.1',
+        'ERC000032': 'ENA Influenza virus reporting standard checklist', 'ERC000043': 'ENA Marine Microalgae Checklist',
+        'ERC000027': 'ENA Micro B3', 'ERC000037': 'ENA Plant Sample Checklist', 'ERC000042': 'ENA RNA-Seq Checklist',
+        'ERC000038': 'ENA Shellfish Checklist', 'ERC000030': 'ENA Tara Oceans',
+        'ERC000040': 'ENA UniEuk_EukBank Checklist', 'ERC000050': 'ENA binned metagenome',
+        'ERC000011': 'ENA default sample checklist', 'ERC000034': 'ENA mutagenesis by carcinogen treatment checklist',
+        'ERC000039': 'ENA parasite sample checklist', 'ERC000028': 'ENA prokaryotic pathogen minimal sample checklist',
+        'ERC000036': 'ENA sewage checklist', 'ERC000033': 'ENA virus pathogen reporting standard checklist',
+        'ERC000047': 'GSC MIMAGS', 'ERC000048': 'GSC MISAGS', 'ERC000049': 'GSC MIUVIGS',
+        'ERC000056': 'GSC MIxS Food and Production',
+        'ERC000058': 'GSC MIxS Hydrocarbon', 'ERC000057': 'GSC MIxS Symbiont', 'ERC000055': 'GSC MIxS agriculture',
+        'ERC000012': 'GSC MIxS air', 'ERC000031': 'GSC MIxS built environment', 'ERC000013': 'GSC MIxS host associated',
+        'ERC000014': 'GSC MIxS human associated', 'ERC000015': 'GSC MIxS human gut', 'ERC000016': 'GSC MIxS human oral',
+        'ERC000017': 'GSC MIxS human skin', 'ERC000018': 'GSC MIxS human vaginal',
+        'ERC000019': 'GSC MIxS microbial mat biolfilm',
+        'ERC000025': 'GSC MIxS miscellaneous natural or artificial environment',
+        'ERC000020': 'GSC MIxS plant associated',
+        'ERC000021': 'GSC MIxS sediment', 'ERC000022': 'GSC MIxS soil', 'ERC000023': 'GSC MIxS wastewater sludge',
+        'ERC000024': 'GSC MIxS water', 'ERC000052': 'HoloFood Checklist', 'ERC000051': 'PDX Checklist',
+        'ERC000046': 'Pan Prostate sample checklist', 'ERC000053': 'Tree of Life Checklist'}
     return ena_checklist_dict
 
 
@@ -100,10 +104,6 @@ def unpickle_data_structure(filename):
     except Exception as ex:
         print("Error during unpickling object (Possibly unsupported):", ex)
 
-
-
-
-
 def run_webservice(url):
     """
 
@@ -128,9 +128,9 @@ def run_webservice(url):
             logger.info(f"Still {r.status_code} so exiting")
         sys.exit(1)
 
-def un_split_list(list):
+def un_split_list(my_list):
     clean_list = []
-    for item in list:
+    for item in my_list:
         if item != item:
             continue
         item = item.strip().replace('[', '').replace(']', '')
@@ -139,21 +139,21 @@ def un_split_list(list):
     return clean_list
 
 def get_shorter_list(record_list, k):
-        """
-        shortens a list of records randomly, if k =0 it returns all records
-        :param record_list: list of records
-        :param k: number of records to return
-        :return: randomly chosen shorter record_list
-        """
-        if k == 0:
-            return record_list
-        elif len(record_list) < k:
-            logger.warning(f"in shorten_list k={k}, len(record_list)={len(record_list)}, so returning full list")
-            return record_list
+    """
+    shortens a list of records randomly, if k =0 it returns all records
+    :param record_list: list of records
+    :param k: number of records to return
+    :return: randomly chosen shorter record_list
+    """
+    if k == 0:
+        return record_list
+    elif len(record_list) < k:
+        logger.warning(f"in shorten_list k={k}, len(record_list)={len(record_list)}, so returning full list")
+        return record_list
 
-        shortened_list = random.sample(record_list, k)
-        logger.info(f"shortened_list to {k} from {len(record_list)}")
-        return shortened_list
+    shortened_list = random.sample(record_list, k)
+    logger.info(f"shortened_list to {k} from {len(record_list)}")
+    return shortened_list
 
 def get_lists_from_df_column(df, col):
     my_list = df[col].to_list()
@@ -203,17 +203,22 @@ def get_percentage_list(gene_list):
     
 def print_value_count_table(df_var):
     logger.debug(f"type={type(df_var)} value={df_var}")
+    logger.debug(f"--------print_value_count_table---------col_header ={df_var.name}\n{df_var.head(5)}")
+    # dropping empty or NaN strings
+    df_var = df_var.replace('', np.nan)
+    df_var = df_var.dropna()
+
     counts = df_var.value_counts()
     percs = df_var.value_counts(normalize = True)
+
     tmp_df = pd.concat([counts, percs], axis = 1, keys = ['count', 'percentage'])
     tmp_df['percentage'] = pd.Series(["{0:.2f}%".format(val * 100) for val in tmp_df['percentage']], index = tmp_df.index)
 
-    if len(tmp_df) < 20:
-        logger.info(tmp_df)
-    else:
-        logger.info(tmp_df.to_string(min_rows=20,max_rows=20))
-
-
+    max_rows = 20
+    tmp_df = tmp_df.head(max_rows)
+    # print(tmp_df.to_string(index = False))
+    print("MARKDOWN")
+    print(tmp_df.to_markdown())
     
 def generate_sankey_chart_data(df, columns: list, sankey_link_weight: str):
 
@@ -300,19 +305,18 @@ def plot_sankey(df, sankey_link_weight, columns, title, plotfile):
                   '#CB7E98', '#A4E804', '#324E72', '#6A3A4C'
                   ]
 
-
-    #---------------------------------
+    # ---------------------------------
     fig = go.Figure(data = [go.Sankey(
         node = dict(
             pad = 15,
             thickness = 20,
             line = dict(color = "black", width = 0.5),
-            #label = ["A1", "A2", "B1", "B2", "C1", "C2"],
+            # label = ["A1", "A2", "B1", "B2", "C1", "C2"],
             label = labels,
             color = "blue"
         ),
         link = dict(
-            # source = [0, 1, 0, 2, 3, 3],  # indices correspond to labels, eg A1, A2, A1, B1, ...
+            # source = [0, 1, 0, 2, 3, 3],  # indices correspond to labels, e.g. A1, A2, A1, B1, ...
             # target = [2, 3, 3, 4, 4, 5],
             # value = [8, 4, 2, 8, 4, 2]
             source = sources,
@@ -321,13 +325,12 @@ def plot_sankey(df, sankey_link_weight, columns, title, plotfile):
             color=color_link
         ))])
 
-
     fig.update_layout(title_text = title, font_size = 10)
     if plotfile == "plot":
-            fig.show()
+        fig.show()
     else:
-            logger.info(f"Sankey plot to {plotfile}")
-            fig.write_image(plotfile)
+        logger.info(f"Sankey plot to {plotfile}")
+        fig.write_image(plotfile)
 
 
 def plot_countries(my_f_dict, location, my_title, plot_file_name):
@@ -341,8 +344,6 @@ def plot_countries(my_f_dict, location, my_title, plot_file_name):
     :param plot_file_name:
     :return:
     """
-
-    
     logger.debug(f"\n{my_f_dict}")
     df = pd.DataFrame(my_f_dict.items(), columns = ['country', 'count'])
     logger.debug(f"\n{df}")
@@ -368,7 +369,7 @@ def plot_countries(my_f_dict, location, my_title, plot_file_name):
                         locationmode = "country names",  # "ISO-3",
                         geojson = geojson_file,
                         scope = scope,
-                        range_color=(0,max_colour),
+                        range_color=(0, max_colour),
                         color = "count"
                         )
 
@@ -379,6 +380,7 @@ def plot_countries(my_f_dict, location, my_title, plot_file_name):
 
 def capitalise(string):
     # Capitalising any of the first words or after a white space, ignores "and" though
+
     if " " in string:
         mylist = []
         for sub_str in string.split(' '):
@@ -390,4 +392,3 @@ def capitalise(string):
     else:
         # simpler
         return string.capitalize()
-
