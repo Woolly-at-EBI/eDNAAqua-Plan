@@ -18,6 +18,8 @@ import pprint
 import plotly.express as px
 import os
 
+
+
 logger = logging.getLogger(name = 'mylogger')
 
 my_coloredFormatter = coloredlogs.ColoredFormatter(
@@ -36,6 +38,45 @@ my_coloredFormatter = coloredlogs.ColoredFormatter(
         lineno=dict(color='white'),
     )
 )
+
+
+def tsv2dict(tsv_file, col1, col2):
+    print(f"Inside tsv2dict for {tsv_file} for key={col1} and {col2}")
+
+    df = pd.read_csv(tsv_file, sep="\t")
+    # print(df)
+    dict_data = dict(zip(df[col1], df[col2]))
+    return dict_data
+
+#
+# ena_checklist_dict = tsv2dict("ena_checklists.tsv", 'CHECKLIST_ID', 'CHECKLIST_NAME')
+# print(ena_checklist_dict)
+def get_ena_checklist_dict():
+    ena_checklist_dict = {'ERC000045': 'COMPARE-ECDC-EFSA pilot food-associated reporting standard',
+     'ERC000044': 'COMPARE-ECDC-EFSA pilot human-associated reporting standard', 'ERC000026': 'EGA default checklist',
+     'ERC000035': 'ENA Crop Plant sample enhanced annotation checklist',
+     'ERC000041': 'ENA Global Microbial Identifier Proficiency Test (GMI PT) checklist',
+     'ERC000029': 'ENA Global Microbial Identifier reporting standard checklist GMI_MDM:1.1',
+     'ERC000032': 'ENA Influenza virus reporting standard checklist', 'ERC000043': 'ENA Marine Microalgae Checklist',
+     'ERC000027': 'ENA Micro B3', 'ERC000037': 'ENA Plant Sample Checklist', 'ERC000042': 'ENA RNA-Seq Checklist',
+     'ERC000038': 'ENA Shellfish Checklist', 'ERC000030': 'ENA Tara Oceans',
+     'ERC000040': 'ENA UniEuk_EukBank Checklist', 'ERC000050': 'ENA binned metagenome',
+     'ERC000011': 'ENA default sample checklist', 'ERC000034': 'ENA mutagenesis by carcinogen treatment checklist',
+     'ERC000039': 'ENA parasite sample checklist', 'ERC000028': 'ENA prokaryotic pathogen minimal sample checklist',
+     'ERC000036': 'ENA sewage checklist', 'ERC000033': 'ENA virus pathogen reporting standard checklist',
+     'ERC000047': 'GSC MIMAGS', 'ERC000048': 'GSC MISAGS', 'ERC000049': 'GSC MIUVIGS',
+     'ERC000056': 'GSC MIxS Food and Production',
+     'ERC000058': 'GSC MIxS Hydrocarbon', 'ERC000057': 'GSC MIxS Symbiont', 'ERC000055': 'GSC MIxS agriculture',
+     'ERC000012': 'GSC MIxS air', 'ERC000031': 'GSC MIxS built environment', 'ERC000013': 'GSC MIxS host associated',
+     'ERC000014': 'GSC MIxS human associated', 'ERC000015': 'GSC MIxS human gut', 'ERC000016': 'GSC MIxS human oral',
+     'ERC000017': 'GSC MIxS human skin', 'ERC000018': 'GSC MIxS human vaginal',
+     'ERC000019': 'GSC MIxS microbial mat biolfilm',
+     'ERC000025': 'GSC MIxS miscellaneous natural or artificial environment', 'ERC000020': 'GSC MIxS plant associated',
+     'ERC000021': 'GSC MIxS sediment', 'ERC000022': 'GSC MIxS soil', 'ERC000023': 'GSC MIxS wastewater sludge',
+     'ERC000024': 'GSC MIxS water', 'ERC000052': 'HoloFood Checklist', 'ERC000051': 'PDX Checklist',
+     'ERC000046': 'Pan Prostate sample checklist', 'ERC000053': 'Tree of Life Checklist'}
+    return ena_checklist_dict
+
 
 def clean_list_replace_nan(data):
     return ['missing' if pd.isna(item) else item for item in data]
@@ -349,3 +390,4 @@ def capitalise(string):
     else:
         # simpler
         return string.capitalize()
+
