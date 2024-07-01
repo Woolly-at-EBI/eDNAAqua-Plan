@@ -13,6 +13,7 @@ import re
 import sys
 import time
 import random
+from math import log
 
 import pandas as pd
 import requests
@@ -26,7 +27,7 @@ from collections import Counter
 from geography import Geography
 from taxonomy import *
 from eDNA_utilities import pickle_data_structure, unpickle_data_structure,  print_value_count_table,\
-    plot_sankey, get_percentage_list, my_coloredFormatter, plot_countries, capitalise
+    plot_sankey, get_percentage_list, my_coloredFormatter, plot_countries, get_ena_checklist_dict
 
 from get_environmental_info import get_all_study_details, process_geographical_data
 
@@ -513,33 +514,76 @@ def do_geographical(df):
                   'record_count', plotfile)
 
 
-    sys.exit()
+    sys.exit("exiting do_geographical")
     return df
 
 
 def collection_date_year(value):
+    """
+    Trys hard to find the year of collection date
+    :param value:  could be 2 years or 4 years format
+    :return: 4 digit year as a string
+    """
+    def predict_year(value):
+        # want to return 4 digit year as string
+        # and removes excessive years
+        value = int(value)
+        if value >= 100:
+            if value > 2025:
+                return ""
+            else:
+                return str(value)
+        elif value > 50:
+            return '19' + str(value)
+        else:
+            return '20' + str(value)
+    # print(value)
     if value == "":
         return ""
-    elif re.search("^missing|^not", value):
+    elif re.search("^missing|Missing|^not|^[Nn][Aa]|^N/A|n/a|restricted access|^Not|^NOT|^unknown|^Unk|^UNK|none|^-$", value):
         return ""
     elif re.search("^[0-9]{4}$", value):
-        return value
-    elif re.search("^[0-9]{4}[-/]", value):
-        return value[0:4]
-    elif re.search("^[0-9]{2}/[0-9]{2}/[0-9]{4}", value):
-        return value.split("/")[2]
+
+        logger.debug(f"extract_value pat=3 for {value}")
+        return predict_year(value)
+    elif re.search("^[0-9]{4}[/-]", value):
+        extract_value = value[0:4]
+        logger.debug(f"extract_value pat=4 {extract_value}")
+        return predict_year(extract_value)
+    elif re.search("^[0-9]{1,2}/[0-9]{1,2}/[0-9]{2,4}", value):
+        extract_value = value.split("/")[2]
+        match = re.search("^[0-9]{2,4}", extract_value)   # having to cope with spaces, hyphens etc.
+        extract_value = match.group(0)
+        logger.debug(f"extract_value pat=5 for {extract_value}")
+        return predict_year(extract_value)
+    elif re.search("^[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{2,4}", value):
+        extract_value = value.split(".")[2]
+        logger.debug(f"extract_value pat=6 for {extract_value}")
+        return predict_year(extract_value)
     elif re.search("[0-9]{4}$", value):
-        return value[:-4]
+        extract_value = value[-4:]
+        logger.debug(f"extract_value pat=7 for >>>>{extract_value}<<<<")
+        return predict_year(extract_value)
     elif re.search("^[0-9]{4}$", value):
-        return re.findall("^[0-9]{4}", value)[0]
+        extract_value = re.findall("^[0-9]{4}", value)[0]
+        logger.debug(f"extract_value pat=8 for {extract_value}")
+        return predict_year(extract_value)
     elif re.search("[0-2][0-9]$", value):
-        extract_value = int(value[-2:])
-        if extract_value > 50:
-            return '19' + str(extract_value)
-        else:
-            return '20' + str(extract_value)
+        extract_value = value[-2:]
+        logger.debug(f"extract_value pat=9 for {extract_value}")
+        return predict_year(extract_value)
+    elif re.search("^[0-9]{1,2}-[A-Za-z]{1,12}-[0-9]{2,4}", value):
+        extract_value = value.split("-")[2]
+        extract_value = extract_value.split(" ")[0] # might have white space
+        logger.debug(f"extract_value pat=10 for {extract_value}")
+        predict_year(extract_value)
+    elif re.search(" [12][0-9]{3} ", value):
+        match = re.search(" [12=][0-9]{3} ", value)
+        extract_value = match.group(0)
+        logger.debug(f"extract_value pat=11 for {extract_value}")
+        return predict_year(extract_value)
     else:
-        #logger.info(f"no year match for {value}")  # e,g,  f"no year match for {value}": 'no year match for restricted access'
+        # logger.info(f"no year match for -->{value}<--")  # e,g,  f"no year match for {value}": 'no year match for restricted access'
         return ""
 
 def create_year_bins(value):
@@ -806,10 +850,46 @@ def detailed_environmental_analysis(df):
     return df
 
 
+def analyse_checklists(df):
+    print('NCBI "checklists":')
+    print_value_count_table(df.ncbi_reporting_standard)
+    print('ENA "checklists":')
+    print_value_count_table(df.checklist)
 
+    ena_checklist_dict = get_ena_checklist_dict()
+    df['ena_checklist_name'] = df['checklist'].map(ena_checklist_dict)
+    print_value_count_table(df.ena_checklist_name)
+
+
+def analyse_dates(df):
+    print_value_count_table(df.collection_year)
+    print_value_count_table(df.collection_year_bin)
+    sample_counts = df.groupby('collection_year').size().reset_index(name = 'count')
+    sample_counts['collection_year'] = sample_counts['collection_year'].astype(int)
+    sample_counts = sample_counts.query('collection_year > 1949')
+    sample_counts = sample_counts.query('collection_year < 2025')
+
+    # Ensure DataFrame is sorted by 'collection_year'
+    df = df.sort_values(by = 'collection_year')
+
+    # Calculate cumulative sum of the 'count' column
+    sample_counts['cumulative_count'] = sample_counts['count'].cumsum()
+    sample_counts['cumulative_count_log'] = sample_counts['cumulative_count'].apply(lambda x: log(x))
+
+    # Plot the cumulative curve, could not get the log working without hardcoding the b.
+    fig = px.line(sample_counts, x = 'collection_year', y = 'cumulative_count_log',
+                  title = 'ENA/INSDC Aquatic readrun collection_date Count Cumulative(log)',
+                  labels = {'cumulative_count_log': 'Cumulative Count(log)', 'collection_year': 'Collection Year'})
+
+    outfile = "../images/ena_aquatic_collection_dates.png"
+    logger.info(f"Writing to {outfile}")
+    fig.write_image(outfile)
 
 def analyse_readrun_detail(df):
     logger.info("in analyse_readrun_detail")
+
+    df['lat'] = pd.to_numeric(df['lat'], errors = 'coerce')
+    df['lon'] = pd.to_numeric(df['lon'], errors = 'coerce')
 
     # doing some testing .... delete these when done
 
@@ -842,18 +922,11 @@ def analyse_readrun_detail(df):
     # uncomment when running for real
     # target_gene_analysis(df)
 
-    print('NCBI "checklists":')
-    print_value_count_table(df.ncbi_reporting_standard)
-    print('ENA "checklists":')
-    print_value_count_table(df.checklist)
-
     df = clean_dates_in_df(df)
+    analyse_checklists(df)
+    analyse_dates(df)
 
-    df['lat'] = pd.to_numeric(df['lat'], errors = 'coerce')
-    df['lon'] = pd.to_numeric(df['lon'], errors = 'coerce')
-
-    print_value_count_table(df.collection_year)
-    print_value_count_table(df.collection_year_bin)
+    sys.exit()
     logger.info(f"before experimental_analysis_inc_filtering filtered: rownum={len(df)}")
     df = experimental_analysis_inc_filtering(df)
     logger.info(f"after experimental_analysis_inc_filtering filtered: rownum={len(df)}")

@@ -149,6 +149,20 @@ class Geography:
             return country
         return 'not ocean'
 
+    def get_european_sea(self, country):
+        """
+        is any European Sea and parts of Atlantic ocean
+        assuming it is the cleaned country term!
+        :param country:
+        :return:
+        """
+
+        if country is None:
+            return None
+        elif country in self.europe_sea_set:
+            return country
+        return None
+
 
     def is_insdc_country_in_eu(self, country):
         """

@@ -217,7 +217,6 @@ def print_value_count_table(df_var):
     max_rows = 20
     tmp_df = tmp_df.head(max_rows)
     # print(tmp_df.to_string(index = False))
-    print("MARKDOWN")
     print(tmp_df.to_markdown())
     
 def generate_sankey_chart_data(df, columns: list, sankey_link_weight: str):

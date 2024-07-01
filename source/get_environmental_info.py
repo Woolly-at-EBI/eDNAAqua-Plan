@@ -12,7 +12,7 @@ import re
 import sys
 import time
 import random
-
+import numpy as np
 import pandas as pd
 import requests
 import plotly.express as px
@@ -25,11 +25,13 @@ from collections import Counter
 from geography import Geography
 from taxonomy import *
 from eDNA_utilities import pickle_data_structure, unpickle_data_structure, my_coloredFormatter, run_webservice, \
-    get_shorter_list, print_value_count_table
+    get_shorter_list, print_value_count_table, capitalise, get_ena_checklist_dict
 
 logger = logging.getLogger(name = 'mylogger')
 pd.set_option('display.max_columns', None)
 pd.set_option('max_colwidth', None)
+
+
 # pd.set_option("display.max_rows", None)
 
 def get_query_params(checklist_type):
@@ -38,19 +40,19 @@ def get_query_params(checklist_type):
         "query": ""
     }
 
-
     # see  https://www.ebi.ac.uk/ena/browser/checklists
 
     if checklist_type == "environmental_checklists":
-        my_params['query'] = """(environmental_sample%3Dtrue%20OR%20(CHECKLIST%3D%22ERC000012%22%20OR%20CHECKLIST%3D%22ERC000020%22\
-                 %20OR%20CHECKLIST%3D%22ERC000021%22%20OR%20CHECKLIST%3D%22ERC000022%22%20OR%20CHECKLIST%3D\
-                 %22ERC000023%22%20OR%20CHECKLIST%3D%22ERC000024%22%20OR%20CHECKLIST%3D%22ERC000025%22%20OR\
-                 %20CHECKLIST%3D%22ERC000027%22%20OR%20CHECKLIST%3D%22ERC000055%22%20OR%20CHECKLIST%3D%22ERC000030\
-                 %22%20OR%20CHECKLIST%3D%22ERC000031%22%20OR%20CHECKLIST%3D%22ERC000036%22)%20OR\
-                 (ncbi_reporting_standard%3D%22*ENV*%22%20ORncbi_reporting_standard%3D%22*WATER*%22\
-                 %20ORncbi_reporting_standard%3D%22*SOIL*%22%20ORncbi_reporting_standard%3D%22*AIR*%22\
-                 %20ORncbi_reporting_standard%3D%22*SEDIMENT*%22%20ORncbi_reporting_standard%3D%22*BUILT%22%20))\
-                 AND%20not_tax_tree(9606)"""
+        my_params['query'] = """(environmental_sample%3Dtrue%20OR%20(
+        CHECKLIST%3D%22ERC000012%22%20OR%20CHECKLIST%3D%22ERC000020%22\ 
+        %20OR%20CHECKLIST%3D%22ERC000021%22%20OR%20CHECKLIST%3D%22ERC000022%22%20OR%20CHECKLIST%3D\ 
+        %22ERC000023%22%20OR%20CHECKLIST%3D%22ERC000024%22%20OR%20CHECKLIST%3D%22ERC000025%22%20OR\ 
+        %20CHECKLIST%3D%22ERC000027%22%20OR%20CHECKLIST%3D%22ERC000055%22%20OR%20CHECKLIST%3D%22ERC000030\ 
+        %22%20OR%20CHECKLIST%3D%22ERC000031%22%20OR%20CHECKLIST%3D%22ERC000036%22)%20OR\ (
+        ncbi_reporting_standard%3D%22*ENV*%22%20ORncbi_reporting_standard%3D%22*WATER*%22\ 
+        %20ORncbi_reporting_standard%3D%22*SOIL*%22%20ORncbi_reporting_standard%3D%22*AIR*%22\ 
+        %20ORncbi_reporting_standard%3D%22*SEDIMENT*%22%20ORncbi_reporting_standard%3D%22*BUILT%22%20))\ 
+        AND%20not_tax_tree(9606)"""
     elif checklist_type == "default_checklists":
 
         # 'result=read_experiment&query=not_tax_eq(9606)%20AND%20(ncbi_reporting_standard%3D%22generic%22%20OR%20(%20checklist%3D%22erc000011%22%20OR%20ncbi_reporting_standard%3D%22generic%22%20))&fields=experiment_accession%2Cexperiment_title%2Ctax_id%2Cncbi_reporting_standard&format=tsv' "https://www.ebi.ac.uk/ena/portal/api/search"
@@ -90,6 +92,7 @@ def get_env_readrun_ids():
     pickle_data_structure(record_list, env_read_run_id_file)
     return record_list
 
+
 def get_all_checklist_types():
     checklist_types = ["environmental_checklists", "default_checklists"]
     return checklist_types
@@ -109,14 +112,11 @@ def get_env_readrun_detail(total_records_to_return):
     """
     logger.info("get_env_readrun_detail")
 
-
-
-
     def setup_run_api_call(query_params_json):
         out_fields = (
-            "sample_accession%2Crun_accession%2Clibrary_strategy%2Clibrary_source%2Cinstrument_platform%2Clat%2Clon%2Ccountry"
+            "sample_accession%2Crun_accession%2Clibrary_strategy%2Clibrary_source%2Cinstrument_platform%2Clat%2Clon"
+            "%2Ccountry"
             "%2Cbroad_scale_environmental_context%2Ctax_id%2Cchecklist%2Ccollection_date%2Cncbi_reporting_standard%2Ctarget_gene%2Ctag%2Cstudy_accession%2Cstudy_title")
-
 
         srv = query_params_json['srv']
         params = "result=read_run&query=" + query_params_json['query'] + "&fields=" + out_fields + "&format=json"
@@ -149,21 +149,22 @@ def get_env_readrun_detail(total_records_to_return):
             env_read_run_detail_jsonfile = "read_run_allinsdc_detail.json"
 
         if os.path.exists(env_read_run_detail_file):
-             logger.info(f"{env_read_run_detail_file} exists, so can unpickle it")
-             record_list = unpickle_data_structure(env_read_run_detail_file)
+            logger.info(f"{env_read_run_detail_file} exists, so can unpickle it")
+            record_list = unpickle_data_structure(env_read_run_detail_file)
         elif os.path.exists(env_read_run_detail_jsonfile):
-             logger.info(f"{env_read_run_detail_jsonfile} exists, so using that")
-             with open(env_read_run_detail_jsonfile, "r") as f:
-                 record_list = json.load(f)
-                 length = len(record_list)
-                 for i in range(length):
-                     # record = record_list[i]
-                     record_list[i]["query_type"] = checklist_type
-                 pickle_data_structure(record_list, env_read_run_detail_file)
-                 # sys.exit()
+            logger.info(f"{env_read_run_detail_jsonfile} exists, so using that")
+            with open(env_read_run_detail_jsonfile, "r") as f:
+                record_list = json.load(f)
+                length = len(record_list)
+                for i in range(length):
+                    # record = record_list[i]
+                    record_list[i]["query_type"] = checklist_type
+                pickle_data_structure(record_list, env_read_run_detail_file)
+                # sys.exit()
         else:
             query_params_json = get_query_params(checklist_type)
-            logger.info(f"Doing the main search of environmental data via {checklist_type}, \n  query: {query_params_json}")
+            logger.info(
+                f"Doing the main search of environmental data via {checklist_type}, \n  query: {query_params_json}")
             record_list = setup_run_api_call(query_params_json)
             logger.info(f"Finished running {checklist_type}")
 
@@ -177,11 +178,11 @@ def get_env_readrun_detail(total_records_to_return):
             pickle_data_structure(record_list, env_read_run_detail_file)
 
         logger.info(f"record_list length: {len(record_list)}")
-        record_list = get_shorter_list(record_list, int(total_records_to_return/2))
+        record_list = get_shorter_list(record_list, int(total_records_to_return / 2))
         combined_record_list.extend(record_list)
 
     logger.info(f"Finished getting all RELEVANT ENA raw data combined len= {len(combined_record_list)}")
-    #vsys.exit()
+    # sys.exit()
     return combined_record_list
 
 
@@ -191,18 +192,18 @@ def get_all_study_details():
     :return: dataframe with all study details (study_accession study_title study_description)
     """
     study_details_file = "study_details.pickle"
-    study_details_json = ("study_details.json")
+    study_details_json = "study_details.json"
     if os.path.exists(study_details_file):
-         logger.info("env_sample_id_file exists, so can unpickle it")
-         record_list = unpickle_data_structure(study_details_file)
-         logger.info(f"Number of study_details records= {len(record_list)}")
-         return pd.DataFrame.from_records(record_list)
+        logger.info("env_sample_id_file exists, so can unpickle it")
+        record_list = unpickle_data_structure(study_details_file)
+        logger.info(f"Number of study_details records= {len(record_list)}")
+        return pd.DataFrame.from_records(record_list)
     elif os.path.exists(study_details_json):
-         logger.info(f"{study_details_json} exists,")
-         with open(study_details_json, "r") as f:
-             record_list = json.load(f)
-         pickle_data_structure(record_list, study_details_file)
-         return pd.DataFrame.from_records(record_list)
+        logger.info(f"{study_details_json} exists,")
+        with open(study_details_json, "r") as f:
+            record_list = json.load(f)
+        pickle_data_structure(record_list, study_details_file)
+        return pd.DataFrame.from_records(record_list)
 
     record_list = []
 
@@ -211,7 +212,7 @@ def get_all_study_details():
 
     limit_size = "0"
     logger.info(f"Reading study details for this many {limit_size}")
-    #'result=study&fields=study_accession%2Cstudy_title%2Cstudy_description&format=tsv'
+    # 'result=study&fields=study_accession%2Cstudy_title%2Cstudy_description&format=tsv'
     # gets all study data, so only need to do once,
     checklist_type = "default_checklists"
     logger.info(f"In get_all_study_deails for {checklist_type}")
@@ -230,6 +231,7 @@ def get_all_study_details():
     logger.info(f"Number of records= {len(record_list)} records")
 
     return pd.DataFrame.from_records(record_list)
+
 
 def get_env_sample_ids():
     env_sample_id_file = "env_sample_id_file.pickle9"
@@ -278,6 +280,7 @@ def select_first_part(value):
     # else:
     #     return value
 
+
 def get_presence_or_absence_col(df, col_name):
     # col with and without values
     # FFS isnull etc. did not work
@@ -285,13 +288,11 @@ def get_presence_or_absence_col(df, col_name):
     absent_count = 0
     present_count = 0
     for val in col_list:
-        if val == None:
+        if val is None:
             absent_count += 1
         else:
             present_count += 1
     return present_count, absent_count
-
-
 
     return df
 
@@ -305,8 +306,9 @@ def delist_col(my_list):
     gene_list = []
     for gene_row_list in my_list:
         for gene in gene_row_list:
-             gene_list.append(gene)
+            gene_list.append(gene)
     return gene_list
+
 
 def get_percentage_list(gene_list):
     """
@@ -334,37 +336,38 @@ def analyse_all_study_details(df):
     logger.info("in analyse_all_study_details---------------------------")
     logger.info(len(df))
     barcoding_pattern = '16S|18S|ITS|26S|5.8S|RBCL|rbcL|matK|MATK|COX1|CO1|mtCO|barcod'
-    barcoding_title_df = df[df.study_title.str.contains(barcoding_pattern, regex= True, na=False)]
+    barcoding_title_df = df[df.study_title.str.contains(barcoding_pattern, regex = True, na = False)]
     logger.info(f"'study_title' with barcoding genes total={len(barcoding_title_df)}")
-    logger.info(barcoding_title_df['study_title'].sample(n=10))
+    logger.info(barcoding_title_df['study_title'].sample(n = 10))
 
-    barcoding_description_df = df[df.study_description.str.contains(barcoding_pattern, regex= True, na=False)]
+    barcoding_description_df = df[df.study_description.str.contains(barcoding_pattern, regex = True, na = False)]
     logger.info(f"'study_description' with barcoding genes total={len(barcoding_description_df)}")
-    logger.info(barcoding_description_df['study_description'].sample(n=5))
+    logger.info(barcoding_description_df['study_description'].sample(n = 5))
 
-    barcoding_df = pd.concat([barcoding_title_df, barcoding_description_df]).drop_duplicates().reset_index(drop=True)
+    barcoding_df = pd.concat([barcoding_title_df, barcoding_description_df]).drop_duplicates().reset_index(drop = True)
     logger.info(f"barcoding total = {len(barcoding_df)}")
     barcoding_df['combined_tit_des'] = barcoding_df['study_title'] + barcoding_df['study_description']
     barcoding_df['is_barcoding_experiment_probable'] = True
 
     def get_barcoding_genes(value):
 
-        sgenes_pattern = re.compile(r'^([1-9]{2}|5\.8)([sS])[ ]?(r)?([RD]NA)?', flags=0)
-        sgenes_pattern = re.compile(r'^([1-9]{2}|5\.8)([sS])[ ]?r?(RNA|DNA|ribo)?', flags=0)
+        sgenes_pattern = re.compile(r'^([1-9]{2}|5\.8)([sS])[ ]?(r)?([RD]NA)?', flags = 0)
+        sgenes_pattern = re.compile(r'^([1-9]{2}|5\.8)([sS])[ ]?r?(RNA|DNA|ribo)?', flags = 0)
         rbcl_pattern = re.compile(r'^(RBCL)', re.IGNORECASE)
         its_pattern = re.compile(r'^(ITS)([1-2])?')
         matk_pattern = re.compile(r'^(matk)', re.IGNORECASE)
         COX1_pattern = re.compile('^COX1|CO1|COI|mtCO|Cytochrome c oxidase|cytochrome oxidase', re.IGNORECASE)
+
         def clean_name(my_list):
             """
              a clean harmonised list of barcoding gene names
-            :param  list of gene names:
+            :param  my_list: # list of gene names
             :return: harmonised list.
             """
             clean_list = []
-            #logger.info("-----------------------------------------------------------")
+            # logger.info("-----------------------------------------------------------")
             for my_gene in my_list:
-                #logger.info(my_gene)
+                # logger.info(my_gene)
 
                 match = re.search(rbcl_pattern, my_gene)
                 if match:
@@ -382,14 +385,14 @@ def analyse_all_study_details(df):
                     continue
                 match = re.search(matk_pattern, my_gene)
                 if match:
-                        # logger.info("----------clean=matK")
-                        clean_list.append("matK")
-                        continue
+                    # logger.info("----------clean=matK")
+                    clean_list.append("matK")
+                    continue
                 match = re.search(COX1_pattern, my_gene)
                 if match:
-                        # logger.info("----------clean=COX1")
-                        clean_list.append("COX1")
-                        continue
+                    # logger.info("----------clean=COX1")
+                    clean_list.append("COX1")
+                    continue
 
                 match = re.search(sgenes_pattern, my_gene)
                 if match:
@@ -406,9 +409,10 @@ def analyse_all_study_details(df):
                 logger.info(f"remaining gene: -->{my_gene}<--")
                 sys.exit()
 
-
             return clean_list
-        barcode_genes_pattern = re.compile('16[sS][ ]?r?[RD]NA|16[sS][ ]?ribo|18S|ITS[12]?|26[Ss]|5\.8[Ss]|rbcL|rbcl|RBCL|matK|MATK|cox1|co1|COX1|CO1|COI|mtCO|cytochrome c oxidase|cytochrome oxidase')
+
+        barcode_genes_pattern = re.compile(
+            '16[sS][ ]?r?[RD]NA|16[sS][ ]?ribo|18S|ITS[12]?|26[Ss]|5\.8[Ss]|rbcL|rbcl|RBCL|matK|MATK|cox1|co1|COX1|CO1|COI|mtCO|cytochrome c oxidase|cytochrome oxidase')
         genes = list(set(re.findall(barcode_genes_pattern, value)))
         if len(genes) > 0:
             # logger.info(genes)
@@ -418,17 +422,19 @@ def analyse_all_study_details(df):
             if len(genes) > 0:
                 return clean_name(genes)
             return None
+
     barcoding_df['barcoding_genes_from_study'] = barcoding_df.combined_tit_des.apply(get_barcoding_genes)
     logger.info(barcoding_df['barcoding_genes_from_study'].value_counts())
     print_value_count_table(barcoding_df['barcoding_genes_from_study'])
 
-    gene_list = delist_col(barcoding_df[barcoding_df['barcoding_genes_from_study'].notnull()]['barcoding_genes_from_study'].to_list())
+    gene_list = delist_col(
+        barcoding_df[barcoding_df['barcoding_genes_from_study'].notnull()]['barcoding_genes_from_study'].to_list())
     get_percentage_list(gene_list)
     gene_set = set(gene_list)
     total = len(barcoding_df)
     present_count, absent_count = get_presence_or_absence_col(barcoding_df, 'barcoding_genes_from_study')
-    logger.info(f"barcoding_genes_from_study present_count {present_count}  {present_count/total*100:.2f}%")
-    logger.info(f"barcoding_genes_from_study absent_count {absent_count}   {absent_count/total*100:.2f}%")
+    logger.info(f"barcoding_genes_from_study present_count {present_count}  {present_count / total * 100:.2f}%")
+    logger.info(f"barcoding_genes_from_study absent_count {absent_count}   {absent_count / total * 100:.2f}%")
 
     return barcoding_df
 
@@ -454,8 +460,8 @@ def process_geographical_data(old_df):
     df['has_broad_scale_environmental_context'] = df['has_broad_scale_environmental_context'].mask(
         df['broad_scale_environmental_context'] == '', False)
 
-    #print_value_count_table(df.has_broad_scale_environmental_context)
-    #print_value_count_table(df.broad_scale_environmental_context)
+    # print_value_count_table(df.has_broad_scale_environmental_context)
+    # print_value_count_table(df.broad_scale_environmental_context)
 
     geography_obj = Geography()
     insdc_country_set = geography_obj.get_insdc_full_country_set()
@@ -464,7 +470,7 @@ def process_geographical_data(old_df):
     logger.debug(f"insdc_country_list: {sorted(insdc_country_set)}")
     lower_country_dict = {}
     for country in insdc_country_set:
-        #logger.info(f"country: --->{country}<----")
+        # logger.info(f"country: --->{country}<----")
         lc_country = str(country).lower()
         lower_country_dict[lc_country] = country
     countries_re = re.compile("|".join(insdc_country_set), re.IGNORECASE)
@@ -528,7 +534,7 @@ def process_geographical_data(old_df):
                 return special_country_dict[match.group()]
             return match.group()
         elif blank_re.search(value):
-            return("Unknown")
+            return "Unknown"
         else:
             logger.debug(f"insdc_country_clean:, not match for '{value}'")
             return value
@@ -546,16 +552,112 @@ def process_geographical_data(old_df):
 
     outfile = "clean_country.tsv"
     logger.info(f"df_country_clean_count={df_country_clean_count} the cleaner list is here {outfile}")
-    df_country_clean_count.to_csv(outfile, sep='\t', index=False)
+    df_country_clean_count.to_csv(outfile, sep = '\t', index = False)
     logger.info("About to call geographical")
 
     df['continent'] = df['country_clean'].apply(geography_obj.get_continent)
     df['ocean'] = df['country_clean'].apply(geography_obj.get_ocean)
+    logger.info(f"First doing a naive european sea search, then more comprehensive one")
+    df['european_sea'] = df['country_clean'].apply(geography_obj.get_european_sea)
+    logger.info(f"df['european_sea'].value_counts()={df['european_sea'].value_counts()}")
+
+    europe_sea_list = list(geography_obj.europe_sea_set)
+    logger.info(f"european_sea_list={europe_sea_list}")
+    combined_list_joined = "|".join(europe_sea_list)
+    europe_sea_re = re.compile(combined_list_joined, re.IGNORECASE)
+
+    # df['match_european_sea'] = df['country_clean'].str.match(europe_sea_re)
+    def get_european_sea_value(value):
+        match = europe_sea_re.search(value)
+        if match is None:
+            return None
+        rtn_value = capitalise(match.group())
+        # logger.info(rtn_value)
+        return rtn_value
+
+    df['european_sea'] = df['country'].apply(get_european_sea_value)
+    logger.info(f"df['european_sea'].value_counts()={df['european_sea'].value_counts()}")
+    print_value_count_table(df.european_sea)
+
+    freshwater_type_list = ['(river|lake|freshwater) sediment', 'groundwater', 'ground[ _-]water', 'spring',
+                            'reservoir', 'river', 'lake', 'pond', 'stream', 'beck', 'brook', 'tarn', 'mere',
+                            'waterfall', 'wetland', 'ghyll', 'canal', 'bog', 'drinking water']
+    combined_list_joined = "|".join(freshwater_type_list)
+    # freshwater_type_re = re.compile(r'\b(" + combined_list_joined + ")"', re.IGNORECASE)
+    freshwater_type_re = re.compile(combined_list_joined, re.IGNORECASE)
+
+    freshwater_consolidation_dict = {
+        'river sediment': 'freshwater_sediment',
+        'lake sediment': 'freshwater_sediment',
+        'freshwater sediment': 'freshwater_sediment',
+        'sediment': 'freshwater_sediment',
+        'lake': 'lake',
+        'mere': 'lake',
+        'tarn': 'lake',
+        'pond': 'pond',
+        'river': 'river',
+        'brook': 'river',
+        'canal': 'canal',
+        'reservoir': 'reservoir',
+        'stream': 'stream',
+        'beck': 'stream',
+        'waterfall': 'waterfall',
+        'wetland': 'wetland',
+        'spring': 'spring',
+        'ground_water': 'groundwater',
+        'ground water': 'groundwater',
+        'ground-water': 'groundwater',
+        'groundwater': 'groundwater',
+        'bog': 'bog',
+        'drinking water': 'drinking_water'
+
+    }
+
+    #         'freshwater': 'freshwater_unknown_type'
+    def get_freshwater_type_value(value):
+        # used for both query country/region and ENVO
+        match = freshwater_type_re.search(value)
+        if match is None:
+            return None
+        rtn_value = match.group()
+        rtn_value = rtn_value.lower()
+        rtn_value = freshwater_consolidation_dict[rtn_value]
+        # logger.info(rtn_value)
+        return rtn_value
+
+    logger.info(f"freshwater types worldwide")
+    df['freshwater_type_country'] = df['country'].apply(get_freshwater_type_value)
+    print_value_count_table(df.freshwater_type_country)
+
+    logger.info(df.columns)
+
+    df['freshwater_type_envo'] = df['broad_scale_environmental_context'].apply(get_freshwater_type_value)
+    print_value_count_table(df.freshwater_type_envo)
+
+    def choose_freshwater_type(row):
+        if row['freshwater_type_envo'] is not None:
+            # logger.info(f"choose freshwater_type_envo")
+            return row['freshwater_type_envo']
+        elif row['freshwater_type_country'] is not None:
+            # logger.info(f"choose freshwater_type_country")
+            return row['freshwater_type_country']
+        return None
+
+    logger.info(f"Combining freshwater types ENVO and COUNTRY")
+    df['freshwater_type'] = df.apply(choose_freshwater_type, axis = 1)
+    print_value_count_table(df.freshwater_type)
+
+    # print(df.groupby(['broad_scale_environmental_context','freshwater_type_country','country']).size().to_frame('count').reset_index().sort_values('count').to_string())
+
+    df_europe = df.query('continent == "europe"')
+    logger.info(f"freshwater types in europe")
+    print_value_count_table(df_europe.freshwater_type)
 
     logger.info(f"process geographical data rows out={len(df)}")
 
     sys.exit("process geographical data rows out={}".format(len(df)))
     return df
+
 
 def filter_for_aquatic(env_readrun_detail):
     logging.info("filter_for_aquatic")
@@ -571,7 +673,10 @@ def filter_for_aquatic(env_readrun_detail):
     logger.info(df.columns)
 
     aquatic_pattern = re.compile('marine|freshwater|coastal|brackish')
-    aquatic_biome_pattern = re.compile('marine|ocean|freshwater|coastal|brackish|estuar|fresh water|groundwater|glacial_spring|^sea|seawater|lake|river|wastewater|waste water|stormwater', re.IGNORECASE)
+    aquatic_biome_pattern = re.compile(
+        'marine|ocean|freshwater|coastal|brackish|estuar|fresh '
+        'water|groundwater|glacial_spring|^sea|seawater|lake|river|wastewater|waste water|stormwater',
+        re.IGNORECASE)
 
     def local_process_env_tags(value):
         my_tag_list = value.split(';')
@@ -599,17 +704,18 @@ def filter_for_aquatic(env_readrun_detail):
         return False
 
     logging.info("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-    #print_value_count_table(df.tag)
+    # print_value_count_table(df.tag)
     # logger.info(df.tag.head(50))
-    #df['env_tax'] = df['tag'].str.extract("(env_tax:[^;]*)")[0]
+    # df['env_tax'] = df['tag'].str.extract("(env_tax:[^;]*)")[0]
     df['env_tag'] = df['tag'].apply(local_process_env_tags)
     df['env_tags'] = df['env_tag'].apply(lambda x: ';'.join(x))
-    #print_value_count_table(df.env_tags)
+    # print_value_count_table(df.env_tags)
     df['aquatic'] = df['env_tags'].apply(test_if_aquatic)
     logging.info(f"aquatic= {df['aquatic'].value_counts()}")
     df_aquatic = df[df['aquatic'] == True]
     df_remainder = df[df['aquatic'] == False]
-    logging.info(f"total_records={len(df)}, using env_tags aquatic_filtered={len(df_aquatic)} and remainder={len(df_remainder)}")
+    logging.info(
+        f"total_records={len(df)}, using env_tags aquatic_filtered={len(df_aquatic)} and remainder={len(df_remainder)}")
 
     logging.info("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
     df_remainder = process_geographical_data(df_remainder)
@@ -619,7 +725,8 @@ def filter_for_aquatic(env_readrun_detail):
     logging.info(f"ocean: aquatic= {df_remainder['aquatic'].value_counts()}")
     df_remainder_aquatic = df_remainder[df_remainder['aquatic'] == True]
     df_remainder_nonaquatic = df_remainder[df_remainder['aquatic'] == False]
-    logging.info(f"after using test_if_ocean aquatic_filtered={len(df_remainder_aquatic)}  not {len(df_remainder_nonaquatic)}")
+    logging.info(
+        f"after using test_if_ocean aquatic_filtered={len(df_remainder_aquatic)}  not {len(df_remainder_nonaquatic)}")
     df_aquatic = pd.concat([df_aquatic, df_remainder_aquatic])
     logging.info(f"len(df_aquatic) = {len(df_aquatic)}")
 
@@ -629,12 +736,14 @@ def filter_for_aquatic(env_readrun_detail):
     logging.info(f"broad_scale_environmental_context aquatic= {df_remainder['aquatic'].value_counts()}")
     df_remainder_aquatic = df_remainder[df_remainder['aquatic'] == True]
     df_remainder_nonaquatic = df_remainder[df_remainder['aquatic'] == False]
-    logging.info(f"after using test_if_aquatic_biome_pattern={len(df_remainder_aquatic)}  not {len(df_remainder_nonaquatic)}")
+    logging.info(
+        f"after using test_if_aquatic_biome_pattern={len(df_remainder_aquatic)}  not {len(df_remainder_nonaquatic)}")
     logging.info(f"after using broad_scale_environmental_context aquatic_filtered={len(df_remainder_aquatic)}")
     df_aquatic = pd.concat([df_aquatic, df_remainder_aquatic])
     logging.info(f"len(df_aquatic) = {len(df_aquatic)}")
 
     return df_aquatic
+
 
 def main():
     # df_all_study_details = analyse_all_study_details(get_all_study_details())
@@ -663,7 +772,7 @@ def main():
     # sample_ids_set = set(df_env_readrun_detail['sample_accession'])
     # logging.info(f"sample_ids_set={len(sample_ids_set)}")
     #
-    #analyse_readrun_detail(df_env_readrun_detail)
+    # analyse_readrun_detail(df_env_readrun_detail)
 
 
 if __name__ == '__main__':
