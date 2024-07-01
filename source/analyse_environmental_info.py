@@ -26,7 +26,7 @@ from collections import Counter
 from geography import Geography
 from taxonomy import *
 from eDNA_utilities import pickle_data_structure, unpickle_data_structure,  print_value_count_table,\
-    plot_sankey, get_percentage_list, my_coloredFormatter, plot_countries
+    plot_sankey, get_percentage_list, my_coloredFormatter, plot_countries, capitalise
 
 from get_environmental_info import get_all_study_details, process_geographical_data
 
@@ -501,7 +501,7 @@ def do_geographical(df):
         # country_record_count_dict["USA"] = country_record_count_dict[US_KEY]
         country_record_count_dict["United States"] = country_record_count_dict[US_KEY] # by trial and error found this "std" is expected
 
-    plot_countries(country_record_count_dict, 'all', "Reported eDNA related ALL readrun in World Frequencies",
+    plot_countries(country_record_count_dict, 'all', "Reported ENA Aquatic eDNA related ALL readrun in World Frequencies",
                    "../images/ena_all_countries.png")
 
     path_list = ['ocean']
@@ -512,6 +512,8 @@ def do_geographical(df):
     plot_sunburst(plot_df, 'Figure: ENA Aquatic "Environmental" readrun records, by ocean', path_list,
                   'record_count', plotfile)
 
+
+    sys.exit()
     return df
 
 
@@ -859,7 +861,7 @@ def analyse_readrun_detail(df):
 
     logger.info("-------------about to do geographical------------------------")
     df = do_geographical(df)
-    # sys.exit("PREMATURE")
+    sys.exit("PREMATURE")
     logger.info("-------------about to do taxonomic_analysis------------------------")
     df = taxonomic_analysis(df)
     # logger.info(df)
