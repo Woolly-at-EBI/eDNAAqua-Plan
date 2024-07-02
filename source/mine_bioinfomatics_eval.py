@@ -95,7 +95,7 @@ def add_metadata_category(df):
         'sequence_methodology': 'experiment_metadata',
         'sequencing_strategy': 'experiment_metadata',
         'analysis_workflow': 'experiment_metadata',
-        'directly_uploaded': 'primaryness',
+        'directly_uploaded': 'sequence_related',
         'barcode_name': 'barcode',
         'barcode_certain': 'barcode',
         'taxonomy_origin': 'taxonomic',
@@ -103,7 +103,7 @@ def add_metadata_category(df):
         'taxonomically_identified': 'taxonomic',
         'taxonomical_name': 'taxonomic',
         'taxonomy_linking': 'taxonomic',
-        'Primary/Secondary': 'primaryness'
+        'Primary/Secondary': 'sequence_related'
     }
     df["field_category"] = df['Name'].map(category_dict)
     return df
@@ -145,13 +145,41 @@ def analyse_by_category(df):
     tmp_df = mv_df_col2front(tmp_df, 'Name')
     tmp_df = mv_df_col2front(tmp_df, 'field_category')
 
-    # sys.exit()
+    print(f"my categories: {list(metadata_category_dict.keys())}")
     for cat in metadata_category_dict:
+        print(f"{cat}")
+        cat_members = '\n\t'.join(metadata_category_dict[cat])
+        print(f"\t{cat_members}\n")
+
+    completed_cats = ['barcode', 'taxonomic', 'experiment_metadata', 'sequence_related', 'db_profile', 'db_size',\
+                      'sample_details', 'data_format', 'data_access', 'publication', 'metadata_format', 'metadata']
+    completed_cats = []
+    for cat in metadata_category_dict:
+        if cat in completed_cats:
+            continue
         logger.info(f"\n{cat} type={type(cat)}<-------------------------------------")
-        vtmp_df = tmp_df.loc[tmp_df.field_category == cat]
-        logger.info(f"\n{vtmp_df.to_markdown()}")
+        print(f"eDNA Inventory: {cat} Category\n")
+        vtmp_df = tmp_df.loc[tmp_df.field_category == cat].copy()
+        # logger.info(f"\n{vtmp_df.head(1)}")
+        # logger.info(f"\n{vtmp_df.columns}")
+        # logger.info(f"\n{vtmp_df.Name}")
+        vtmp_df['new_index'] = vtmp_df['Name']
+        vtmp_df = vtmp_df.set_index('new_index')
+        # print("df_transposed---------------------------------------------------------")
+        df_transposed_df = vtmp_df.transpose(copy=False)
+        df_transposed_df = df_transposed_df.drop('Name')
+        df_transposed_df = df_transposed_df.drop('field_category')
+        # logger.info(f"head3=\n{df_transposed_df.head(5).to_markdown()}")
+        my_columns = df_transposed_df.columns.tolist()
+        # logger.info(f"\n{my_columns}")
+        # for my_column in my_columns:
+        #   print(f"{my_column}++++++++++++++++")
+        #   print(df_transposed_df[my_column].to_markdown())
+
+        print(df_transposed_df.to_markdown())
+        #logger.info(f"\n{vtmp_df.to_markdown()}")
         logger.info(f"\n------------------------------------------------------------------")
-        sys.exit()
+        # sys.exit()
 
     return df
 
