@@ -40,19 +40,28 @@ my_coloredFormatter = coloredlogs.ColoredFormatter(
     )
 )
 
-
 def tsv2dict(tsv_file, col1, col2):
-    print(f"Inside tsv2dict for {tsv_file} for key={col1} and {col2}")
-
+    """
+    Takes a TSV file and converts it to a dictionary.
+    :param tsv_file:
+    :param col1:
+    :param col2:
+    :return:
+    """
+    logger.info(f"Inside tsv2dict for {tsv_file} for key={col1} and {col2}")
     df = pd.read_csv(tsv_file, sep="\t")
-    # print(df)
     dict_data = dict(zip(df[col1], df[col2]))
     return dict_data
 
-#
-# ena_checklist_dict = tsv2dict("ena_checklists.tsv", 'CHECKLIST_ID', 'CHECKLIST_NAME')
-# print(ena_checklist_dict)
+
 def get_ena_checklist_dict():
+    """
+    Function to get ena checklist as a dictionary
+    # ena_checklist_dict = tsv2dict("ena_checklists.tsv", 'CHECKLIST_ID', 'CHECKLIST_NAME')
+    # print(ena_checklist_dict)
+
+    :return: ena_checklist_dict
+    """
     ena_checklist_dict = {
         'ERC000045': 'COMPARE-ECDC-EFSA pilot food-associated reporting standard',
         'ERC000044': 'COMPARE-ECDC-EFSA pilot human-associated reporting standard',
@@ -272,7 +281,7 @@ def generate_sankey_chart_data(df, columns: list, sankey_link_weight: str):
     targets = [val[1] for val in df_links["link"]]
     weights = df_links["weight"]
 
-    logger.info(labels, sources, targets, weights)
+    # logger.info(labels, sources, targets, weights)
     return labels, sources, targets, weights
 
 def plot_sankey(df, sankey_link_weight, columns, title, plotfile):
