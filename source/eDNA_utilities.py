@@ -227,7 +227,40 @@ def print_value_count_table(df_var):
     tmp_df = tmp_df.head(max_rows)
     # print(tmp_df.to_string(index = False))
     print(tmp_df.to_markdown())
-    
+
+def plot_sunburst(df, title, path_list, value_field, plotfile):
+    """
+
+    :param df:
+    :param title:
+    :param path_list:
+    :param value_field:
+    :param plotfile:
+    :return:
+    """
+    fig = px.sunburst(
+            df,
+            path = path_list,
+            values = value_field,
+            title = title,
+        )
+    # fig.update_layout(legend = dict(
+    #     orientation = 'h',
+    #     yanchor = 'bottom',
+    #     y = 1.02,
+    #     xanchor = 'right',
+    #     x = 1
+    # ))
+    # fig.show()
+    if plotfile == "plot":
+            fig.show()
+    else:
+            logger.info(f"Sunburst plot to {plotfile}")
+            fig.write_image(plotfile)
+
+
+
+
 def generate_sankey_chart_data(df, columns: list, sankey_link_weight: str):
 
     column_values = [df[col] for col in columns]

@@ -27,7 +27,8 @@ from collections import Counter
 from geography import Geography
 from taxonomy import *
 from eDNA_utilities import pickle_data_structure, unpickle_data_structure,  print_value_count_table,\
-    plot_sankey, get_percentage_list, my_coloredFormatter, plot_countries, get_ena_checklist_dict
+    plot_sankey, get_percentage_list, my_coloredFormatter, plot_countries, plot_sunburst,\
+    get_ena_checklist_dict
 
 from get_environmental_info import get_all_study_details, process_geographical_data
 
@@ -176,36 +177,6 @@ def target_gene_analysis(df):
     logger.info("---------------+++++++++++++++++++----------------")
 
     return
-
-def plot_sunburst(df, title, path_list, value_field, plotfile):
-    """
-
-    :param df:
-    :param title:
-    :param path_list:
-    :param value_field:
-    :param plotfile:
-    :return:
-    """
-    fig = px.sunburst(
-            df,
-            path = path_list,
-            values = value_field,
-            title = title,
-        )
-    # fig.update_layout(legend = dict(
-    #     orientation = 'h',
-    #     yanchor = 'bottom',
-    #     y = 1.02,
-    #     xanchor = 'right',
-    #     x = 1
-    # ))
-    # fig.show()
-    if plotfile == "plot":
-            fig.show()
-    else:
-            logger.info(f"Sunburst plot to {plotfile}")
-            fig.write_image(plotfile)
 
 
 def taxonomic_analysis(df):
@@ -926,15 +897,12 @@ def analyse_readrun_detail(df):
     analyse_checklists(df)
     analyse_dates(df)
 
-    sys.exit()
     logger.info(f"before experimental_analysis_inc_filtering filtered: rownum={len(df)}")
     df = experimental_analysis_inc_filtering(df)
     logger.info(f"after experimental_analysis_inc_filtering filtered: rownum={len(df)}")
 
-
     logger.info("-------------about to do geographical------------------------")
     df = do_geographical(df)
-    sys.exit("PREMATURE")
     logger.info("-------------about to do taxonomic_analysis------------------------")
     df = taxonomic_analysis(df)
     # logger.info(df)
