@@ -17,9 +17,9 @@ We will contrast current eDNA data from projects/repositories with information o
 ```mermaid
 flowchart TD
 
-      eDNA_explore("Exploring eDNA Initiatives")-->bix("bioinfomatics survey of well known repos"):::ready
+      eDNA_explore("Exploring eDNA Initiatives"):::ready-->bix("bioinfomatics_inventory_of_well_known_repos"):::ready
       bix-->bix_db:::ready
-      bix-->ena("ENA/INSDC deep analysis"):::in_progress
+      bix-->ena("ENA/INSDC deep analysis"):::ready
             
       eDNA_explore-->survey("Questionnaire survey of initiatives"):::ready
       survey-->qu:::ready
@@ -29,24 +29,24 @@ flowchart TD
       
       
       subgraph analysis
-      llm_anal-.->plots:::ready
+      llm_anal-.->plots
       llm_anal-.->tables
       
-      bix_db("mine_bioinformatics_eval.py")-->tables:::in_progress
-      bix_db-->plots["plots"]
+      bix_db("mine_bioinformatics_eval.py")-->tables:::ready
+      bix_db-->plots["plots"]:::ready
       
 
       ena-->plots
       ena-->tables
       
-      qu(mine_questionnaire_eval.py)-->tables:::in_progress
-      qu-->plots:::in_progress
+      qu(mine_questionnaire_eval.py)-->tables
+      qu-->plots
       end
       
       tables-->gap_analysis:::in_progress
       plots-->gap_analysis
       
-      gap_analysis-->report:::in_progress
+      gap_analysis<--Reviewing-->report:::in_progress
       
       classDef finished fill:#66ff99
       classDef in_progress fill:#f96
