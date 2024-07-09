@@ -822,6 +822,25 @@ def detailed_environmental_analysis(df):
 
 
 def analyse_checklists(df):
+    logger.info(f"inside analyse_checklists")
+    mandatory_field_file = "../data/ena_in/ena_checklists_mandatory_or_not.txt"
+    df = pd.read_csv(mandatory_field_file, sep="\t")
+    logger.info(f"\n{df.head(5)}")
+
+
+    df_group = df.groupby(['CHECKLIST_NAME', 'CHECKLIST_FIELD_MANDATORY']).size().to_frame('mandatory_count').reset_index()
+    logger.info(f"\n{df_group.to_markdown(index=False)}")
+
+    df_mandatory = df.loc[df['CHECKLIST_FIELD_MANDATORY'] == 'Y']
+    logger.info(f"\n{df_mandatory.head(5)}")
+    print("---------------------------------------------------------------")
+    df_group = df_mandatory.groupby(['CHECKLIST_NAME']).agg({'CHECKLIST_FIELD_NAME': ['count', list]}).reset_index()
+    df_group.columns = ['CHECKLIST_NAME', 'MANDATORY_COUNT', 'FIELD_NAMES_LIST']
+    df_group['FIELD_NAMES'] = df_group['FIELD_NAMES_LIST'].apply(lambda x: ';'.join(x))
+    df_group = df_group.drop(['FIELD_NAMES_LIST'], axis=1)
+    logger.info(f"\n{df_group.head(100).to_markdown(index=False)}")
+
+    sys.exit()
     print('NCBI "checklists":')
     print_value_count_table(df.ncbi_reporting_standard)
     print('ENA "checklists":')
@@ -914,6 +933,9 @@ def analyse_readrun_detail(df):
 
 
 def main():
+    df = ""
+    analyse_checklists(df)
+    sys.exit()
     # df_all_study_details = analyse_barcode_study_details(get_all_study_details())
     # logger.info(len(df_all_study_details))
     #
