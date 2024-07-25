@@ -12,6 +12,9 @@ import re
 import sys
 import time
 import random
+from plistlib import loads
+from pydoc import pipepager
+
 import numpy as np
 import pandas as pd
 import requests
@@ -654,14 +657,17 @@ def process_geographical_data(old_df):
     print_value_count_table(df_europe.freshwater_type)
 
     logger.info(f"process geographical data rows out={len(df)}")
-
-    sys.exit("process geographical data rows out={}".format(len(df)))
     return df
 
 
-def filter_for_aquatic(env_readrun_detail):
+
+def filter_for_aquatic(df):
+    """
+
+    :param df: = pd.DataFrame.from_records(env_readrun_detail)
+    :return: df
+    """
     logging.info("filter_for_aquatic")
-    df = pd.DataFrame.from_records(env_readrun_detail)
 
     # logger.info(df["broad_scale_environmental_context"].value_counts())
     # outfile = "broad_scale_environmental_context.txt"
@@ -746,6 +752,8 @@ def filter_for_aquatic(env_readrun_detail):
 
 
 def main():
+
+
     # df_all_study_details = analyse_all_study_details(get_all_study_details())
     # logger.info(len(df_all_study_details))
     #
@@ -757,10 +765,18 @@ def main():
     # get_all_study_details()
     # sys.exit()
 
+
+    env_readrun_detail = get_env_readrun_detail(100000)
+    logging.info(f"env_readrun_detail = {len(env_readrun_detail)}")
+    pickle_out = "env_readrun_detail_all.pickle"
+    df_env_readrun_detail = pd.DataFrame.from_records(env_readrun_detail)
+    pickle_data_structure(df_env_readrun_detail, pickle_out)
+    logger.info(f"writing to = {pickle_out}")
+    sys.exit()
+    df_env_readrun_detail = filter_for_aquatic(df_env_readrun_detail)
     df_aquatic_env_readrun_detail_pickle = "df_aquatic_env_readrun_detail.pickle"
-    env_readrun_detail = get_env_readrun_detail(10000)
-    df_env_readrun_detail = filter_for_aquatic(env_readrun_detail)
     pickle_data_structure(df_env_readrun_detail, df_aquatic_env_readrun_detail_pickle)
+    logger.info(f"writing to = {df_aquatic_env_readrun_detail_pickle}")
     logger.info("WTF")
     # sys.exit()
     # logger.info(f"pickled to {df_aquatic_env_readrun_detail_pickle}")

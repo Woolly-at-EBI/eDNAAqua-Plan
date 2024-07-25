@@ -14,6 +14,8 @@ import sys
 import time
 import random
 from math import log
+from os import lockf
+from plistlib import loads
 
 import pandas as pd
 import requests
@@ -23,6 +25,8 @@ import logging
 import coloredlogs
 
 from collections import Counter
+from fiona.env import ensure_env
+from numpy.ma.core import log10
 
 from geography import Geography
 from taxonomy import *
@@ -99,8 +103,10 @@ def experimental_analysis_inc_filtering(df):
 
     strategy_list_to_keep = ['AMPLICON', 'WGS', 'RNA-Seq', 'WGA', 'Targeted-Capture', 'ssRNA-seq', 'miRNA-Seq']
     logger.info(strategy_list_to_keep)
+    if args.type_of_data == "fungal":
+        strategy_list_to_keep = ['AMPLICON']
     df = df.loc[df['library_strategy'].isin(strategy_list_to_keep)]
-    logger.info("after filtering")
+    logger.info(f"after filtering count = {len(df)}")
 
     print_value_count_table(df.library_source)
     print_value_count_table(df.library_strategy)
@@ -108,18 +114,17 @@ def experimental_analysis_inc_filtering(df):
 
     logger.info(df['library_strategy'].value_counts())
     print_value_count_table(df.library_source)
-
-    logger.info(df.columns)
-    logger.info(df['library_strategy'].value_counts())
     logger.info(f"type = {type(df)}")
-    logger.info(df['instrument_platform'])
-    plot_df = df.groupby(['instrument_platform']).size().to_frame('record_count').reset_index().sort_values(by=['record_count'], ascending=False)
-    logger.info(f"Instruments\n{plot_df.to_string(index=False)}")
 
-    print(df.groupby(['library_source', 'library_strategy']).size().reset_index().to_string(index=False))
+    plot_df = df.groupby(['instrument_platform']).size().to_frame('record_count').reset_index().sort_values(by=['record_count'], ascending=False)
+    logger.info(f"Instruments\n{plot_df.to_markdown(index=False)}")
+
+    print(df.groupby(['library_source', 'library_strategy']).size().reset_index().to_markdown(index=False))
+    #logger.info(df.head(10).to_markdown(index=False))
     logger.info(df.columns)
     path_list = ['library_source', 'library_strategy', 'instrument_platform', 'collection_year_bin']
     plot_df = df.groupby(path_list).size().to_frame('record_count').reset_index()
+    logger.info(plot_df.to_markdown(index=False))
     plotfile = "../images/experimental_analysis_strategy.png"
     logger.info(f"plotting {plotfile}")
     sankey_link_weight = 'record_count'
@@ -346,7 +351,7 @@ def get_barcoding_genes(value):
 
 
             return clean_set
-        barcode_genes_pattern = re.compile('16[sS][ ]?r?[RD]NA|16[sS][ ]?ribo|18S|ITS[12]?|26[Ss]|5\.8[Ss]|rbcL|rbcl|RBCL|matK|MATK|cox1|co1|COX1|CO1|COI|mtCO|cytochrome c oxidase|cytochrome oxidase')
+        barcode_genes_pattern = re.compile(r'16[sS][ ]?r?[RD]NA|16[sS][ ]?ribo|18S|ITS[12]?|26[Ss]|5.8[Ss]|rbcL|rbcl|RBCL|matK|MATK|cox1|co1|COX1|CO1|COI|mtCO|cytochrome c oxidase|cytochrome oxidase')
         genes = list(set(re.findall(barcode_genes_pattern, value)))
         if len(genes) > 0:
             # logger.info(genes)
@@ -484,8 +489,6 @@ def do_geographical(df):
     plot_sunburst(plot_df, 'Figure: ENA Aquatic "Environmental" readrun records, by ocean', path_list,
                   'record_count', plotfile)
 
-
-    sys.exit("exiting do_geographical")
     return df
 
 
@@ -527,7 +530,7 @@ def collection_date_year(value):
         extract_value = match.group(0)
         logger.debug(f"extract_value pat=5 for {extract_value}")
         return predict_year(extract_value)
-    elif re.search("^[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{2,4}", value):
+    elif re.search(r"^[0-9]{1,2}.[0-9]{1,2}\.[0-9]{2,4}", value):
         extract_value = value.split(".")[2]
         logger.debug(f"extract_value pat=6 for {extract_value}")
         return predict_year(extract_value)
@@ -811,7 +814,7 @@ def detailed_environmental_analysis(df):
     #
 
 
-    path = ['env_prediction_hl', 'env_prediction', 'env_confidence','ocean']
+    path = ['env_prediction_hl', 'env_prediction', 'env_confidence']
     value_field = 'record_count'
     plot_df = df.groupby(path).size().to_frame('record_count').reset_index()
     plotfile = "../images/env_predictions.png"
@@ -823,15 +826,16 @@ def detailed_environmental_analysis(df):
 
 def analyse_checklists(df):
     logger.info(f"inside analyse_checklists")
+    logger.info(f"cols={df.columns}")
     mandatory_field_file = "../data/ena_in/ena_checklists_mandatory_or_not.txt"
-    df = pd.read_csv(mandatory_field_file, sep="\t")
-    logger.info(f"\n{df.head(5)}")
+    df_ena = pd.read_csv(mandatory_field_file, sep="\t")
+    logger.info(f"\n{df_ena.head(5)}")
 
 
-    df_group = df.groupby(['CHECKLIST_NAME', 'CHECKLIST_FIELD_MANDATORY']).size().to_frame('mandatory_count').reset_index()
+    df_group = df_ena.groupby(['CHECKLIST_NAME', 'CHECKLIST_FIELD_MANDATORY']).size().to_frame('mandatory_count').reset_index()
     logger.info(f"\n{df_group.to_markdown(index=False)}")
 
-    df_mandatory = df.loc[df['CHECKLIST_FIELD_MANDATORY'] == 'Y']
+    df_mandatory = df_ena.loc[df_ena['CHECKLIST_FIELD_MANDATORY'] == 'Y']
     logger.info(f"\n{df_mandatory.head(5)}")
     print("---------------------------------------------------------------")
     df_group = df_mandatory.groupby(['CHECKLIST_NAME']).agg({'CHECKLIST_FIELD_NAME': ['count', list]}).reset_index()
@@ -840,8 +844,8 @@ def analyse_checklists(df):
     df_group = df_group.drop(['FIELD_NAMES_LIST'], axis=1)
     logger.info(f"\n{df_group.head(100).to_markdown(index=False)}")
 
-    sys.exit()
     print('NCBI "checklists":')
+    logger.info(f"cols={df.columns}")
     print_value_count_table(df.ncbi_reporting_standard)
     print('ENA "checklists":')
     print_value_count_table(df.checklist)
@@ -877,6 +881,7 @@ def analyse_dates(df):
 
 def analyse_readrun_detail(df):
     logger.info("in analyse_readrun_detail")
+
 
     df['lat'] = pd.to_numeric(df['lat'], errors = 'coerce')
     df['lon'] = pd.to_numeric(df['lon'], errors = 'coerce')
@@ -920,10 +925,12 @@ def analyse_readrun_detail(df):
     df = experimental_analysis_inc_filtering(df)
     logger.info(f"after experimental_analysis_inc_filtering filtered: rownum={len(df)}")
 
-    logger.info("-------------about to do geographical------------------------")
-    df = do_geographical(df)
+    # logger.info("-------------about to do geographical------------------------")
+    # df = do_geographical(df)
     logger.info("-------------about to do taxonomic_analysis------------------------")
     df = taxonomic_analysis(df)
+
+    sys.exit("exiting after taxonomic_analysis")
     # logger.info(df)
     # logger.info(df.dtypes)
     logger.info("-------------about to do detailed_environmental_analysis------------------------")
@@ -934,8 +941,6 @@ def analyse_readrun_detail(df):
 
 def main():
     df = ""
-    analyse_checklists(df)
-    sys.exit()
     # df_all_study_details = analyse_barcode_study_details(get_all_study_details())
     # logger.info(len(df_all_study_details))
     #
@@ -953,11 +958,17 @@ def main():
     # pickle_data_structure(df_env_readrun_detail, df_aquatic_env_readrun_detail_pickle)
     # logger.info("WTF")
     # sys.exit()
-    pickle_file = 'df_aquatic_env_readrun_detail.pickle-keep'
-    pickle_file = 'df_aquatic_env_readrun_detail.pickle'
-    df_aquatic_env_readrun_detail = pd.read_pickle(pickle_file)
-    logger.info(f"unpickled from {pickle_file} row total={len(df_aquatic_env_readrun_detail)}")
-    logger.info(f"columns={df_aquatic_env_readrun_detail.columns}")
+    logger.info(f"in main with args.type_of_data={args.type_of_data}")
+    if args.type_of_data in ["all","fungal"]:
+        pickle_file = 'env_readrun_detail_all.pickle'
+    elif args.type_of_data == "aquatic":
+        pickle_file = 'df_aquatic_env_readrun_detail.pickle'
+    else:
+        sys.exit(f"args.type_of_data is unknown = {args.type_of_data}")
+
+    df_env_readrun_detail = pd.read_pickle(pickle_file)
+    logger.info(f"unpickled from {pickle_file} row total={len(df_env_readrun_detail)}")
+    logger.info(f"columns={df_env_readrun_detail.columns}")
     #
     #
     # This is what used to be run!
@@ -966,7 +977,7 @@ def main():
     # sample_ids_set = set(df_env_readrun_detail['sample_accession'])
     # logging.info(f"sample_ids_set={len(sample_ids_set)}")
     #
-    analyse_readrun_detail(df_aquatic_env_readrun_detail)
+    analyse_readrun_detail(df_env_readrun_detail)
 
     
     
@@ -990,7 +1001,9 @@ if __name__ == '__main__':
     parser.add_argument("-d", "--debug_status",
                         help = "Debug status i.e.True if selected, is verbose",
                         required = False, action = "store_true")
-
+    parser.add_argument("-t", "--type_of_data",
+                         help = "--type_of_data aquatic|all|fungal",
+                         required = True)
     parser.parse_args()
     args = parser.parse_args()
 
