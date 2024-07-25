@@ -264,11 +264,11 @@ def plot_sunburst(df, title, path_list, value_field, plotfile):
 def generate_sankey_chart_data(df, columns: list, sankey_link_weight: str):
 
     column_values = [df[col] for col in columns]
-    logger.info(column_values)
+    # logger.info(column_values)
 
     # this generates the labels for the sankey by taking all the unique values
     labels = sum([list(node_values.unique()) for node_values in column_values], [])
-    logger.info(labels)
+    # logger.info(labels)
 
     # initializes a dict of dicts (one dict per tier)
     link_mappings = {col: {} for col in columns}
