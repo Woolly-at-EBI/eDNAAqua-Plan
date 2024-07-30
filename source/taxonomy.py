@@ -179,16 +179,23 @@ def do_portal_api_tax_call(result_object_type, query_accession_ids, return_field
 def clean_tax_list(mylist):
     """
     remove duff entries from list
+    but adding the first id..
     :param mylist:
-    :return: cleanlist
+    :return: clean_id_list, duff_id_dict - the value puts to a the first id
     """
-    newlist = []
+    new_set  = set()
+    bad_id_dict = {}
     for id in mylist:
         if ';' in id:
-            print(f"Warning bad tax id entry, ignoring: {id}")
+            if id in bad_id_dict:
+                continue
+            new_id = id.partition(';')[0]
+            if len(new_id) > 0:
+                bad_id_dict[id] = new_id
+                # print(f"Warning bad tax id entry, ignoring: {id} and replacing with {new_id}")
         else:
-            newlist.append(id)
-    return newlist
+            new_set.add(id)
+    return list(new_set), bad_id_dict
 
 def create_taxonomy_hash(tax_list):
     """
@@ -205,7 +212,9 @@ def create_taxonomy_hash(tax_list):
                 'tax_division': 'HUM',
                 'tax_id': '9606'}]
     """
-    tax_list = clean_tax_list(tax_list)
+    print("inside create_taxonomy_hash")
+    (tax_list, bad_id_hash) = clean_tax_list(tax_list)
+
     # iterator = iter(tax_list)
     # chunk_size = 500
     tax_hash = []
@@ -234,9 +243,11 @@ def create_taxonomy_hash(tax_list):
     #         data = do_portal_api_tax_call(with_obj_type, chunk, return_fields)
     #         combined_data += data
 
-    return combined_data
+    return combined_data, bad_id_hash
+
 def create_taxonomy_hash_by_tax_id(tax_list):
     """
+    Also fudge fixes for many bad_tax_ids e.g. if ';'
     Example
                 1352': {'lineage': 'Bacteria; Bacillota; Bacilli; Lactobacillales; '
                                    'Enterococcaceae; Enterococcus; ',
@@ -248,11 +259,25 @@ def create_taxonomy_hash_by_tax_id(tax_list):
     :param tax_list:
     :return:
     """
-    hash_col = create_taxonomy_hash(tax_list)
+
+    hash_col, bad_id_hash = create_taxonomy_hash(tax_list)
     by_tax_id = {}
     for record in hash_col:
-        by_tax_id[record['tax_id']] = record
+        # print(f"record = {record}")
         record['lineage'] = record['lineage'].replace("; ",";")
+        by_tax_id[record['tax_id']] = record
+
+    # trying to fix where we have "bad_ids" e.g. ids that have ';' in them
+    for bad_id in bad_id_hash:
+        if bad_id not in by_tax_id and bad_id in bad_id_hash:
+            subst_id = bad_id_hash[bad_id]
+            if subst_id in by_tax_id:
+                by_tax_id[bad_id] = by_tax_id[subst_id]
+            else:
+                print(f"WARNING: bad_id={bad_id} not able to be handled")
+        else:
+            print(f"WARNING: bad_id={bad_id} not able to be handled")
+
     return by_tax_id
 
 

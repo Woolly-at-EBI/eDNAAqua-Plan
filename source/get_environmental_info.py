@@ -103,6 +103,12 @@ def get_all_checklist_types():
 
 def get_env_readrun_detail(total_records_to_return):
     """
+
+    :param total_records_to_return: if 0, this means return all.
+    :return: records as a list
+    """
+
+    """
     curl -X 'POST' \
     'https://www.ebi.ac.uk/ena/portal/api/search' \
     -H 'accept: */*' \
@@ -181,8 +187,12 @@ def get_env_readrun_detail(total_records_to_return):
             pickle_data_structure(record_list, env_read_run_detail_file)
 
         logger.info(f"record_list length: {len(record_list)}")
-        record_list = get_shorter_list(record_list, int(total_records_to_return / 2))
-        combined_record_list.extend(record_list)
+
+        if total_records_to_return > 0:
+            record_list = get_shorter_list(record_list, int(total_records_to_return / 2))
+            combined_record_list.extend(record_list)
+        else:
+            combined_record_list = record_list
 
     logger.info(f"Finished getting all RELEVANT ENA raw data combined len= {len(combined_record_list)}")
     # sys.exit()
@@ -415,7 +425,7 @@ def analyse_all_study_details(df):
             return clean_list
 
         barcode_genes_pattern = re.compile(
-            '16[sS][ ]?r?[RD]NA|16[sS][ ]?ribo|18S|ITS[12]?|26[Ss]|5\.8[Ss]|rbcL|rbcl|RBCL|matK|MATK|cox1|co1|COX1|CO1|COI|mtCO|cytochrome c oxidase|cytochrome oxidase')
+            r'16[sS][ ]?r?[RD]NA|16[sS][ ]?ribo|18S|ITS[12]?|26[Ss]|5.8[Ss]|rbcL|rbcl|RBCL|matK|MATK|cox1|co1|COX1|CO1|COI|mtCO|cytochrome c oxidase|cytochrome oxidase')
         genes = list(set(re.findall(barcode_genes_pattern, value)))
         if len(genes) > 0:
             # logger.info(genes)
@@ -765,8 +775,10 @@ def main():
     # get_all_study_details()
     # sys.exit()
 
+    total_records_to_retrieve = 100000
+    total_records_to_retrieve = 0
 
-    env_readrun_detail = get_env_readrun_detail(100000)
+    env_readrun_detail = get_env_readrun_detail(total_records_to_retrieve)
     logging.info(f"env_readrun_detail = {len(env_readrun_detail)}")
     pickle_out = "env_readrun_detail_all.pickle"
     df_env_readrun_detail = pd.DataFrame.from_records(env_readrun_detail)
