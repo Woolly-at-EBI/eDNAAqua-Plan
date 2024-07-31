@@ -4,54 +4,33 @@
 ___author___ = "woollard@ebi.ac.uk"
 ___start_date___ = 2024-05-09
 __docformat___ = 'reStructuredText'
-chmod a+x get_taxononomy_scientific_name.py
+chmod a+x get_taxonomy_scientific_name.py
 """
 
-import json
-import pickle
-import re
-import sys
-import time
-import random
-from math import log
-from os import lockf
-from plistlib import loads
-
-import pandas as pd
-import requests
-import plotly.express as px
-import plotly.graph_objects as go
 import logging
+import re
+from math import log
+
 import coloredlogs
+import pandas as pd
+import plotly.express as px
 
-from collections import Counter
-from fiona.env import ensure_env
-from numpy.ma.core import log10
-
-from geography import Geography
-from taxonomy import *
-from eDNA_utilities import pickle_data_structure, unpickle_data_structure,  print_value_count_table,\
-    plot_sankey, get_percentage_list, my_coloredFormatter, plot_countries, plot_sunburst,\
+from eDNA_utilities import print_value_count_table, \
+    plot_sankey, my_coloredFormatter, plot_countries, plot_sunburst, \
     get_ena_checklist_dict
-
 from get_environmental_info import get_all_study_details, process_geographical_data
+from taxonomy import *
 
 logger = logging.getLogger(name = 'mylogger')
 pd.set_option('display.max_columns', None)
 pd.set_option('max_colwidth', None)
+pd.options.mode.copy_on_write = True
 
-
-
-
-def clean_dates_in_df(df):
-    df['collection_year'] = df['collection_date'].apply(collection_date_year)
-    df['collection_year'] = pd.to_numeric(df['collection_year'], errors = 'coerce').astype('Int64')
-    df = df.sort_values(by = ['collection_date'])
-    df['collection_year_bin'] = df['collection_year'].apply(create_year_bins)
-
-    return df
-
-
+def clean_dates_in_df(my_df):
+    my_df['collection_year'] = my_df['collection_date'].apply(collection_date_year)
+    my_df['collection_year'] = pd.to_numeric(my_df['collection_year'], errors = 'coerce').astype('Int64')
+    my_df['collection_year_bin'] = my_df['collection_year'].apply(create_year_bins)
+    return my_df
 
 def select_first_part(value):
     """
@@ -84,7 +63,7 @@ def get_presence_or_absence_col(df, col_name):
 
     for val in col_list:
         logger.debug("val: {}".format(val))
-        if val == None or isNaN(val):
+        if val is None or isNaN(val):
             absent_count += 1
         elif type(val) == list and len(val) == 0:
             absent_count += 1
@@ -92,25 +71,23 @@ def get_presence_or_absence_col(df, col_name):
             present_count += 1
     return present_count, absent_count
 
-
-def experimental_analysis_inc_filtering(df):
-    logger.info(df.columns)
+def filter_on_library_strategies(df, library_strategy_list_to_keep):
 
     logger.info("before filtering")
     print_value_count_table(df.library_source)
     print_value_count_table(df.library_strategy)
 
+    logger.info(library_strategy_list_to_keep)
 
-    strategy_list_to_keep = ['AMPLICON', 'WGS', 'RNA-Seq', 'WGA', 'Targeted-Capture', 'ssRNA-seq', 'miRNA-Seq']
-    logger.info(strategy_list_to_keep)
-    if args.type_of_data == "fungal":
-        strategy_list_to_keep = ['AMPLICON']
-    df = df.loc[df['library_strategy'].isin(strategy_list_to_keep)]
+    df = df.loc[df['library_strategy'].isin(library_strategy_list_to_keep)]
     logger.info(f"after filtering count = {len(df)}")
 
     print_value_count_table(df.library_source)
-    print_value_count_table(df.library_strategy)
+    return df
 
+
+def experimental_analysis_inc_filtering(df):
+    logger.info(df.columns)
 
     logger.info(df['library_strategy'].value_counts())
     print_value_count_table(df.library_source)
@@ -184,6 +161,72 @@ def target_gene_analysis(df):
     return
 
 
+def add_taxonomy_columns(df):
+    """
+
+    :param df:
+    :return: df: with scientific_name, lineage and tax_lineage
+    """
+    def lineage_lookup(value):
+        # logger.info(taxonomy_hash_by_tax_id[value])
+        if value in taxonomy_hash_by_tax_id:
+            return taxonomy_hash_by_tax_id[value]['lineage']
+
+        logger.debug(f"warning  taxonomy_hash_by_tax_id: {value} does not exist")
+        return ""
+
+    def tax_lineage_lookup(value):
+        # logger.info(taxonomy_hash_by_tax_id[value])
+        if value in taxonomy_hash_by_tax_id:
+            return taxonomy_hash_by_tax_id[value]['tax_lineage']
+
+        logger.debug(f"warning  taxonomy_hash_by_tax_id: {value} does not exist")
+        return ""
+
+    def scientific_name_lookup(value):
+        # logger.info(taxonomy_hash_by_tax_id[value])
+        if value in taxonomy_hash_by_tax_id:
+            return taxonomy_hash_by_tax_id[value]['scientific_name']
+
+        logger.debug(f"warning  taxonomy_hash_by_tax_id: {value} does not exist")
+        return ""
+
+    if 'lineage' in df:
+        logger.info(f"Already have the taxonomic columns, so can forgo this again")
+        return df
+    else:
+        tax_id_list = df['tax_id'].unique()
+        taxonomy_hash_by_tax_id = create_taxonomy_hash_by_tax_id(tax_id_list)
+        df['scientific_name'] = df['tax_id'].apply(scientific_name_lookup)
+        df['lineage'] = df['tax_id'].apply(lineage_lookup)
+        df['tax_lineage'] = df['tax_id'].apply(tax_lineage_lookup)
+        return df
+
+def taxonomic_filter(df, taxonomy_to_filter):
+    """
+
+    :param taxonomy_to_filter:
+    :param df:
+    :return: df
+    """
+
+    def do_the_actual_filtering(my_df, my_taxonomy_to_filter):
+        my_df = add_taxonomy_columns(my_df)
+        start_total = len(my_df)
+        logger.info(f"sample 10 = {df.lineage.sample(10).to_string()}")
+        my_df = my_df.query('lineage.str.contains(@my_taxonomy_to_filter)')
+        end_total = len(my_df)
+        logger.info(f"before filtering for {my_taxonomy_to_filter}, start_total={start_total} after: end_total={end_total}")
+        return my_df
+
+    if taxonomy_to_filter == "fungi":
+        df = do_the_actual_filtering(df, "Fungi")
+    else:
+        sys.exit(f"unknown taxonomy filter of {taxonomy_to_filter}")
+
+    return df
+
+
 def taxonomic_analysis(df):
     """
     Doing much taxonomic analysis
@@ -191,45 +234,14 @@ def taxonomic_analysis(df):
     :return:
     """
 
-    tax_id_list = df['tax_id'].unique()
-    def lineage_lookup(value):
-        # logger.info(taxonomy_hash_by_tax_id[value])
-        if value in taxonomy_hash_by_tax_id:
-            return taxonomy_hash_by_tax_id[value]['lineage']
-        else:
-            print(f"warning  taxonomy_hash_by_tax_id:{value} does not exist")
-            return ""
 
-    def tax_lineage_lookup(value):
-        # logger.info(taxonomy_hash_by_tax_id[value])
-        if value in taxonomy_hash_by_tax_id:
-            return taxonomy_hash_by_tax_id[value]['tax_lineage']
-        else:
-            print(f"warning  taxonomy_hash_by_tax_id:{value} does not exist")
-            return ""
 
-    def scientific_name_lookup(value):
-        # logger.info(taxonomy_hash_by_tax_id[value])
-        if value in taxonomy_hash_by_tax_id:
-            return taxonomy_hash_by_tax_id[value]['scientific_name']
-        else:
-            print(f"warning  taxonomy_hash_by_tax_id:{value} does not exist")
-            return ""
 
     logger.info("About to analyse_environment")
     #analyse_environment(df)
     logger.info("RETURNED FROM analyse_environment")
+    df = add_taxonomy_columns(df)
 
-    logger.info("about to create_taxonomy_hash_by_tax_id")
-    taxonomy_hash_by_tax_id = create_taxonomy_hash_by_tax_id(tax_id_list)
-    logger.info("returned from create_taxonomy_hash_by_tax_id")
-
-    df['scientific_name'] = df['tax_id'].apply(scientific_name_lookup)
-    # print_value_count_table(df.scientific_name)
-
-    df['lineage'] = df['tax_id'].apply(lineage_lookup)
-    # print_value_count_table(df.lineage)
-    df['tax_lineage'] = df['tax_id'].apply(tax_lineage_lookup)
     df['lineage_2'] = df['lineage'].str.extract("^([^;]*);")[0]
     df['lineage_3'] = df['lineage'].str.extract("^[^;]*;([^;]*);")[0]
     # print_value_count_table(df.lineage_3)
@@ -253,7 +265,6 @@ def taxonomic_analysis(df):
     plot_sunburst(plot_df, 'Figure: ENA "Environmental" readrun records, tax lineage(Euk)', path_list,
                   'record_count', plotfile)
 
-
     path_list = ['lineage_2', 'lineage_minus3', 'lineage_minus2', 'scientific_name', 'lineage']
     plot_df = df.groupby(path_list).size().to_frame('record_count').reset_index()
     plot_df = plot_df[plot_df['lineage'].str.contains('Vertebrata')]
@@ -262,18 +273,37 @@ def taxonomic_analysis(df):
     plot_sunburst(plot_df, 'Figure: ENA "Environmental" readrun records, Vertebrata', path_list,
               'record_count', plotfile)
 
-
     path_list = ['library_source', 'library_strategy', 'lineage_2']
     plot_df = df.groupby(path_list).size().to_frame('record_count').reset_index()
     plotfile = "../images/experimental_analysis_strategy_tax.png"
     sankey_link_weight = 'record_count'
     plot_sankey(plot_df, sankey_link_weight, path_list, 'Figure ENA "Environmental" readrun record count: library_source, library_strategy & tax', plotfile)
+
+    path_list = ['lineage_2', 'lineage_minus3', 'lineage_minus2', 'scientific_name', 'lineage']
+    plot_df = df.groupby(path_list).size().to_frame('record_count').reset_index()
+    plot_df = plot_df[plot_df['lineage'].str.contains('Fungi')]
+
+    path_list = ['lineage_minus3', 'lineage_minus2', 'scientific_name']
+    plotfile = "../images/taxonomic_analysis_fungi_sunburst.png"
+    plot_sunburst(plot_df, 'Figure: ENA "Environmental" readrun records, Fungi', path_list,
+              'record_count', plotfile)
+
+    # plot_df = plot_df.sort_values(by='record_count', ascending=False)
+    # print(plot_df.to_markdown(index=False))
+
+    path_list = ['lineage_2', 'lineage_3', 'lineage_minus2', 'scientific_name']
+    plot_df = df.groupby(path_list).size().to_frame('record_count').reset_index()
+    plot_df = plot_df[plot_df['lineage_2'].str.contains('Fungi')]
+    plotfile = "../images/taxonomic_analysis_fungi_l2_sunburst.png"
+    plot_sunburst(plot_df, 'Figure: ENA "Environmental" readrun records, Fungi l2', path_list,
+              'record_count', plotfile)
+
     return df
 
 
-def delist_col(my_list):
+def de_list_col(my_list):
     """
-    deconvolute a list of list
+    deconvolution of a list of list
     :param my_list:
     :return: list
     """
@@ -301,7 +331,7 @@ def get_barcoding_genes(value):
         def clean_name(my_list):
             """
              a clean harmonised list of barcoding gene names
-            :param  list of gene names:
+            :param my_list:    # list of gene names:
             :return: harmonised list.
             """
             clean_set = set()
@@ -501,7 +531,22 @@ def collection_date_year(value):
     def predict_year(value):
         # want to return 4 digit year as string
         # and removes excessive years
-        value = int(value)
+
+        if value.isdigit():
+            value = int(value)
+        else:
+            print(f"The string -->{value}<-- cannot be easily converted to an integer.")
+            value = value.strip()
+            match = re.findall(r'[0-9]+$', value)
+            print(match)
+            if len(match) == 1:
+                value = int(match[0])
+                print(f" but choosing -->{value}<--")
+            else:
+                return None
+
+
+
         if value >= 100:
             if value > 2025:
                 return ""
@@ -566,12 +611,12 @@ def create_year_bins(value):
     :param value:
     :return:
     """
-    min=1950
-    max=2025
+    min_year=1950
+    max_year=2025
     if isinstance(value, int):
-        if value <= min:
+        if value <= min_year:
             return str(min) + "-pre"
-        for x in range(min, max, 5):
+        for x in range(min_year, max_year, 5):
             # 2023 far more likely than min so could try reversing the order
             # logger.info(value)
             if value <= x:
@@ -596,7 +641,7 @@ def detailed_environmental_analysis(df):
     df['env_tag'] = df['tag'].apply(process_env_tags)
     df['env_tag_string'] = df['env_tag'].apply(lambda x: ';'.join(x))
     # logger.info(df['env_tag'].value_counts().head(5))
-    cp_df = df.copy()
+
     def is_w_env_tags(value_list):
         if len(value_list) == 0:
             return False
@@ -641,7 +686,7 @@ def detailed_environmental_analysis(df):
                 if 'env_geo:coastal' in matches and 'env_geo:marine' in matches:
                     if len(tag_list) == 2:
                         tag_string_assignment[tags] = {'prediction': 'coastal', 'confidence': 'medium'}
-                    elif ('env_tax:marine' in tags or 'env_tax:coastal' or 'env_tax:brackish' in tags):
+                    elif 'env_tax:marine' in tags or 'env_tax:coastal' or 'env_tax:brackish' in tags:
                         tag_string_assignment[tags] = {'prediction': 'coastal', 'confidence': 'high'}
                     else:
                         logger.debug(msg)
@@ -665,7 +710,7 @@ def detailed_environmental_analysis(df):
                 else:
                     logger.debug(matches)
                     multiples.append(msg)
-            else:  # ie. one match
+            else:  # i.e. one match
                 if matches[0] == 'env_geo:marine' and 'env_tax:marine' in tags:
                     tag_string_assignment[tags] = {'prediction': 'marine', 'confidence': 'high'}
                 elif matches[0] == 'env_geo:freshwater' and 'env_geo:freshwater' in tags:
@@ -788,14 +833,13 @@ def detailed_environmental_analysis(df):
 
     def actually_assign_env_info_pred_hl(value):
         # logger.info(value)
-        if value != "terrestrial_assumed" and value != None:
+        if value != "terrestrial_assumed" and value is not None:
             if value == "terrestrial":
                    return value
             elif value in aquatic_set:
                     return "aquatic"
             else:
                    return "mixed"
-            return "terrestrial_assumed"
         return "terrestrial_assumed"
 
         #, tag_string_assignment[value]['confidence']
@@ -863,9 +907,6 @@ def analyse_dates(df):
     sample_counts = sample_counts.query('collection_year > 1949')
     sample_counts = sample_counts.query('collection_year < 2025')
 
-    # Ensure DataFrame is sorted by 'collection_year'
-    df = df.sort_values(by = 'collection_year')
-
     # Calculate cumulative sum of the 'count' column
     sample_counts['cumulative_count'] = sample_counts['count'].cumsum()
     sample_counts['cumulative_count_log'] = sample_counts['cumulative_count'].apply(lambda x: log(x))
@@ -882,9 +923,18 @@ def analyse_dates(df):
 def analyse_readrun_detail(df):
     logger.info("in analyse_readrun_detail")
 
-
     df['lat'] = pd.to_numeric(df['lat'], errors = 'coerce')
     df['lon'] = pd.to_numeric(df['lon'], errors = 'coerce')
+
+    #
+    strategy_list_to_keep = ['AMPLICON', 'WGS', 'RNA-Seq', 'WGA', 'Targeted-Capture', 'ssRNA-seq', 'miRNA-Seq']
+    if args.type_of_data in ["fungi"]:
+        before_filter_count = len(df)
+        df = taxonomic_filter(df, args.type_of_data)
+        logger.info(f"Done taxonomic filtering for {args.type_of_data} now have {len(df)} / {before_filter_count}")
+        strategy_list_to_keep = ['AMPLICON']
+    logger.info(f"in analyse_readrun_detail strategy_list_to_keep={strategy_list_to_keep}" )
+    filter_on_library_strategies(df, strategy_list_to_keep)
 
     # doing some testing .... delete these when done
 
@@ -933,6 +983,7 @@ def analyse_readrun_detail(df):
     sys.exit("exiting after taxonomic_analysis")
     # logger.info(df)
     # logger.info(df.dtypes)
+
     logger.info("-------------about to do detailed_environmental_analysis------------------------")
     df = detailed_environmental_analysis(df)
     logger.info("-------------end of analyse_readrun_detail------------------------")
@@ -940,7 +991,7 @@ def analyse_readrun_detail(df):
 
 
 def main():
-    df = ""
+
     # df_all_study_details = analyse_barcode_study_details(get_all_study_details())
     # logger.info(len(df_all_study_details))
     #
@@ -959,7 +1010,7 @@ def main():
     # logger.info("WTF")
     # sys.exit()
     logger.info(f"in main with args.type_of_data={args.type_of_data}")
-    if args.type_of_data in ["all","fungal"]:
+    if args.type_of_data in ["all","fungi"]:
         pickle_file = 'env_readrun_detail_all.pickle'
     elif args.type_of_data == "aquatic":
         pickle_file = 'df_aquatic_env_readrun_detail.pickle'
@@ -967,6 +1018,7 @@ def main():
         sys.exit(f"args.type_of_data is unknown = {args.type_of_data}")
 
     df_env_readrun_detail = pd.read_pickle(pickle_file)
+    # df_env_readrun_detail = df_env_readrun_detail.sample(1000000)
     logger.info(f"unpickled from {pickle_file} row total={len(df_env_readrun_detail)}")
     logger.info(f"columns={df_env_readrun_detail.columns}")
     #
@@ -1002,7 +1054,7 @@ if __name__ == '__main__':
                         help = "Debug status i.e.True if selected, is verbose",
                         required = False, action = "store_true")
     parser.add_argument("-t", "--type_of_data",
-                         help = "--type_of_data aquatic|all|fungal",
+                         help = "--type_of_data aquatic|all|fungi",
                          required = True)
     parser.parse_args()
     args = parser.parse_args()
