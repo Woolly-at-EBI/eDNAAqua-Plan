@@ -209,10 +209,12 @@ def get_percentage_list(gene_list):
     logger.info(out)
     return out
 
-    
-def print_value_count_table(df_var):
-    logger.debug(f"type={type(df_var)} value={df_var}")
-    logger.debug(f"--------print_value_count_table---------col_header ={df_var.name}\n{df_var.head(5)}")
+def prepare_value_count_table(df_var):
+    """
+
+    :param df_var:
+    :return: tmp_df : cat count percentage
+    """
     # dropping empty or NaN strings
     df_var = df_var.replace('', np.nan)
     df_var = df_var.dropna()
@@ -222,11 +224,18 @@ def print_value_count_table(df_var):
 
     tmp_df = pd.concat([counts, percs], axis = 1, keys = ['count', 'percentage'])
     tmp_df['percentage'] = pd.Series(["{0:.2f}%".format(val * 100) for val in tmp_df['percentage']], index = tmp_df.index)
+    return tmp_df
 
+
+def print_value_count_table(df_var):
+    logger.debug(f"type={type(df_var)} value={df_var}")
+    logger.debug(f"--------print_value_count_table---------col_header ={df_var.name}\n{df_var.head(5)}")
+    tmp_df = prepare_value_count_table(df_var)
     max_rows = 20
     tmp_df = tmp_df.head(max_rows)
     # print(tmp_df.to_string(index = False))
     print(tmp_df.to_markdown())
+
 
 def plot_sunburst(df, title, path_list, value_field, plotfile):
     """
