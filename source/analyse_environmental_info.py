@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Script of get_environmental_info.py
+"""Script of analyse_environmental_info.py
 
 ___author___ = "woollard@ebi.ac.uk"
 ___start_date___ = 2024-05-09
@@ -9,11 +9,14 @@ chmod a+x get_taxonomy_scientific_name.py
 
 import logging
 import re
+import sys
 from math import log
+from plistlib import loads
 
 import coloredlogs
 import pandas as pd
 import plotly.express as px
+# from networkx.conftest import needs_yaml
 
 from eDNA_utilities import print_value_count_table, \
     plot_sankey, my_coloredFormatter, plot_countries, plot_sunburst, \
@@ -81,7 +84,7 @@ def filter_on_library_strategies(df, library_strategy_list_to_keep):
 
     df = df.loc[df['library_strategy'].isin(library_strategy_list_to_keep)]
     logger.info(f"after filtering count = {len(df)}")
-
+    print_value_count_table(df.library_strategy)
     print_value_count_table(df.library_source)
     return df
 
@@ -213,8 +216,18 @@ def taxonomic_filter(df, taxonomy_to_filter):
     def do_the_actual_filtering(my_df, my_taxonomy_to_filter):
         my_df = add_taxonomy_columns(my_df)
         start_total = len(my_df)
-        logger.info(f"sample 10 = {df.lineage.sample(10).to_string()}")
-        my_df = my_df.query('lineage.str.contains(@my_taxonomy_to_filter)')
+        sample_num = 3
+        logger.info(f"samples to analyse({sample_num}) = {df.lineage.sample(sample_num).to_string()}")
+        df['lineage_list'] = df['lineage'].str.split(';', expand = False).copy()
+        if my_taxonomy_to_filter == "Fungi":
+
+            logger.info(f"\n{df.sample(2)}")
+            df['lineage_1'] = df['lineage_list'].str[0]
+            df['lineage_2'] = df['lineage_list'].str[1]
+            df['lineage_3'] = df['lineage_list'].str[2]
+            my_df = my_df.query('lineage_2 == @my_taxonomy_to_filter')
+        else:
+            my_df = my_df.query('lineage.str.contains(@my_taxonomy_to_filter)')
         end_total = len(my_df)
         logger.info(f"before filtering for {my_taxonomy_to_filter}, start_total={start_total} after: end_total={end_total}")
         return my_df
@@ -242,14 +255,23 @@ def taxonomic_analysis(df):
     logger.info("RETURNED FROM analyse_environment")
     df = add_taxonomy_columns(df)
 
-    df['lineage_2'] = df['lineage'].str.extract("^([^;]*);")[0]
-    df['lineage_3'] = df['lineage'].str.extract("^[^;]*;([^;]*);")[0]
+    df['lineage_list'] = df['lineage'].str.split(';', expand=False).copy()
+    logger.info(f"\n{df.sample(2)}")
+
+    df['lineage_1'] = df['lineage_list'].str[0]
+    df['lineage_2'] = df['lineage_list'].str[1]
+    df['lineage_3'] = df['lineage_list'].str[2]
+
+    logger.info(f"\n{df.sample(3)}")
+
     # print_value_count_table(df.lineage_3)
-    df['lineage_minus2'] = df['lineage'].str.extract("([^;]*);[^;]*$")[0]
-    df['lineage_minus3'] = df['lineage'].str.extract("([^;]*);[^;]*;[^;]*$")[0]
+    df['lineage_minus2'] = df['lineage_list'].str[-2] # as the lineage ends ;$
+    df['lineage_minus3'] = df['lineage_list'].str[-3]
     print_value_count_table(df.lineage_minus2)
     tax_id_list = df['tax_id'].unique()
     logger.info(len(tax_id_list))
+
+    logger.info(f"\n{df.sample(3)}")
 
     path_list = ['lineage_2', 'lineage_minus2', 'scientific_name']
     plot_df = df.groupby(path_list).size().to_frame('record_count').reset_index()
@@ -259,7 +281,7 @@ def taxonomic_analysis(df):
     path_list = ['lineage_2', 'lineage_minus3', 'lineage_minus2', 'scientific_name', 'lineage']
     plot_df = df.groupby(path_list).size().to_frame('record_count').reset_index()
     plot_df = plot_df[plot_df['lineage_2'] == 'Eukaryota']
-    logger.info(f"\n{plot_df}")
+    logger.info(f"\n{plot_df.head(3)}")
     path_list = ['lineage_minus3', 'lineage_minus2', 'scientific_name']
     plotfile = "../images/taxonomic_analysis_euk_sunburst.png"
     plot_sunburst(plot_df, 'Figure: ENA "Environmental" readrun records, tax lineage(Euk)', path_list,
@@ -291,10 +313,11 @@ def taxonomic_analysis(df):
     # plot_df = plot_df.sort_values(by='record_count', ascending=False)
     # print(plot_df.to_markdown(index=False))
 
-    path_list = ['lineage_2', 'lineage_3', 'lineage_minus2', 'scientific_name']
+    path_list = ['lineage_3', 'lineage_4', 'lineage_minus2', 'scientific_name']
     plot_df = df.groupby(path_list).size().to_frame('record_count').reset_index()
-    plot_df = plot_df[plot_df['lineage_2'].str.contains('Fungi')]
-    plotfile = "../images/taxonomic_analysis_fungi_l2_sunburst.png"
+    logger.info(f"\n{plot_df.sample(30)}")
+    plot_df = plot_df[plot_df['lineage_3'].str.contains('Fungi')]
+    plotfile = "../images/taxonomic_analysis_fungi_l3_sunburst.png"
     plot_sunburst(plot_df, 'Figure: ENA "Environmental" readrun records, Fungi l2', path_list,
               'record_count', plotfile)
 
@@ -867,35 +890,63 @@ def detailed_environmental_analysis(df):
     logger.info("finished All the analysis for the environmental predictions<-------------------")
     return df
 
+def ena_checklist_annotation_add(my_df):
+    mandatory_field_file = "../data/ena_in/ena_checklists_mandatory_or_not.txt"
+    df_ena = pd.read_csv(mandatory_field_file, sep="\t")
+    logger.info(f"\n{df_ena.head(5)}")
+    #
+    #
+    # df_group = df_ena.groupby(['CHECKLIST_NAME', 'CHECKLIST_FIELD_MANDATORY']).size().to_frame('mandatory_count').reset_index()
+    # logger.info(f"\n{df_group.to_markdown(index=False)}")
+    #
+    # df_mandatory = df_ena.loc[df_ena['CHECKLIST_FIELD_MANDATORY'] == 'Y']
+    # logger.info(f"\n{df_mandatory.head(5)}")
+    # print("---------------------------------------------------------------")
+    # df_group = df_mandatory.groupby(['CHECKLIST_NAME']).agg({'CHECKLIST_FIELD_NAME': ['count', list]}).reset_index()
+    # df_group.columns = ['CHECKLIST_NAME', 'MANDATORY_COUNT', 'FIELD_NAMES_LIST']
+    # df_group['FIELD_NAMES'] = df_group['FIELD_NAMES_LIST'].apply(lambda x: ';'.join(x))
+    # df_group = df_group.drop(['FIELD_NAMES_LIST'], axis=1)
+    # logger.info(f"\n{df_group.head(100).to_markdown(index=False)}")
+
+    # ena_checklist_name
+    sys.exit()
+    return my_df
+
 
 def analyse_checklists(df):
     logger.info(f"inside analyse_checklists")
     logger.info(f"cols={df.columns}")
-    mandatory_field_file = "../data/ena_in/ena_checklists_mandatory_or_not.txt"
-    df_ena = pd.read_csv(mandatory_field_file, sep="\t")
-    logger.info(f"\n{df_ena.head(5)}")
 
-
-    df_group = df_ena.groupby(['CHECKLIST_NAME', 'CHECKLIST_FIELD_MANDATORY']).size().to_frame('mandatory_count').reset_index()
-    logger.info(f"\n{df_group.to_markdown(index=False)}")
-
-    df_mandatory = df_ena.loc[df_ena['CHECKLIST_FIELD_MANDATORY'] == 'Y']
-    logger.info(f"\n{df_mandatory.head(5)}")
-    print("---------------------------------------------------------------")
-    df_group = df_mandatory.groupby(['CHECKLIST_NAME']).agg({'CHECKLIST_FIELD_NAME': ['count', list]}).reset_index()
-    df_group.columns = ['CHECKLIST_NAME', 'MANDATORY_COUNT', 'FIELD_NAMES_LIST']
-    df_group['FIELD_NAMES'] = df_group['FIELD_NAMES_LIST'].apply(lambda x: ';'.join(x))
-    df_group = df_group.drop(['FIELD_NAMES_LIST'], axis=1)
-    logger.info(f"\n{df_group.head(100).to_markdown(index=False)}")
 
     print('NCBI "checklists":')
     logger.info(f"cols={df.columns}")
     print_value_count_table(df.ncbi_reporting_standard)
-    print('ENA "checklists":')
-    print_value_count_table(df.checklist)
+
+    def get_df_col_count(my_df,col_name, new_cat_col_name):
+        # logger.info(f"cols={my_df.columns}")
+        # logger.info(f"col_name={col_name}, new_cat_col_name={new_cat_col_name}<---")
+        my_df = my_df.rename(columns={col_name: new_cat_col_name})
+        # logger.info(f"vals=\n{my_df.head(3).to_markdown(index=False)}")
+        my_df = my_df.groupby([new_cat_col_name,'insdc_member_receiver']).size().reset_index(name = 'count')
+        return my_df
+
+    new_cat_col_name = 'package-or-checklist_name'
+    df_ncbi_reporting_standard_counts = get_df_col_count(df,'ncbi_reporting_standard',  new_cat_col_name)
+    logger.info(f"ncbi_reporting_standard_counts=\n{df_ncbi_reporting_standard_counts.head(5)}")
 
     ena_checklist_dict = get_ena_checklist_dict()
     df['ena_checklist_name'] = df['checklist'].map(ena_checklist_dict)
+    df_ena_checklist_counts = get_df_col_count(df,'ena_checklist_name', new_cat_col_name)
+    logger.info(f"ena_checklist_name=\n{df_ena_checklist_counts.head(5)}")
+
+    df_combined_checklist_counts = pd.concat([df_ncbi_reporting_standard_counts, df_ena_checklist_counts]).sort_values(by=['count'], ascending=False)
+    # df_combined_checklist_counts = df_combined_checklist_counts.drop(df_combined_checklist_counts[df_combined_checklist_counts["check_list_name"] == ""].index)
+    logger.info(f"combined_checklist_counts=\n{df_combined_checklist_counts.head(100).to_markdown()}")
+    outfile = "../data/out/aquatic_combined_insdc_checklists_read_run_counts.tsv"
+    logger.info(f"Writing to: {outfile}")
+    df_combined_checklist_counts.to_csv(outfile, sep='\t', index=False)
+    sys.exit()
+
     print_value_count_table(df.ena_checklist_name)
 
 
@@ -934,26 +985,8 @@ def analyse_readrun_detail(df):
         logger.info(f"Done taxonomic filtering for {args.type_of_data} now have {len(df)} / {before_filter_count}")
         strategy_list_to_keep = ['AMPLICON']
     logger.info(f"in analyse_readrun_detail strategy_list_to_keep={strategy_list_to_keep}" )
-    filter_on_library_strategies(df, strategy_list_to_keep)
+    df = filter_on_library_strategies(df, strategy_list_to_keep)
 
-    # doing some testing .... delete these when done
-
-    # count = 0
-    # for record in env_readrun_detail:
-    #
-    #     logger.info(record)
-    #     count = count + 1
-    #     if count > 3:
-    #         break
-
-
-    # ['sample_accession', 'run_accession', 'library_strategy',
-    #                        'library_source', 'instrument_platform', 'lat', 'lon', 'country',
-    #                        'broad_scale_environmental_context', 'tax_id', 'checklist',
-    #                        'collection_date', 'ncbi_reporting_standard', 'target_gene', 'tag']
-    # dtype = 'object')
-
-    # df = df.sample(n=100000)
     # df['sample_accession'] = df['sample_accession'].to_string()
     logger.info("cols:{}".format(df.columns))
     logger.info(df['sample_accession'])

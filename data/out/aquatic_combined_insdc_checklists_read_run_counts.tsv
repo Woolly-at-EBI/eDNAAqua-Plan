@@ -1,0 +1,40 @@
+package-or-checklist_name	insdc_member_receiver	count
+Metagenome or environmental	NCBI	848179
+	ENA	475981
+ENA default sample checklist	ENA	363732
+Microbe, viral or environmental	NCBI	117823
+Generic	NCBI	72343
+GSC MIxS water	ENA	36896
+GSC MIxS soil	ENA	16134
+GSC MIxS sediment	ENA	14915
+Pathogen.env	NCBI	13708
+ENA UniEuk_EukBank Checklist	ENA	10553
+Generic	DDBJ	9345
+GSC MIxS plant associated	ENA	9006
+ENA Tara Oceans	ENA	7832
+GSC MIxS miscellaneous natural or artificial environment	ENA	7798
+GSC MIxS wastewater sludge	ENA	4410
+ENA Micro B3	ENA	3054
+GSC MIxS air	ENA	624
+GSC MIxS host associated	ENA	396
+ENA sewage checklist	ENA	299
+MIGS/MIMS/MIMARKS.food-farm_env;MIMARKS.survey	NCBI	267
+ENA Global Microbial Identifier reporting standard checklist GMI_MDM:1.1	ENA	254
+MIGS/MIMS/MIMARKS.food-farm_env;MIMARKS.specimen	NCBI	131
+MIGS/MIMS/MIMARKS.food-farm_env;MIMS.me	NCBI	113
+MIMAG	NCBI	81
+GSC MIxS built environment	ENA	78
+pathogen.env	NCBI	59
+environmental/food/other;Pathogen	NCBI	40
+Pathogen.env	DDBJ	31
+MIGS.ba;MIGS/MIMS/MIMARKS.host-associated	NCBI	14
+Metagenome or environmental;MIMARKS.specimen	NCBI	13
+MIMS.me;MIGS/MIMS/MIMARKS.wastewater	NCBI	13
+Model organism or animal;Generic	NCBI	8
+Viral	NCBI	4
+Pathogen.combined.1.0;Pathogen.env	NCBI	3
+MIGS/MIMS/MIMARKS.food-farm_env;MIGS.eu	NCBI	2
+Invertebrate	NCBI	2
+MIGS/MIMS/MIMARKS.food-farm_env;MIGS.ba	NCBI	1
+MIMAG.sediment	NCBI	1
+environmental/food/other;Pathogen.combined.1.0	NCBI	1
