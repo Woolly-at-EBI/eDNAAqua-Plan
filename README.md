@@ -3,7 +3,7 @@
 ![image](images/eDNAqua-Plan_Logo_1.0.png)
 
 eDNAqua-Plan code and data used for some of the deliverables of the overall eDNAAquaPlan.
-N.B. This cose is very rough and ready! It is generated tables and plots for the report.
+N.B. This code is  rough and ready! It is generating tables and plots for the report.
 
 This currently focuses on the needs of T2.2 in WP2. D2.2: Report containing an inventory of the ongoing and completed eDNA initiatives and repositories, identifying their geographical, ecological and taxonomic coverages.
 
@@ -76,6 +76,7 @@ flowchart TD
 ## Other Information
 - [Overview of the aquatic filtering](docs/details/aquatic_filtering.md)
 - [Where eDNA archives fit, overview](docs/details/where_eDNA_archives_fit.md)
+- [eDNA and genetic reference libraries](docs/details/interoperability.md)
 - Plot of experiment related info
 
 ![image](images/experimental_analysis_strategy_tax.png)
