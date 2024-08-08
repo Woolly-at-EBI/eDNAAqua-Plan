@@ -7,7 +7,6 @@ __docformat___ = 'reStructuredText'
 chmod a+x taxonomy.py
 """
 
-
 from eDNA_utilities import logger
 import os
 import pickle
