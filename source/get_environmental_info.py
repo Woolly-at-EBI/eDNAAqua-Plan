@@ -10,25 +10,17 @@ __docformat___ = 'reStructuredText'
 import json
 import re
 import sys
-import time
-import random
-from plistlib import loads
-from pydoc import pipepager
-
-import numpy as np
 import pandas as pd
-import requests
-import plotly.express as px
-import plotly.graph_objects as go
-import logging
+from eDNA_utilities import logging
 import coloredlogs
+import argparse
 
 from collections import Counter
 
 from geography import Geography
 from taxonomy import *
 from eDNA_utilities import pickle_data_structure, unpickle_data_structure, my_coloredFormatter, run_webservice, \
-    get_shorter_list, print_value_count_table, capitalise, get_ena_checklist_dict
+    get_shorter_list, print_value_count_table, capitalise
 
 logger = logging.getLogger(name = 'mylogger')
 pd.set_option('display.max_columns', None)
@@ -46,15 +38,15 @@ def get_query_params(checklist_type):
     # see  https://www.ebi.ac.uk/ena/browser/checklists
 
     if checklist_type == "environmental_checklists":
-        my_params['query'] = """(environmental_sample%3Dtrue%20OR%20(
-        CHECKLIST%3D%22ERC000012%22%20OR%20CHECKLIST%3D%22ERC000020%22\ 
-        %20OR%20CHECKLIST%3D%22ERC000021%22%20OR%20CHECKLIST%3D%22ERC000022%22%20OR%20CHECKLIST%3D\ 
-        %22ERC000023%22%20OR%20CHECKLIST%3D%22ERC000024%22%20OR%20CHECKLIST%3D%22ERC000025%22%20OR\ 
-        %20CHECKLIST%3D%22ERC000027%22%20OR%20CHECKLIST%3D%22ERC000055%22%20OR%20CHECKLIST%3D%22ERC000030\ 
-        %22%20OR%20CHECKLIST%3D%22ERC000031%22%20OR%20CHECKLIST%3D%22ERC000036%22)%20OR\ (
-        ncbi_reporting_standard%3D%22*ENV*%22%20ORncbi_reporting_standard%3D%22*WATER*%22\ 
-        %20ORncbi_reporting_standard%3D%22*SOIL*%22%20ORncbi_reporting_standard%3D%22*AIR*%22\ 
-        %20ORncbi_reporting_standard%3D%22*SEDIMENT*%22%20ORncbi_reporting_standard%3D%22*BUILT%22%20))\ 
+        my_params['query'] = """(environmental_sample%3Dtrue%20OR%20(\
+        CHECKLIST%3D%22ERC000012%22%20OR%20CHECKLIST%3D%22ERC000020%22\
+        %20OR%20CHECKLIST%3D%22ERC000021%22%20OR%20CHECKLIST%3D%22ERC000022%22%20OR%20CHECKLIST%3D\
+        %22ERC000023%22%20OR%20CHECKLIST%3D%22ERC000024%22%20OR%20CHECKLIST%3D%22ERC000025%22%20OR\
+        %20CHECKLIST%3D%22ERC000027%22%20OR%20CHECKLIST%3D%22ERC000055%22%20OR%20CHECKLIST%3D%22ERC000030\
+        %22%20OR%20CHECKLIST%3D%22ERC000031%22%20OR%20CHECKLIST%3D%22ERC000036%22)%20OR (
+        ncbi_reporting_standard%3D%22*ENV*%22%20ORncbi_reporting_standard%3D%22*WATER*%22\
+        %20ORncbi_reporting_standard%3D%22*SOIL*%22%20ORncbi_reporting_standard%3D%22*AIR*%22\
+        %20ORncbi_reporting_standard%3D%22*SEDIMENT*%22%20ORncbi_reporting_standard%3D%22*BUILT%22%20))\
         AND%20not_tax_tree(9606)"""
     elif checklist_type == "default_checklists":
 
@@ -307,7 +299,6 @@ def get_presence_or_absence_col(df, col_name):
             present_count += 1
     return present_count, absent_count
 
-    return df
 
 
 def delist_col(my_list):
@@ -784,7 +775,7 @@ def main():
     df_env_readrun_detail = pd.DataFrame.from_records(env_readrun_detail)
     pickle_data_structure(df_env_readrun_detail, pickle_out)
     logger.info(f"writing to = {pickle_out}")
-    sys.exit()
+    sys.exit("")
     df_env_readrun_detail = filter_for_aquatic(df_env_readrun_detail)
     df_aquatic_env_readrun_detail_pickle = "df_aquatic_env_readrun_detail.pickle"
     pickle_data_structure(df_env_readrun_detail, df_aquatic_env_readrun_detail_pickle)
@@ -827,10 +818,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.debug_status:
-        ic.enable()
         logger.setLevel(level = logging.DEBUG)
     else:
-        ic.disable()
+        logger.setLevel(level = logging.INFO)
     logger.info(prog_des)
 
     main()
