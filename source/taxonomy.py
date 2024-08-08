@@ -10,11 +10,10 @@ chmod a+x taxonomy.py
 
 from icecream import ic
 import os
-import argparse
-from ena_portal_api import ena_portal_api_call, get_ena_portal_url, chunk_portal_api_call
-from itertools import islice
 import sys
-
+import pickle
+from ena_portal_api import ena_portal_api_call, get_ena_portal_url, chunk_portal_api_call
+import argparse
 
 class taxon:
     """
@@ -201,7 +200,7 @@ def create_taxonomy_hash(tax_list):
     """
         allows chunking, so can run a very long list and do in chunks (currently 500, seems to be what
     :param tax_list:
-    :return: a list of hits:
+    :return: a list of hits: and a hash
     [{'scientific_name': 'root', 'tag': '', 'tax_division': 'UNC', 'tax_id': '1'},
                {'scientific_name': 'Chloephaga melanoptera',
                 'tag': 'marine;marine_low_confidence;coastal_brackish;coastal_brackish_low_confidence;freshwater;freshwater_low_confidence;terrestrial;terrestrial_low_confidence',
@@ -215,8 +214,6 @@ def create_taxonomy_hash(tax_list):
     print("inside create_taxonomy_hash")
     (tax_list, bad_id_hash) = clean_tax_list(tax_list)
 
-    # iterator = iter(tax_list)
-    # chunk_size = 500
     tax_hash = []
     # ic(sample_obj_dict)
     #curl - X POST - H "Content-Type: application/x-www-form-urlencoded" - d
@@ -226,22 +223,14 @@ def create_taxonomy_hash(tax_list):
     ena_portal_api_url = get_ena_portal_url()
     ena_search_url = f"{ena_portal_api_url}search?"
     # print(f"{ena_search_url} {with_obj_type} {taxonomy_rtn_fields} {tax_list}")
-    combined_data = chunk_portal_api_call(ena_search_url, with_obj_type, taxonomy_rtn_fields, None, tax_list)
-    # print(combined_data)
-    #combined_data = []
-    # chunk_count = chunk_pos = 0
-    # list_size = len(tax_list)
-    # #ic(tax_list)
-    # ic(f"{chunk_pos}/{list_size}")
-    # while chunk := list(islice(iterator, chunk_size)):
-    #         chunk_pos += chunk_size
-    #         chunk_count += 1
-    #         if chunk_count % 10 == 0 or chunk_count == 1:
-    #             ic(f"{chunk_pos}/{list_size}")
-    #         return_fields = taxonomy_rtn_fields
-    #         # ic(f"{with_obj_type} ++++ {chunk} ++++++ {return_fields}")
-    #         data = do_portal_api_tax_call(with_obj_type, chunk, return_fields)
-    #         combined_data += data
+
+    tax_combined_data_picklefile = 'tax_combined_data_pickle'
+    if os.path.isfile(tax_combined_data_picklefile):
+        print(f"WARNING: am using {tax_combined_data_picklefile} which is just a subset")
+        combined_data = pickle.load(open(tax_combined_data_picklefile, "rb"))
+    else:
+        combined_data = chunk_portal_api_call(ena_search_url, with_obj_type, taxonomy_rtn_fields, None, tax_list)
+        pickle.dump(combined_data, open(tax_combined_data_picklefile, "wb"))
 
     return combined_data, bad_id_hash
 
