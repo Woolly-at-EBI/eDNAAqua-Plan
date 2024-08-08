@@ -6,10 +6,8 @@ ___start_date___ = 2023-09-18
 __docformat___ = 'reStructuredText'
 chmod a+x study_collection.py
 """
-import sys
 
-from icecream import ic
-
+from eDNA_utilities import logger
 from ena_portal_api import get_ena_portal_url, ena_portal_api_call_basic, chunk_portal_api_call_w_ands
 
 
@@ -24,13 +22,13 @@ class StudyCollection:
         self.study_dict = {'study': {}, 'sample': {}}
 
     def get_name(self):
-        return(self.name)
+        return self.name
 
     def get_global_study_dict(self):
         return self.study_dict
 
     def get_sample_id_list(self):
-        my_dict = self.get_global_study_dict()
+        # my_dict = self.get_global_study_dict()
         global_sample_set = set()
         for study_id in self.study_dict['study']:
             global_sample_set.update(self.study_dict['study'][study_id]['sample_acc_set'])
@@ -39,6 +37,7 @@ class StudyCollection:
 def study2sample(study_id_list, study_collection, debug_status):
     """
 
+    :param debug_status:
     :param study_id_list:
     :param study_collection:  # if None creates it!
     :return: sample_acc_list
@@ -59,7 +58,7 @@ def study2sample(study_id_list, study_collection, debug_status):
     #     study_collection = StudyCollection()
 
     #ic(study_collection.get_global_study_dict())
-
+    sample_acc_set = set()
     result_object_type = 'sample'
     limit = 0
     study_id = 'PRJDB13387'
@@ -78,13 +77,13 @@ def study2sample(study_id_list, study_collection, debug_status):
     #the following does not work as not as study is not a valid accessionType
     #data = chunk_portal_api_call(get_ena_portal_url() + "search?" + "&includeAccessionType=study", result_object_type, return_fields, study_id_list)
     url = get_ena_portal_url() + "search?"
-    data = chunk_portal_api_call_w_ands(url, result_object_type, return_fields, 'study_accession', None, study_id_list)
-    #ic(data)
+    data = chunk_portal_api_call_w_ands(url, result_object_type, return_fields, 'study_accession', study_id_list)
+    # logger.info(data)
 
     #parse the data into a simple dictionary
     study_hash = {}
     for row_dict in data:
-        #ic(f"{row_dict['study_accession']} {row_dict['sample_accession']}")
+        #logger.info(f"{row_dict['study_accession']} {row_dict['sample_accession']}")
         if row_dict['study_accession'] not in study_hash:
             study_hash[row_dict['study_accession']] = set()
         study_hash[row_dict['study_accession']].add(row_dict['sample_accession'])
@@ -95,25 +94,24 @@ def study2sample(study_id_list, study_collection, debug_status):
            sample_acc_set.add(study_collection.study_dict[study_id]['sample_acc_set'])
        else:
           study_collection.study_dict['study'][study_id] = {}
-          #ic(study_collection.study_dict)f
+          #logger.info(study_collection.study_dict)f
           if study_id in study_hash:
-              # ic(f"{study_id} in study_hash")
+              # logger.info(f"{study_id} in study_hash")
               study_collection.study_dict['study'][study_id]['sample_acc_set'] = study_hash[study_id]
               global_sample_acc_set.update(study_hash[study_id])
           else:
-              #ic(f"{study_id} NOT in study_hash")
+              #logger.info(f"{study_id} NOT in study_hash")
               study_collection.study_dict['study'][study_id]['sample_acc_set'] = set()  #i.e. no samples found for study!
           if debug_status:
-            ic(f"\tfor {study_id} found a total of {len(study_hash[study_id])} samples: {study_hash[study_id]}")
+            logger.info(f"\tfor {study_id} found a total of {len(study_hash[study_id])} samples: {study_hash[study_id]}")
     #print(f"sample_ids={global_sample_acc_set}")
     return sorted(list(global_sample_acc_set))
 
 
 def main():
-    ic()
     study_collection = StudyCollection()
 
-    ic(study_collection.get_name())
+    logger.info(study_collection.get_name())
     study_acc_list = ['PRJNA435556',
                      'PRJEB32543',
                      'PRJNA505510',
@@ -126,12 +124,11 @@ def main():
                      'PRJEB40122'
         ]
     #, "madeup"]
-    #ic(study_acc_list)
+    #logger.info(study_acc_list)
 
     sample_acc_list = study2sample(study_acc_list, study_collection,False)
 
-    ic(len(study_collection.get_sample_id_list()))
+    logger.info(len(study_collection.get_sample_id_list()))
 
 if __name__ == '__main__':
-    ic()
     main()
