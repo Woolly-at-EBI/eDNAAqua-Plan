@@ -10,8 +10,7 @@ chmod a+x get_taxononomy_scientific_name.py
 import requests
 import xml.etree.ElementTree as ET
 
-from icecream import ic
-import os
+from eDNA_utilities import logger
 import argparse
 import sys
 
@@ -29,18 +28,16 @@ def get_taxonomy_root(taxid):
         # print(r.text)
         root = ET.fromstring(r.text)
     else:
-        ic.enable()
-        ic(r.status_code)
-        ic(f"for url={r.url}")
+        logger.info(r.status_code)
+        logger.info(f"for url={r.url}")
         sys.exit(1)
     return root
 
 def get_taxonomy_scientific_name(taxid):
     """"""
-    # ic()
     root = get_taxonomy_root(taxid)
     taxon = root.find('.//taxon')
-    # ic(taxon.attrib['scientificName'])
+    # logger.info(taxon.attrib['scientificName'])
     return taxon.attrib['scientificName']
 
 def get_pretty_taxonomy_scientific_name(taxid):
@@ -53,30 +50,26 @@ def get_pretty_taxonomy_rankings(taxid):
     # example root(1);unclassified entries(2787823);unclassified sequences(12908);metagenomes(408169);ecological metagenomes(410657);ant fungus garden metagenome(797283)
     :return: get_pretty_taxonomy_rankings string
     """
-    ic()
-
-
     root = get_taxonomy_root(taxid)
-    ic(root)
+    logger.info(root)
     taxon = root.find('.//taxon')
-    ic(taxon.attrib)
-    ic(taxon.attrib['scientificName'])
+    logger.info(taxon.attrib)
+    logger.info(taxon.attrib['scientificName'])
 
     pretty_taxonomy_rankings = [f"{taxon.attrib['scientificName']}({taxid})"]
-    ic(pretty_taxonomy_rankings)
+    logger.info(pretty_taxonomy_rankings)
 
-    ic()
     for lineage in taxon.findall('.//lineage'):
-        ic()
-        ic(lineage.tag)
-        ic(lineage.attrib)
+
+        logger.info(lineage.tag)
+        logger.info(lineage.attrib)
         for child in lineage:
-            ic(child.attrib['scientificName'])
-            ic(child.attrib['taxId'])
+            logger.info(child.attrib['scientificName'])
+            logger.info(child.attrib['taxId'])
             pretty_taxonomy_rankings.append(f"{child.attrib['scientificName']}({child.attrib['taxId']})")
 
-    ic(pretty_taxonomy_rankings)
-    ic(list(reversed(pretty_taxonomy_rankings)))
+    logger.info(pretty_taxonomy_rankings)
+    logger.info(list(reversed(pretty_taxonomy_rankings)))
     return ";".join(reversed(pretty_taxonomy_rankings))
 
 
@@ -86,10 +79,8 @@ def main(args):
     #taxid = 797283
     finest_taxid = tax_ranking_string.split(";")[-1]  # want the latest
 
-    ic(finest_taxid)
-    ic()
-
-    ic(get_pretty_taxonomy_scientific_name(finest_taxid))
+    logger.info(finest_taxid)
+    logger.info(get_pretty_taxonomy_scientific_name(finest_taxid))
     pretty_taxonomy_rankings = get_pretty_taxonomy_rankings(finest_taxid)
     if (len(pretty_taxonomy_rankings) < 5):
         pretty_taxonomy_rankings = "not_found"
@@ -114,10 +105,6 @@ if __name__ == '__main__':
     parser.parse_args()
     args = parser.parse_args()
 
-    if args.debug_status:
-        ic.enable()
-    else:
-        ic.disable()
-    ic(prog_des)
+    logger.info(prog_des)
 
     main(args)
