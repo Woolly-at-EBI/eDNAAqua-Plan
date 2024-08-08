@@ -9,14 +9,11 @@ chmod a+x get_taxonomy_scientific_name.py
 
 import logging
 import re
-import sys
 from math import log
-from plistlib import loads
 
 import coloredlogs
 import pandas as pd
 import plotly.express as px
-# from networkx.conftest import needs_yaml
 
 from eDNA_utilities import print_value_count_table, \
     plot_sankey, my_coloredFormatter, plot_countries, plot_sunburst, \
@@ -896,20 +893,19 @@ def ena_checklist_annotation_add(my_df):
     logger.info(f"\n{df_ena.head(5)}")
     #
     #
-    # df_group = df_ena.groupby(['CHECKLIST_NAME', 'CHECKLIST_FIELD_MANDATORY']).size().to_frame('mandatory_count').reset_index()
-    # logger.info(f"\n{df_group.to_markdown(index=False)}")
-    #
-    # df_mandatory = df_ena.loc[df_ena['CHECKLIST_FIELD_MANDATORY'] == 'Y']
-    # logger.info(f"\n{df_mandatory.head(5)}")
-    # print("---------------------------------------------------------------")
-    # df_group = df_mandatory.groupby(['CHECKLIST_NAME']).agg({'CHECKLIST_FIELD_NAME': ['count', list]}).reset_index()
-    # df_group.columns = ['CHECKLIST_NAME', 'MANDATORY_COUNT', 'FIELD_NAMES_LIST']
-    # df_group['FIELD_NAMES'] = df_group['FIELD_NAMES_LIST'].apply(lambda x: ';'.join(x))
-    # df_group = df_group.drop(['FIELD_NAMES_LIST'], axis=1)
-    # logger.info(f"\n{df_group.head(100).to_markdown(index=False)}")
+    df_group = df_ena.groupby(['CHECKLIST_NAME', 'CHECKLIST_FIELD_MANDATORY']).size().to_frame('mandatory_count').reset_index()
+    logger.info(f"\n{df_group.to_markdown(index=False)}")
+
+    df_mandatory = df_ena.loc[df_ena['CHECKLIST_FIELD_MANDATORY'] == 'Y']
+    logger.info(f"\n{df_mandatory.head(5)}")
+    print("---------------------------------------------------------------")
+    df_group = df_mandatory.groupby(['CHECKLIST_NAME']).agg({'CHECKLIST_FIELD_NAME': ['count', list]}).reset_index()
+    df_group.columns = ['CHECKLIST_NAME', 'MANDATORY_COUNT', 'FIELD_NAMES_LIST']
+    df_group['FIELD_NAMES'] = df_group['FIELD_NAMES_LIST'].apply(lambda x: ';'.join(x))
+    df_group = df_group.drop(['FIELD_NAMES_LIST'], axis=1)
+    logger.info(f"\n{df_group.head(100).to_markdown(index=False)}")
 
     # ena_checklist_name
-    sys.exit()
     return my_df
 
 
@@ -945,7 +941,7 @@ def analyse_checklists(df):
     outfile = "../data/out/aquatic_combined_insdc_checklists_read_run_counts.tsv"
     logger.info(f"Writing to: {outfile}")
     df_combined_checklist_counts.to_csv(outfile, sep='\t', index=False)
-    sys.exit()
+    # sys.exit()
 
     print_value_count_table(df.ena_checklist_name)
 
@@ -971,13 +967,14 @@ def analyse_dates(df):
     logger.info(f"Writing to {outfile}")
     fig.write_image(outfile)
 
-def analyse_readrun_detail(df):
-    logger.info("in analyse_readrun_detail")
-
+def clean_df(df):
     df['lat'] = pd.to_numeric(df['lat'], errors = 'coerce')
     df['lon'] = pd.to_numeric(df['lon'], errors = 'coerce')
+    return df
 
-    #
+def analyse_readrun_detail(df):
+    logger.info("in analyse_readrun_detail")
+    df = clean_df(df)
     strategy_list_to_keep = ['AMPLICON', 'WGS', 'RNA-Seq', 'WGA', 'Targeted-Capture', 'ssRNA-seq', 'miRNA-Seq']
     if args.type_of_data in ["fungi"]:
         before_filter_count = len(df)
@@ -1013,7 +1010,7 @@ def analyse_readrun_detail(df):
     logger.info("-------------about to do taxonomic_analysis------------------------")
     df = taxonomic_analysis(df)
 
-    sys.exit("exiting after taxonomic_analysis")
+    # sys.exit("exiting after taxonomic_analysis")
     # logger.info(df)
     # logger.info(df.dtypes)
 
@@ -1034,14 +1031,7 @@ def main():
     # logger.info(len(readrun_ids))
 
     # get_all_study_details()
-    # sys.exit()
 
-    # df_aquatic_env_readrun_detail_pickle = "df_aquatic_env_readrun_detail.pickle"
-    # env_readrun_detail = get_env_readrun_detail(10000)
-    # df_env_readrun_detail = filter_for_aquatlogger.info(env_readrun_detail)
-    # pickle_data_structure(df_env_readrun_detail, df_aquatic_env_readrun_detail_pickle)
-    # logger.info("WTF")
-    # sys.exit()
     logger.info(f"in main with args.type_of_data={args.type_of_data}")
     if args.type_of_data in ["all","fungi"]:
         pickle_file = 'env_readrun_detail_all.pickle'
@@ -1054,18 +1044,8 @@ def main():
     # df_env_readrun_detail = df_env_readrun_detail.sample(1000000)
     logger.info(f"unpickled from {pickle_file} row total={len(df_env_readrun_detail)}")
     logger.info(f"columns={df_env_readrun_detail.columns}")
-    #
-    #
-    # This is what used to be run!
-    # readrun_ids_set = set(df_env_readrun_detail['run_accession'])
-    # logging.info(f"readrun_ids_set={len(readrun_ids_set)}")
-    # sample_ids_set = set(df_env_readrun_detail['sample_accession'])
-    # logging.info(f"sample_ids_set={len(sample_ids_set)}")
-    #
     analyse_readrun_detail(df_env_readrun_detail)
 
-    
-    
 
 if __name__ == '__main__':
     logging.basicConfig(level = logging.INFO)
