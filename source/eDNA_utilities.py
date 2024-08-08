@@ -18,7 +18,6 @@ import pprint
 import plotly.express as px
 import sys
 import time
-import icecream as ic
 import requests
 
 logger = logging.getLogger(name = 'mylogger')
@@ -125,13 +124,11 @@ def run_webservice(url):
     if r.status_code == 200:
         return r.text
     else:
-        ic.enable()
         logger.info(r.status_code)
         logger.info(f"for url={r.url}")
         logger.info("retrying in 5 seconds, once")
         time.sleep(5)
         if r.status_code == 200:
-            ic.disable()
             return r.text
         else:
             logger.info(f"Still {r.status_code} so exiting")
