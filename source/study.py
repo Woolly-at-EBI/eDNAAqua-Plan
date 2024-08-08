@@ -8,18 +8,17 @@ chmod a+x study.py
 """
 
 
-from icecream import ic
+from eDNA_utilities import logger
 import os
 import argparse
 
 def first_func():
     """"""
+    print()
 
-    ic()
 
 def main():
     first_func()
 
 if __name__ == '__main__':
-    ic()
     main()
