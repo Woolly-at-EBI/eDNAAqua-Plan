@@ -7,10 +7,6 @@ __docformat___ = 'reStructuredText'
 chmod a+x sample.py
 """
 
-
-from icecream import ic
-import sys
-
 class Sample:
     """
     objects for storing the environmental status of each sample
@@ -99,5 +95,4 @@ def main():
     sample = Sample(test_id)
 
 if __name__ == '__main__':
-    ic()
     main()
