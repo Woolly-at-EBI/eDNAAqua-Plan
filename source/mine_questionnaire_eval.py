@@ -24,7 +24,8 @@ from pygments.lexers import go
 
 from eDNA_utilities import logger, my_coloredFormatter, coloredlogs,\
     list_freq_pie, get_lists_from_df_column, un_split_list,\
-    get_duplicates_in_list, clean_list_replace_nan, plot_countries
+    get_duplicates_in_list, clean_list_replace_nan, plot_countries,\
+    plot_sunburst
 
 
 pd.set_option('display.max_rows', 500)
@@ -124,7 +125,7 @@ def analyse_location(df):
     for location in location_list:
         match = europe_pats.search(location)
         if match is not None:
-            logger.info(f"match found match={match} in location={location}")
+            # logger.info(f"match found match={match} in location={location}")
             smatch = special_cases_pats.search(location)
             if smatch is not None:
                 logger.info(f"match found smatch={smatch.group(0)} in location={location}")
@@ -160,16 +161,52 @@ def analyse_environment(df):
         my_title = "Survey: Aquatic Environments"
         list_freq_pie(location_list,'Environment', my_title, "../images/survey_europe_environments.png" )
 
+
+        # main_aquatic_re = re.compile(r'marine|freshwater|transitional|groundwater', re.IGNORECASE)
+        # def map2main_aquatic_type(value):
+        #     match = main_aquatic_re.search(value)
+        #     if match is not None:
+        #         return match.group(0)
+        #     else:
+        #         return None
+        #
+        # label = 'Substrate.Env'
+        #
+        # tmp_df = df[['Substrate', label]]
+        # tmp_df['substrate_explode'] = tmp_df['Substrate'] .str.split(';')
+        # logger.info(tmp_df.head(10))
+        # tmp_df = tmp_df.explode('substrate_explode')
+        # logger.info(tmp_df.head(3).to_markdown())
+        #
+        # sys.exit()
+        # tmp_df['main_aquatic_type'] = tmp_df[label].apply(map2main_aquatic_type)
+        # path_list = ['main_aquatic_type', 'Substrate']
+        # value_field = 'count'
+        # plot_df = df.groupby(path_list).size().reset_index(name=value_field)
+        # logger.info(f"\n{plot_df.to_string(index=False)}")
+        #
+        # plot_sunburst(plot_df, "Survey: " + label + " Sunburst", path_list, value_field, "../images/Survey_" + label + "_Sunburst.png")
+        # sys.exit()
+
+
+        logger.info(f"\n{df.columns}")
+
+        sys.exit("exiting analyse_environment")
+
+
         label = 'Substrate_Simplified'
         location_list = get_lists_from_df_column(df, label)
         # logger.info(f"\n{location_list}")
-        my_title = "Survey: Aquatic Environments:" + label
+        my_title = "Survey: Aquatic Environments - " + label
         list_freq_pie(location_list, 'Substrate_Simplified', my_title, "../images/survey_substrate_simplified_environments.png")
+
+
+
 
         label = 'Substrate.Env'
         location_list = get_lists_from_df_column(df, label)
         # logger.info(f"\n{location_list}")
-        my_title = "Survey: Aquatic :" + label
+        my_title = "Survey: Aquatic - " + label
         list_freq_pie(location_list, label, my_title, "../images/survey_" + label + ".png")
 
 def get_barcode2tax():
@@ -356,7 +393,6 @@ def analyse_answer(df):
 
     print(f"Total questionnaire submitters: {len(df)}, and total dbs: {len(answer_df)}")
     print(f"mean # {len(answer_df)/len(df)}   median # of dbs submitted.by submitter: {answer_df.groupby('Answer').count().apply(np.median)}")
-    sys.exit()
 
 
 def mine_questionnaire_eval():
@@ -372,10 +408,10 @@ def mine_questionnaire_eval():
     # analyse_projects(df)
     analyse_location(df)
     # analyse_europe(df)
-    # analyse_environment(df)
+    analyse_environment(df)
     # analyse_barcode(df)
     # analyse_sequencing_technologies(df)
-    analyse_read_runs(df)
+    # analyse_read_runs(df)
     # analyse_processed_metadata(df)
     # analyse_repository(df)
 
