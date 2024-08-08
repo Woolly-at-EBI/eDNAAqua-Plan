@@ -9,7 +9,6 @@ chmod a+x sample_collection.py
 """
 
 
-from icecream import ic
 import sys
 import os
 import argparse
@@ -21,6 +20,7 @@ from ena_portal_api import *
 from taxonomy import generate_taxon_collection, taxon
 from datetime import datetime
 import pandas as pd
+from eDNA_utilities import logger
 pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.width', 1000)
@@ -33,7 +33,6 @@ class SampleCollection:
     """
 
     def __init__(self, category):
-        ic()
         self.type = "SampleCollection"
         self.category = category
         self.sample_obj_dict = {}
@@ -92,7 +91,7 @@ class SampleCollection:
         """
         allowable_tags = ['freshwater', 'marine', 'coastal_brackish', 'terrestrial']
         if tag_name not in allowable_tags:
-            ic(f"Error: the tag_name {tag_name} is unknown in get_sample_tag_list")
+            logger.info(f"Error: the tag_name {tag_name} is unknown in get_sample_tag_list")
             return []
         sample_tag_list = tag_name + '_sample_tag_list'
         if tag_name == 'freshwater' and hasattr(self, sample_tag_list):
@@ -124,7 +123,7 @@ class SampleCollection:
         url='https://www.ebi.ac.uk/ena/portal/api/count?result=sample&dataPortal=ena'
         (total, response) = ena_portal_api_call_basic(url)
         self.total_archive_sample_size = total
-        ic(self.total_archive_sample_size)
+        logger.info(self.total_archive_sample_size)
         return self.total_archive_sample_size
 
     def get_sample_coll_df(self):
@@ -166,11 +165,10 @@ class SampleCollection:
         self.tax_isFreshwater_set - sample_obj
         :return:
         """
-        ic()
-        ic(len(self.sample_set))
+        logger.info(len(self.sample_set))
         for sample_obj in self.sample_set:
             self.tax_id_set.add(sample_obj.tax_id)
-        ic(len(self.tax_id_set))
+        logger.info(len(self.tax_id_set))
         tax_id_list = sorted(self.tax_id_set)
         self.tax_isMarine_set = set()
         self.tax_isTerrestrial_set = set()
@@ -179,29 +177,28 @@ class SampleCollection:
 
         taxon_collection_obj = generate_taxon_collection(tax_id_list)
         for sample_obj in self.sample_set:
-            #ic(sample_obj.tax_id)
+            #logger.info(sample_obj.tax_id)
 
-            #ic(sample_obj.print_values())
+            #logger.info(sample_obj.print_values())
             taxonomy_obj = taxon_collection_obj.get_taxon_obj_by_id(sample_obj.tax_id)
             if taxonomy_obj and hasattr(taxonomy_obj, 'tax_id'):
                 sample_obj.taxonomy_obj = taxonomy_obj  # this is very important!
-                #ic(sample_obj.taxonomy_obj.tax_id)
+                #logger.info(sample_obj.taxonomy_obj.tax_id)
                 if taxonomy_obj.isMarine:
-                    #ic(f"\tmarine {sample_obj.taxonomy_obj.tax_id}")
+                    #logger.info(f"\tmarine {sample_obj.taxonomy_obj.tax_id}")
                     self.tax_isMarine_set.add(sample_obj)
                 if taxonomy_obj.isTerrestrial:
-                    ic(f"\tterrestrial {sample_obj.taxonomy_obj.tax_id}")
+                    logger.info(f"\tterrestrial {sample_obj.taxonomy_obj.tax_id}")
                     self.tax_isTerrestrial_set.add(sample_obj)
                 if taxonomy_obj.isCoastal:
-                    ic("\tcoastal {sample_obj.taxonomy_obj.tax_id}")
+                    logger.info("\tcoastal {sample_obj.taxonomy_obj.tax_id}")
                     self.tax_isCoastal_set.add(sample_obj)
                 if taxonomy_obj.isFreshwater:
-                    ic("\tfreshwater {sample_obj.taxonomy_obj.tax_id}")
+                    logger.info("\tfreshwater {sample_obj.taxonomy_obj.tax_id}")
                     self.tax_isFreshwater_set.add(sample_obj)
             else:
-                #ic(f"Warning: for {sample_obj.tax_id} generating a dummy")
+                #logger.info(f"Warning: for {sample_obj.tax_id} generating a dummy")
                 sample_obj.taxonomy_obj = taxon({'tax_id': ''})  # generates a dummy
-        ic()
         #sys.exit()
 
     def get_sample_objs(self):
@@ -215,11 +212,10 @@ class SampleCollection:
             return self._all_sample_accs_set
         for sample_obj in self.get_sample_objs():
             self._all_sample_accs_set.add(sample_obj.sample_accession)
-        #ic(self._all_sample_accs)
+        #logger.info(self._all_sample_accs)
         return self._all_sample_accs_set
 
     def decorate_sample_tags(self, tag_dict):
-        ic()
         aquatic_tags = ['freshwater', 'marine', 'coastal_brackish']
         for tag in aquatic_tags:
             if tag == "freshwater":
@@ -233,21 +229,19 @@ class SampleCollection:
                     (set(tag_dict[tag]['sample_accession']))
 
     def get_aquatic_sample_acc_by_sample_tag_set(self):
-        ic()
         if len(self._get_aquatic_sample_acc_by_sample_tag) > 0:
             return self._get_aquatic_sample_acc_by_sample_tag
         self._get_aquatic_sample_acc_by_sample_tag = self.freshwater_sample_acc_tag_set.union\
                         (self.marine_sample_acc_tag_set, self.coastal_brackish_sample_acc_tag_set)
-        # ic(self._get_aquatic_sample_acc_by_sample_tag)
+        # logger.info(self._get_aquatic_sample_acc_by_sample_tag)
         return(self._get_aquatic_sample_acc_by_sample_tag)
 
     def get_aquatic_run_read_by_sample_tag_set(self):
         return get_sample_run_accessions(self.get_aquatic_sample_acc_by_sample_tag_set())
 
     def print_summary(self):
-        ic()
         self.get_all_sample_acc_set()  # in case this has not been run, it forces some lazy methods to be called.
-        #ic(self.get_all_sample_accs())
+        #logger.info(self.get_all_sample_accs())
         outstring = f"**** collection_obj Summary ****"
         outstring += f"On run date={datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f%z')}\n"
         outstring += f"sample_set_size={self.get_sample_set_size()}\n"
@@ -311,7 +305,7 @@ class SampleCollection:
                         self.european_environmental_set.add(sample_obj)
                 if sample_obj.country_is_european:
                         self.european_sample_set.add(sample_obj)
-                # ic(sample_collection_stats_dict['by_study_id'])
+                # logger.info(sample_collection_stats_dict['by_study_id'])
                 if sample_obj.study_accession != "":
                     for study_accession in sample_obj.study_accession.split(';'):
                       sample_collection_stats_dict['by_study_id'][study_accession] = {'sample_id': { sample_obj.sample_accession : sample_collection_stats_dict['by_sample_id'][sample_obj.sample_accession]} }
@@ -326,7 +320,7 @@ class SampleCollection:
                     self.coastal_brackish_sample_tag_set.add(sample_obj)
                 self.sample_collection_stats_dict = sample_collection_stats_dict
             self.sample_count = len(sample_collection_stats_dict['by_sample_id'])
-            # ic(self.sample_collection_stats_dict)
+            # logger.info(self.sample_collection_stats_dict)
         return self.sample_collection_stats_dict
 
     def get_environmental_sample_list(self):
@@ -375,7 +369,7 @@ class SampleCollection:
 #     }
 #     #my_url = ena_search_url + '?includeAccessions=' + sample_accessions
 #     # Make a GET request to the ENA API
-#     # ic(my_url)
+#     # logger.info(my_url)
 #     (data, response) = ena_portal_api_call(ena_search_url, params, result_object_type, query_accession_ids)
 #
 #     if response.status_code != 200:
@@ -385,7 +379,7 @@ class SampleCollection:
 #         (data, response) = ena_portal_api_call(ena_search_url, params, result_object_type, query_accession_ids)
 #         if response.status_code != 200:
 #             print(f"Due to response exiting {response.status_code}, tried twice")
-#             ic()
+#             logger.info()
 #             sys.exit()
 #
 #     return data
@@ -403,7 +397,6 @@ def get_sample_field_data(sample_list, return_fields):
     :param return_fields:  #ecpect a list
     :return:
     """
-    ic()
     with_obj_type = 'sample'
     ena_search_url = f"{get_ena_portal_url()}search?"
     sample_id_list = sample_obj_list_2_sample_acc_list(sample_list)
@@ -413,13 +406,13 @@ def get_sample_field_data(sample_list, return_fields):
     # high = low + 50000
     # sample_id_list = sample_id_list[low:high]
 
-    # ic(len(sample_id_list))
-    # ic(sample_id_list[0:5])
-    # ic(return_fields)
+    # logger.info(len(sample_id_list))
+    # logger.info(sample_id_list[0:5])
+    # logger.info(return_fields)
 
     #all_sample_data = []
     all_sample_data = chunk_portal_api_call(ena_search_url, with_obj_type, return_fields, None,  sample_id_list)
-    # ic(all_sample_data)
+    # logger.info(all_sample_data)
 
     return all_sample_data
 
@@ -429,5 +422,4 @@ def main():
     pass
 
 if __name__ == '__main__':
-    ic()
     main()
