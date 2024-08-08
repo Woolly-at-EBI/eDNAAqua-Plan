@@ -10,8 +10,8 @@ chmod a+x get_taxonomy_scientific_name.py
 import logging
 import re
 from math import log
-
-import coloredlogs
+import sys
+import argparse
 import pandas as pd
 import plotly.express as px
 
@@ -1049,8 +1049,6 @@ def main():
 
 if __name__ == '__main__':
     logging.basicConfig(level = logging.INFO)
-
-    coloredlogs.install(logger = logger)
     logger.propagate = False
     ch = logging.StreamHandler(stream = sys.stdout)
     ch.setFormatter(fmt = my_coloredFormatter)
@@ -1073,10 +1071,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.debug_status:
-        ic.enable()
         logger.setLevel(level = logging.DEBUG)
     else:
-        ic.disable()
+        logger.setLevel(level = logging.INFO)
     logger.info(prog_des)
 
     main()
