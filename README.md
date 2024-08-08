@@ -2,6 +2,8 @@
 
 ![image](images/eDNAqua-Plan_Logo_1.0.png)
 
+Apologies: the name of this repo. is wrong it should have been **eDNAqua-Plan** i.e. with just one A
+
 eDNAqua-Plan code and data used for some of the deliverables of the overall eDNAAquaPlan.
 N.B. This code is  rough and ready! It is generating tables and plots for the report.
 
