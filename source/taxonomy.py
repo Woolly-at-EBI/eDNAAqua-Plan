@@ -8,12 +8,10 @@ chmod a+x taxonomy.py
 """
 
 
-from icecream import ic
+from eDNA_utilities import logger
 import os
-import sys
 import pickle
 from ena_portal_api import ena_portal_api_call, get_ena_portal_url, chunk_portal_api_call
-import argparse
 
 class taxon:
     """
@@ -69,9 +67,9 @@ class taxon:
 
         for tag in self.tag_list:
            splits = tag.split("_")
-           #ic(f"inspecting tags {splits}")
+           #logger.info(f"inspecting tags {splits}")
            if len(splits)==3 and splits[2] == "confidence" and (splits[1] == "medium" or splits[1] == "high"):
-               #ic(splits[0])
+               #logger.info(splits[0])
                if splits[0] == "terrestrial":
                    self.isTerrestrial = True
                elif splits[0] == "marine":
@@ -99,15 +97,15 @@ class taxon_collection:
         :param tax_id:
         :return:
         """
-        #ic()
+        #logger.info()
         if tax_id in self.tax_id_dict:
-           #ic(f"YIPPEE: {tax_id} found")
+           #logger.info(f"YIPPEE: {tax_id} found")
            return self.tax_id_dict[tax_id]
         elif tax_id == "":
-            #ic(f"ERROR: '{tax_id}' not found as it was blank")
+            #logger.info(f"ERROR: '{tax_id}' not found as it was blank")
             return None
         else:
-            ic(f"ERROR: '{tax_id}' not found")
+            logger.info(f"ERROR: '{tax_id}' not found")
             return None
 
     def get_all_taxon_obj_list(self):
@@ -148,10 +146,10 @@ def do_portal_api_tax_call(result_object_type, query_accession_ids, return_field
     query_accession_id_set = set(query_accession_ids)
     query_accession_id_set.discard("")
     query_accession_ids = list(query_accession_id_set)
-    #ic(query_accession_ids)
+    #logger.info(query_accession_ids)
     tax_accessions_string = ','.join(query_accession_ids)
     # "query": f"accession={sample_accession}",
-    #ic(tax_accessions_string)
+    #logger.info(tax_accessions_string)
     return_fields_string = ','.join(return_fields)
 
     params = {
@@ -163,12 +161,12 @@ def do_portal_api_tax_call(result_object_type, query_accession_ids, return_field
         "limit": 0
     }
 
-    #ic(ena_search_url)
+    #logger.info(ena_search_url)
     my_url = ena_search_url
     # Make a GET request to the ENA API
-    # ic(my_url)
-    # ic(params)
-    # ic(query_accession_ids)
+    # logger.info(my_url)
+    # logger.info(params)
+    # logger.info(query_accession_ids)
     (data, response) = ena_portal_api_call(my_url, params, result_object_type, query_accession_ids)
 
     #  curl -X POST -H "Content-Type: application/x-www-form-urlencoded" -d 'result=taxon&fields=tax_id%2Cscientific_name%2Ctag%2Cdescription%2Ctax_division&includeAccessionType=taxon&includeAccessions=9606%2C8802%2C8888%2C1&format=tsv' "https://www.ebi.ac.uk/ena/portal/api/search"
@@ -215,7 +213,7 @@ def create_taxonomy_hash(tax_list):
     (tax_list, bad_id_hash) = clean_tax_list(tax_list)
 
     tax_hash = []
-    # ic(sample_obj_dict)
+    # logger.info(sample_obj_dict)
     #curl - X POST - H "Content-Type: application/x-www-form-urlencoded" - d
     # 'result=taxon&query=tax_eq(9606)%20OR%20tax_eq(1080)&fields=tax_id%2Cscientific_name%2Ctax_lineage%2Clineage&format=tsv' "https://www.ebi.ac.uk/ena/portal/api/search"
     taxonomy_rtn_fields = ['tax_id','tax_division', 'tag','scientific_name', 'tax_lineage','lineage']
@@ -272,19 +270,17 @@ def create_taxonomy_hash_by_tax_id(tax_list):
 
 
 def generate_taxon_collection(tax_id_list):
-    ic()
     combined_data = create_taxonomy_hash(tax_id_list)
     taxon_collection_obj = taxon_collection(combined_data)
-    ic(taxon_collection_obj.print_summary())
+    logger.info(taxon_collection_obj.print_summary())
 
     return taxon_collection_obj
 
 
 def main():
     tax_id_list = ['9606', '8860', '1']
-    ic(tax_id_list)
+    logger.info(tax_id_list)
     create_taxonomy_hash(tax_id_list)
 
 if __name__ == '__main__':
-    ic()
     main()
