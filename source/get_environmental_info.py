@@ -121,7 +121,7 @@ def get_env_readrun_detail(total_records_to_return):
             "%2Cbroad_scale_environmental_context%2Ctax_id%2Cchecklist%2Ccollection_date%2Cncbi_reporting_standard%2Ctarget_gene%2Ctag%2Cstudy_accession%2Cstudy_title")
         fields = [
             "sample_accession", "run_accession", "library_strategy", "library_source",
-            "instrument_platform", "lat", "lon", "country", "broad_scale_environmental_context",
+            "instrument_platform", "lat", "lon", "country", "broad_scale_environmental_context", "environmental_medium"
             "tax_id", "checklist", "collection_date", "ncbi_reporting_standard",
             "target_gene", "tag", "study_accession", "study_title"
         ]
@@ -144,13 +144,13 @@ def get_env_readrun_detail(total_records_to_return):
 
         # Combine the full query
         query = f"(environmental_sample=true OR ({checklist_query}) OR ({reporting_query})) AND not_tax_tree(9606)"
-        query = f"(environmental_sample=true) AND not_tax_tree(9606)"
-        query = "environmental_sample=true"
+        # query = f"(environmental_sample=true) AND not_tax_tree(9606)"
+        # query = "environmental_sample=true"
 
         # Define the fields to retrieve
         fields = [
             "sample_accession", "run_accession", "library_strategy", "library_source",
-            "instrument_platform", "lat", "lon", "country", "broad_scale_environmental_context",
+            "instrument_platform", "lat", "lon", "country", "broad_scale_environmental_context", "environmental_medium",
             "tax_id", "checklist", "collection_date", "ncbi_reporting_standard",
             "target_gene", "tag", "study_accession", "study_title"
         ]
@@ -166,15 +166,15 @@ def get_env_readrun_detail(total_records_to_return):
         }
         logger.info(f"base_url={base_url}")
         logger.info(f"params={params}")
-        ff= run_webservice_with_params(base_url, params)
-        logger.info(f"ff=\n{ff}")
 
-        sys.exit()
+        out = run_webservice_with_params(base_url, params)
+        if 0 < limit < 1000:
+            logger.info(f"out={out}")
+        output = json.loads(out)
 
-        output = json.loads(run_webservice_with_params(base_url, params))
-
-        logger.info(output)
-        sys.exit()
+        if 0 < limit < 1000:
+            logger.info(output)
+        sys.exit("Exiting from get_env_readrun_detail in setup_run_api_call")
         # record_list = extract_record_ids_from_json('run_accession', output)
         # logger.info(len(record_list))
         logger.info(len(output))
@@ -716,6 +716,9 @@ def filter_for_aquatic(df):
 
     :param df: = pd.DataFrame.from_records(env_readrun_detail)
     :return: df
+
+    TODO: add filter for environmental_medium
+
     """
     logging.info("filter_for_aquatic")
 
