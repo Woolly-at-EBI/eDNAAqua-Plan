@@ -97,6 +97,25 @@ def mv_df_col2front(df, col2move):
     df = df[[col2move] + [col for col in df.columns if col != col2move]]
     return df
 
+def obj_print_and_display_md(obj,base_file_name):
+    """
+    utility method to write out an object as both markdown and tsv.
+    also to print it out as md
+    :param obj:
+    :return:
+    """
+    my_markdown = obj.to_markdown()
+    print(my_markdown)
+    outfile = "../tables/" + base_file_name + '.md'
+    logger.info(f"writing {outfile}")
+    with open(outfile, "w") as f:
+        f.write(my_markdown)
+
+    outfile = "../tables/" + base_file_name + '.tsv'
+    logger.info(f"writing {outfile}")
+    with open(outfile, "w") as f:
+        f.write(obj.to_csv(sep="\t"))
+
 def pickle_data_structure(data_structure, filename):
     try:
         with open(filename, "wb") as f:
@@ -112,15 +131,10 @@ def unpickle_data_structure(filename):
     except Exception as ex:
         print("Error during unpickling object (Possibly unsupported):", ex)
 
-def run_webservice(url):
-    """
 
-    :param url:
-    :return:
-    """
-    r = requests.get(url)
-    logger.info(url)
-
+def run_web_requests(my_requests_get):
+    logger.info("----------inside run_web_requests-------------")
+    r = my_requests_get
     if r.status_code == 200:
         return r.text
     else:
@@ -133,6 +147,35 @@ def run_webservice(url):
         else:
             logger.info(f"Still {r.status_code} so exiting")
         sys.exit(1)
+def run_webservice(url):
+    """
+
+    :param url:
+    :return:
+    """
+    r = requests.get(url)
+    logger.info(url)
+
+    run_web_requests(url)
+
+def run_webservice_with_params(base_url,params):
+    """
+
+    :param base_url:
+    :param params:
+    :return: the output of run_webservice
+
+    #curl - X POST - H  "Content-Type: application/x-www-form-urlencoded" - d  'result=read_run&query=tax_eq(9606)&fields=run_accession%2Cexperiment_title%2Ctax_id&format=tsv' "https://www.ebi.ac.uk/ena/portal/api/search"
+    # base_url="https://www.ebi.ac.uk/ena/portal/api/search"
+    # params = 'result=read_run&query=tax_eq(9606)&fields=run_accession%2Cexperiment_title%2Ctax_id&format=tsv&limit=5'
+    """
+    # logger.info("----------inside run_webservice_with_params-------------")
+    # logger.info(f"base_url={base_url}")
+    # logger.info(f"params={params}")
+
+    response = requests.get(base_url, params=params)
+    return run_web_requests(response)
+
 
 def un_split_list(my_list):
     clean_list = []
@@ -232,6 +275,7 @@ def print_value_count_table(df_var):
     tmp_df = tmp_df.head(max_rows)
     # print(tmp_df.to_string(index = False))
     print(tmp_df.to_markdown())
+    obj_print_and_display_md(tmp_df,df_var.name)
 
 
 def plot_sunburst(df, title, path_list, value_field, plotfile):
