@@ -21,6 +21,7 @@ from geography import Geography
 from taxonomy import *
 from eDNA_utilities import pickle_data_structure, unpickle_data_structure, my_coloredFormatter, run_webservice, \
     run_webservice_with_params, get_shorter_list, print_value_count_table, capitalise
+from ena_api_calls import setup_run_api_call
 
 logger = logging.getLogger(name = 'mylogger')
 pd.set_option('display.max_columns', None)
@@ -89,6 +90,9 @@ def get_env_readrun_ids():
 
 
 def get_all_checklist_types():
+    """
+    :return: an array of all available checklist_types
+    """
     checklist_types = ["environmental_checklists", "default_checklists"]
     return checklist_types
 
@@ -113,92 +117,21 @@ def get_env_readrun_detail(total_records_to_return):
     """
     logger.info("get_env_readrun_detail")
 
-    def setup_run_api_call(query_params_json):
-        limit = '&limit=5'
-        out_fields = (
-            "sample_accession%2Crun_accession%2Clibrary_strategy%2Clibrary_source%2Cinstrument_platform%2Clat%2Clon"
-            "%2Ccountry"
-            "%2Cbroad_scale_environmental_context%2Ctax_id%2Cchecklist%2Ccollection_date%2Cncbi_reporting_standard%2Ctarget_gene%2Ctag%2Cstudy_accession%2Cstudy_title")
-        fields = [
-            "sample_accession", "run_accession", "library_strategy", "library_source",
-            "instrument_platform", "lat", "lon", "country", "broad_scale_environmental_context", "environmental_medium"
-            "tax_id", "checklist", "collection_date", "ncbi_reporting_standard",
-            "target_gene", "tag", "study_accession", "study_title"
-        ]
 
-        srv = query_params_json['srv']
-        # params = "result=read_run&query=" + query_params_json['query'] + "&fields=" + out_fields + "&format=json"
-        #
-        # url = srv + '?' + params + limit
-        # logger.info(url)
-
-        base_url = "https://www.ebi.ac.uk/ena/portal/api/search"
-
-        # Construct the checklist query part
-        checklists = ["ERC000012","ERC000013","ERC000020","ERC000021","ERC000022","ERC000023","ERC000024","ERC000025","ERC000027","ERC000055","ERC000030","ERC000031","ERC000036", "ERC000040"]
-        checklist_query = " OR ".join([f'CHECKLIST="{checklist}"' for checklist in checklists])
-
-        # Construct the reporting standards query part
-        reporting_standards = ["*ENV*", "*WATER*", "*SOIL*", "*AIR*", "*SEDIMENT*", "*BUILT*", "*SURVEY*HOST-ASSOCIATED*"]
-        reporting_query = " OR ".join([f'ncbi_reporting_standard="{standard}"' for standard in reporting_standards])
-
-        # Combine the full query
-        query = f"(environmental_sample=true OR ({checklist_query}) OR ({reporting_query})) AND not_tax_tree(9606)"
-        # query = f"(environmental_sample=true) AND not_tax_tree(9606)"
-        # query = "environmental_sample=true"
-
-        # Define the fields to retrieve
-        fields = [
-            "sample_accession", "run_accession", "library_strategy", "library_source",
-            "instrument_platform", "lat", "lon", "country", "broad_scale_environmental_context", "environmental_medium",
-            "tax_id", "checklist", "collection_date", "ncbi_reporting_standard",
-            "target_gene", "tag", "study_accession", "study_title"
-        ]
-
-        # Encode query parameters
-        limit = 5
-        params = {
-            "result": "read_run",
-            "query": query,
-            "fields": ",".join(fields),
-            "format": "json",
-            "limit": limit
-        }
-        logger.info(f"base_url={base_url}")
-        logger.info(f"params={params}")
-
-        out = run_webservice_with_params(base_url, params)
-        if 0 < limit < 1000:
-            logger.info(f"out={out}")
-        output = json.loads(out)
-
-        if 0 < limit < 1000:
-            logger.info(output)
-        sys.exit("Exiting from get_env_readrun_detail in setup_run_api_call")
-        # record_list = extract_record_ids_from_json('run_accession', output)
-        # logger.info(len(record_list))
-        logger.info(len(output))
-        return output
-
-    # checklist_types = ["environmental_checklists", "default_checklists"]
-    # checklist_types = get_all_checklist_types()
-    # checklist_types = ["default_checklists"]
-    # checklist_types = ["environmental_checklists"]
     checklist_types = get_all_checklist_types()
     combined_record_list = []
-    for checklist_type in checklist_types:
-        logger.info(f"Doing the main search of environmental data via -->{checklist_type}<--")
+    for checklist_type in checklist_types: #currently does a search of the default templates and then a search of the environmental ones
+        logger.info(f"++++Doing the main search for environmental data via -->{checklist_type}<-- +++")
         if checklist_type == "default_checklists":
             env_read_run_detail_file = "read_run_allinsdc_defaultgeneric.json.pickle"
             env_read_run_detail_jsonfile = "read_run_allinsdc_defaultgeneric.json"
         else:
-            env_read_run_detail_file = "read_run_ena_detail.pickle"
             env_read_run_detail_file = "read_run_allinsdc_detail.pickle"
             env_read_run_detail_jsonfile = "read_run_allinsdc_detail.json"
 
-        # if os.path.exists(env_read_run_detail_file):
-        #     logger.info(f"{env_read_run_detail_file} exists, so can unpickle it")
-        #     record_list = unpickle_data_structure(env_read_run_detail_file)
+        if os.path.exists(env_read_run_detail_file):
+            logger.info(f"{env_read_run_detail_file} exists, so can unpickle it")
+            record_list = unpickle_data_structure(env_read_run_detail_file)
         # elif os.path.exists(env_read_run_detail_jsonfile):
         #     logger.info(f"{env_read_run_detail_jsonfile} exists, so using that")
         #     with open(env_read_run_detail_jsonfile, "r") as f:
@@ -208,14 +141,9 @@ def get_env_readrun_detail(total_records_to_return):
         #             # record = record_list[i]
         #             record_list[i]["query_type"] = checklist_type
         #         pickle_data_structure(record_list, env_read_run_detail_file)
-        FFS = False
-        if FFS is True:
-            print("")
         else:
             query_params_json = get_query_params(checklist_type)
-            logger.info(f"Doing the main search of environmental data via {checklist_type}, \n  query: {query_params_json}")
-            logger.info("--------------------------------------------")
-            record_list = setup_run_api_call(query_params_json)
+            record_list = setup_run_api_call(query_params_json, checklist_type)
             logger.info(f"Finished running {checklist_type}")
 
             logger.info(f"got {len(record_list)} records")
@@ -224,19 +152,26 @@ def get_env_readrun_detail(total_records_to_return):
             for i in range(length):
                 # record = record_list[i]
                 record_list[i]["query_type"] = checklist_type
-            logger.info(f"Writing records to {env_read_run_detail_file}")
+            with open(env_read_run_detail_jsonfile, 'w') as f:
+                json.dump(record_list, f)
+            logger.info(f"Writing records to pickle: {env_read_run_detail_file}")
             pickle_data_structure(record_list, env_read_run_detail_file)
 
         logger.info(f"record_list length: {len(record_list)}")
 
-        if total_records_to_return > 0:
+        if total_records_to_return > 0:  # this is only really used in debugging
             record_list = get_shorter_list(record_list, int(total_records_to_return / 2))
-            combined_record_list.extend(record_list)
-        else:
-            combined_record_list = record_list
+        combined_record_list.extend(record_list)
+
+        logger.info(f"current combined_record len= {len(combined_record_list)}")
+        # logger.info(f"current combined_record=\n{combined_record_list}")
+        print("---------------------------------------------------------------------------------------")
+
+    # pickle_out = "env_readrun_detail_all.pickle"
+    # logger.info(f"writing to = {pickle_out}")
+    # pickle_data_structure(df_env_readrun_detail, pickle_out)
 
     logger.info(f"Finished getting all RELEVANT ENA raw data combined len= {len(combined_record_list)}")
-    # sys.exit()
     return combined_record_list
 
 
@@ -388,7 +323,7 @@ def analyse_all_study_details(df):
     """
     logger.info("in analyse_all_study_details---------------------------")
     logger.info(len(df))
-    barcoding_pattern = '16S|18S|ITS|26S|5.8S|RBCL|rbcL|matK|MATK|COX1|CO1|mtCO|barcod'
+    barcoding_pattern = '12S|16S|18S|ITS|26S|5.8S|RBCL|rbcL|matK|MATK|COX1|CO1|mtCO|barcod'
     barcoding_title_df = df[df.study_title.str.contains(barcoding_pattern, regex = True, na = False)]
     logger.info(f"'study_title' with barcoding genes total={len(barcoding_title_df)}")
     logger.info(barcoding_title_df['study_title'].sample(n = 10))
@@ -465,7 +400,7 @@ def analyse_all_study_details(df):
             return clean_list
 
         barcode_genes_pattern = re.compile(
-            r'16[sS][ ]?r?[RD]NA|16[sS][ ]?ribo|18S|ITS[12]?|26[Ss]|5.8[Ss]|rbcL|rbcl|RBCL|matK|MATK|cox1|co1|COX1|CO1|COI|mtCO|cytochrome c oxidase|cytochrome oxidase')
+            r'16[sS][ ]?r?[RD]NA|16[sS][ ]?ribo|18S|12S|ITS[12]?|26[Ss]|5.8[Ss]|rbcL|rbcl|RBCL|matK|MATK|cox1|co1|COX1|CO1|COI|mtCO|cytochrome c oxidase|cytochrome oxidase')
         genes = list(set(re.findall(barcode_genes_pattern, value)))
         if len(genes) > 0:
             # logger.info(genes)
@@ -822,12 +757,12 @@ def main():
     total_records_to_retrieve = 0
 
     env_readrun_detail = get_env_readrun_detail(total_records_to_retrieve)
-    logging.info(f"env_readrun_detail = {len(env_readrun_detail)}")
-    sys.exit()
-    pickle_out = "env_readrun_detail_all.pickle"
+    logging.info(f"env_readrun_detail len= {len(env_readrun_detail)}")
+    sys.exit("exiting early")
+
     df_env_readrun_detail = pd.DataFrame.from_records(env_readrun_detail)
-    pickle_data_structure(df_env_readrun_detail, pickle_out)
-    logger.info(f"writing to = {pickle_out}")
+
+
     sys.exit("Stopping this early as got what I need...")
     df_env_readrun_detail = filter_for_aquatic(df_env_readrun_detail)
     df_aquatic_env_readrun_detail_pickle = "df_aquatic_env_readrun_detail.pickle"
