@@ -8,6 +8,7 @@ chmod a+x ena_api_calls.py
 """
 
 import json
+import sys
 from eDNA_utilities import logging, run_webservice_with_params
 import coloredlogs
 logger = logging.getLogger(name = 'mylogger')
@@ -25,6 +26,14 @@ def get_environment_ncbi_reportingstandards_query():
     reporting_query = " OR ".join([f'ncbi_reporting_standard="{standard}"' for standard in reporting_standards])
     return reporting_query
 
+def get_default_ena_checklist_query():
+    # Construct the checklist query part for the defult checklists
+    return 'CHECKLIST=ERC000011'
+
+def get_default_ncbi_reporting_standards_query():
+    # Construct the reporting standards query part
+    return 'ncbi_reporting_standard=generic'
+
 def environment_fields_to_retrieve():
     # Define the fields to retrieve
     fields = [
@@ -33,17 +42,25 @@ def environment_fields_to_retrieve():
         "tax_id", "checklist", "collection_date", "ncbi_reporting_standard",
         "target_gene", "tag", "study_accession", "study_title"
     ]
+    return fields
 
-def get_all_environment_params():
-    checklist_query = get_environment_ena_checklist_query()
-    reporting_query = get_environment_ncbi_reportingstandards_query()
+def get_all_environment_params(checklist_type):
+    if checklist_type == 'environmental_checklists':
+        checklist_query = get_environment_ena_checklist_query()
+        reporting_query = get_environment_ncbi_reportingstandards_query()
+    elif checklist_type == 'default_checklists':
+        checklist_query = get_default_ena_checklist_query()
+        reporting_query = get_default_ncbi_reporting_standards_query()
+    else:
+        sys.exit(f"checklist_type={checklist_type} is not supported")
+
 
     # Combine the full query
     query = f"(environmental_sample=true OR ({checklist_query}) OR ({reporting_query})) AND not_tax_tree(9606)"
     fields = environment_fields_to_retrieve()
 
     # Encode query parameters
-    limit = 0
+    limit = 2
     params = {
         "result": "read_run",
         "query": query,
@@ -53,11 +70,11 @@ def get_all_environment_params():
     }
     return params
 
-def setup_run_api_call(query_params_json):
+def setup_run_api_call(query_params_json, checklist_type):
 
     base_url = "https://www.ebi.ac.uk/ena/portal/api/search"
 
-    params = get_all_environment_params(get_all_environment_params())
+    params = get_all_environment_params(checklist_type)
     limit = params["limit"]
     logger.info(f"base_url={base_url}")
     logger.info(f"params={params}")
