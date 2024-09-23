@@ -40,11 +40,18 @@ def environment_fields_to_retrieve():
         "sample_accession", "run_accession", "library_strategy", "library_source",
         "instrument_platform", "lat", "lon", "country", "broad_scale_environmental_context", "environmental_medium",
         "tax_id", "checklist", "collection_date", "ncbi_reporting_standard",
-        "target_gene", "tag", "study_accession", "study_title"
+        "target_gene", "tag", "study_accession", "study_title", "sample_collection"
     ]
+    # other fields that Elianne wanted, but not in 'https://www.ebi.ac.uk/ena/portal/api/returnFields?result=read_run'
+    # samp_mat_process
+    # size_frac    - size fraction selected
+    # samp_size  - amount or size of sample collected
+    # samp_vol_we_dna_ext - sample volume or weight for DNA extraction
+    # nucl_acid_ext - nucleic acid extraction kit
+
     return fields
 
-def get_all_environment_params(checklist_type):
+def get_all_environment_params(checklist_type, limit):
 
     if checklist_type == 'environmental_checklists':
         checklist_query = get_environment_ena_checklist_query()
@@ -60,7 +67,6 @@ def get_all_environment_params(checklist_type):
     fields = environment_fields_to_retrieve()
 
     # Encode query parameters
-    limit = 2
     params = {
         "result": "read_run",
         "query": query,
@@ -73,11 +79,11 @@ def get_all_environment_params(checklist_type):
 def get_base_ena_search_url():
     return "https://www.ebi.ac.uk/ena/portal/api/search"
 
-def setup_run_api_call(query_params_json, checklist_type):
+def setup_run_api_call(checklist_type, limit):
 
     base_url = get_base_ena_search_url()
 
-    params = get_all_environment_params(checklist_type)
+    params = get_all_environment_params(checklist_type, limit)
     limit = params["limit"]
     logger.info(f"base_url={base_url}")
     logger.info(f"params={params}")
