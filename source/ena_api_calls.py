@@ -45,6 +45,7 @@ def environment_fields_to_retrieve():
     return fields
 
 def get_all_environment_params(checklist_type):
+
     if checklist_type == 'environmental_checklists':
         checklist_query = get_environment_ena_checklist_query()
         reporting_query = get_environment_ncbi_reportingstandards_query()
@@ -53,7 +54,6 @@ def get_all_environment_params(checklist_type):
         reporting_query = get_default_ncbi_reporting_standards_query()
     else:
         sys.exit(f"checklist_type={checklist_type} is not supported")
-
 
     # Combine the full query
     query = f"(environmental_sample=true OR ({checklist_query}) OR ({reporting_query})) AND not_tax_tree(9606)"
@@ -70,9 +70,12 @@ def get_all_environment_params(checklist_type):
     }
     return params
 
+def get_base_ena_search_url():
+    return "https://www.ebi.ac.uk/ena/portal/api/search"
+
 def setup_run_api_call(query_params_json, checklist_type):
 
-    base_url = "https://www.ebi.ac.uk/ena/portal/api/search"
+    base_url = get_base_ena_search_url()
 
     params = get_all_environment_params(checklist_type)
     limit = params["limit"]
