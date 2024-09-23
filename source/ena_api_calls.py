@@ -14,28 +14,42 @@ import coloredlogs
 logger = logging.getLogger(name = 'mylogger')
 
 def get_environment_ena_checklist_query():
-    # Construct the checklist query part for the environmental checklists
+    """
+    Construct the checklist query part for the environmental checklists
+    :return: string
+    """
     checklists = ["ERC000012", "ERC000013", "ERC000020", "ERC000021", "ERC000022", "ERC000023", "ERC000024",
                   "ERC000025", "ERC000027", "ERC000055", "ERC000030", "ERC000031", "ERC000036", "ERC000040"]
     checklist_query = " OR ".join([f'CHECKLIST="{checklist}"' for checklist in checklists])
     return checklist_query
 
-def get_environment_ncbi_reportingstandards_query():
-    # Construct the reporting standards query part
+def get_environment_ncbi_reporting_standards_query():
+    """
+    Construct the reporting standards query part
+    :return: string
+    """
     reporting_standards = ["*ENV*", "*WATER*", "*SOIL*", "*AIR*", "*SEDIMENT*", "*BUILT*", "*SURVEY*HOST-ASSOCIATED*"]
     reporting_query = " OR ".join([f'ncbi_reporting_standard="{standard}"' for standard in reporting_standards])
     return reporting_query
 
 def get_default_ena_checklist_query():
-    # Construct the checklist query part for the defult checklists
+    """
+    :return:  string
+    """
     return 'CHECKLIST=ERC000011'
 
 def get_default_ncbi_reporting_standards_query():
-    # Construct the reporting standards query part
+    """
+    :return:  string
+    """
     return 'ncbi_reporting_standard=generic'
 
 def environment_fields_to_retrieve():
-    # Define the fields to retrieve
+    """
+    Define the fields to retrieve
+    :return: fields array
+    """
+
     fields = [
         "sample_accession", "run_accession", "library_strategy", "library_source",
         "instrument_platform", "lat", "lon", "country", "broad_scale_environmental_context", "environmental_medium",
@@ -52,10 +66,16 @@ def environment_fields_to_retrieve():
     return fields
 
 def get_all_environment_params(checklist_type, limit):
+    """
+    getting all the environment params
+    :param checklist_type:
+    :param limit:
+    :return: params
+    """
 
     if checklist_type == 'environmental_checklists':
         checklist_query = get_environment_ena_checklist_query()
-        reporting_query = get_environment_ncbi_reportingstandards_query()
+        reporting_query = get_environment_ncbi_reporting_standards_query()
     elif checklist_type == 'default_checklists':
         checklist_query = get_default_ena_checklist_query()
         reporting_query = get_default_ncbi_reporting_standards_query()
@@ -80,6 +100,12 @@ def get_base_ena_search_url():
     return "https://www.ebi.ac.uk/ena/portal/api/search"
 
 def setup_run_api_call(checklist_type, limit):
+    """
+    setup and run ena api
+    :param checklist_type:
+    :param limit:
+    :return: API call output
+    """
 
     base_url = get_base_ena_search_url()
 
