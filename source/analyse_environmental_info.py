@@ -17,7 +17,7 @@ import plotly.express as px
 
 from eDNA_utilities import print_value_count_table, \
     plot_sankey, my_coloredFormatter, plot_countries, plot_sunburst, \
-    get_ena_checklist_dict
+    get_ena_checklist_dict, obj_print_and_display_md
 from get_environmental_info import get_all_study_details, process_geographical_data
 from taxonomy import *
 
@@ -86,6 +86,14 @@ def filter_on_library_strategies(df, library_strategy_list_to_keep):
     return df
 
 
+def plot_simple_pie(df, count_field, key_field, title, plotfile):
+    tmp_df = px.data.gapminder().query
+    fig = px.pie(df, values = count_field, names = key_field, title = title)
+    logger.info(f"writing {plotfile}")
+    fig.write_image(plotfile)
+
+
+
 def experimental_analysis_inc_filtering(df):
     logger.info(df.columns)
 
@@ -94,7 +102,9 @@ def experimental_analysis_inc_filtering(df):
     logger.info(f"type = {type(df)}")
 
     plot_df = df.groupby(['instrument_platform']).size().to_frame('record_count').reset_index().sort_values(by=['record_count'], ascending=False)
-    logger.info(f"Instruments\n{plot_df.to_markdown(index=False)}")
+    obj_print_and_display_md(plot_df,"instrument_platform")
+
+    plot_simple_pie(plot_df,'record_count','instrument_platform', '' , "../images/ena_instrument_platform_pie.png")
 
     print(df.groupby(['library_source', 'library_strategy']).size().reset_index().to_markdown(index=False))
     #logger.info(df.head(10).to_markdown(index=False))
@@ -135,7 +145,7 @@ def target_gene_analysis(df):
     """
     for the target genes as a checklist field
     :param df:
-    :return:
+    :return: # naught
     """
     logger.info(f"Coming into target gene analysis have total tows of {len(df)}")
 
@@ -278,7 +288,8 @@ def taxonomic_analysis(df):
     path_list = ['lineage_2', 'lineage_minus3', 'lineage_minus2', 'scientific_name', 'lineage']
     plot_df = df.groupby(path_list).size().to_frame('record_count').reset_index()
     plot_df = plot_df[plot_df['lineage_2'] == 'Eukaryota']
-    logger.info(f"\n{plot_df.head(3)}")
+    # logger.info(f"\n{plot_df.head(3)}")
+    obj_print_and_display_md(plot_df,   "ena_lineage_eukaryota")
     path_list = ['lineage_minus3', 'lineage_minus2', 'scientific_name']
     plotfile = "../images/taxonomic_analysis_euk_sunburst.png"
     plot_sunburst(plot_df, 'Figure: ENA "Environmental" readrun records, tax lineage(Euk)', path_list,
@@ -292,7 +303,7 @@ def taxonomic_analysis(df):
     plot_sunburst(plot_df, 'Figure: ENA "Environmental" readrun records, Vertebrata', path_list,
               'record_count', plotfile)
 
-    path_list = ['library_source', 'library_strategy', 'lineage_2']
+    path_list = ['library_source', 'library_strategy', 'lineage_1']
     plot_df = df.groupby(path_list).size().to_frame('record_count').reset_index()
     plotfile = "../images/experimental_analysis_strategy_tax.png"
     sankey_link_weight = 'record_count'
@@ -310,13 +321,14 @@ def taxonomic_analysis(df):
     # plot_df = plot_df.sort_values(by='record_count', ascending=False)
     # print(plot_df.to_markdown(index=False))
 
-    path_list = ['lineage_3', 'lineage_4', 'lineage_minus2', 'scientific_name']
-    plot_df = df.groupby(path_list).size().to_frame('record_count').reset_index()
-    logger.info(f"\n{plot_df.sample(30)}")
-    plot_df = plot_df[plot_df['lineage_3'].str.contains('Fungi')]
-    plotfile = "../images/taxonomic_analysis_fungi_l3_sunburst.png"
-    plot_sunburst(plot_df, 'Figure: ENA "Environmental" readrun records, Fungi l2', path_list,
-              'record_count', plotfile)
+    # commented as failing for aquatic... but works for fungi
+    # path_list = ['lineage_3', 'lineage_4', 'lineage_minus2', 'scientific_name']
+    # plot_df = df.groupby(path_list).size().to_frame('record_count').reset_index()
+    # logger.info(f"\n{plot_df.sample(30)}")
+    # plot_df = plot_df[plot_df['lineage_3'].str.contains('Fungi')]
+    # plotfile = "../images/taxonomic_analysis_fungi_l3_sunburst.png"
+    # plot_sunburst(plot_df, 'Figure: ENA "Environmental" readrun records, Fungi l2', path_list,
+    #           'record_count', plotfile)
 
     return df
 
@@ -342,8 +354,7 @@ def get_barcoding_genes(value):
         :return: a set of cleaner values
         """
 
-        sgenes_pattern = re.compile(r'^([1-9]{2}|5\.8)([sS])[ ]?(r)?([RD]NA)?', flags=0)
-        sgenes_pattern = re.compile(r'^([1-9]{2}|5\.8)([sS])[ ]?r?(RNA|DNA|ribo)?', flags=0)
+        sgenes_pattern = re.compile(r'^([1-9][0-9]{1,2}|5\.8)([sS])[ ]?r?(RNA|DNA|ribo)?', flags=0)
         rbcl_pattern = re.compile(r'^(RBCL)', re.IGNORECASE)
         its_pattern = re.compile(r'^(ITS)([1-2])?')
         matk_pattern = re.compile(r'^(matk)', re.IGNORECASE)
@@ -396,12 +407,12 @@ def get_barcoding_genes(value):
                     # logger.info(clean_gene_name)
                     continue
 
-                logger.error(f"remaining gene in get_barcoding_genes -->{my_gene}<--")
-                sys.exit()
+                logger.warning(f"remaining gene in get_barcoding_genes -->{my_gene}<--")
+                # sys.exit("exiting due to error above")
 
 
             return clean_set
-        barcode_genes_pattern = re.compile(r'16[sS][ ]?r?[RD]NA|16[sS][ ]?ribo|18S|ITS[12]?|26[Ss]|5.8[Ss]|rbcL|rbcl|RBCL|matK|MATK|cox1|co1|COX1|CO1|COI|mtCO|cytochrome c oxidase|cytochrome oxidase')
+        barcode_genes_pattern = re.compile(r'16[sS][ ]?r?[RD]NA|16[sS][ ]?ribo|12S|18S|ITS[12]?|26[Ss]|5.8[Ss]|rbcL|rbcl|RBCL|matK|MATK|cox1|co1|COX1|CO1|COI|mtCO|cytochrome c oxidase|cytochrome oxidase')
         genes = list(set(re.findall(barcode_genes_pattern, value)))
         if len(genes) > 0:
             # logger.info(genes)
@@ -425,7 +436,7 @@ def analyse_barcode_study_details(df):
     dff = get_filtered_study_details(df)
     logger.info(f"in analyse_all_study_details for study_total={len(dff)} total unique study_accession={dff['study_accession'].nunique()}")
     logger.info(dff.columns)
-    barcoding_pattern = '16S|18S|ITS|26S|5.8S|RBCL|rbcL|matK|MATK|COX1|CO1|mtCO|barcod'
+    barcoding_pattern = '12S|16S|18S|ITS|26S|5.8S|RBCL|rbcL|matK|MATK|COX1|CO1|mtCO|barcod'
     barcoding_title_df = dff[dff.study_title.str.contains(barcoding_pattern, regex= True, na=False)]
     logger.info(f"'study_title' with barcoding genes total={len(barcoding_title_df)}")
     logger.debug(barcoding_title_df['study_title'].sample(n=3))
@@ -555,17 +566,15 @@ def collection_date_year(value):
         if value.isdigit():
             value = int(value)
         else:
-            print(f"The string -->{value}<-- cannot be easily converted to an integer.")
             value = value.strip()
             match = re.findall(r'[0-9]+$', value)
-            print(match)
+            # print(match)
             if len(match) == 1:
                 value = int(match[0])
-                print(f" but choosing -->{value}<--")
+                # print(f" but choosing -->{value}<--")
             else:
+                print(f"The string -->{value}<-- cannot be easily converted to an integer.")
                 return None
-
-
 
         if value >= 100:
             if value > 2025:
@@ -685,7 +694,6 @@ def detailed_environmental_analysis(df):
 
     tag_string_assignment = {}
     # f = tmp_df['env_tag_string'].str.contains("env_geo",na=False)
-    # sys.exit()
 
     logger.info("++++++++++++++++++++++++++++++++++++++++++++++++")
     not_assigned = []
@@ -768,7 +776,7 @@ def detailed_environmental_analysis(df):
                             not_assigned.append(tags)
                         else:
                             logger.error(f"Not assigned--->{tags} len_tags={len(tag_list)}")
-                            sys.exit()
+                            sys.exit(f"Not assigned--->{tags} len_tags={len(tag_list)}")
 
         # the following are where there are no env_geo: tgs
         elif len(tag_list) == 1:
@@ -815,11 +823,11 @@ def detailed_environmental_analysis(df):
         logger.error("Apologies: you need to address these cases before proceeding")
         logger.error(f"multiples:{multiples}")
         logger.error(f"not_assigned: {not_assigned}")
-        sys.exit()
+        sys.exit("not_assigned:")
     elif len(not_assigned) > 0:
         logger.error("Apologies: you need to address these cases before proceeding")
         logger.error(f"not_assigned: {not_assigned}")
-        sys.exit()
+        sys.exit("not_assigned")
 
     # logger.info('env_tax:freshwater;env_tax:terrestrial;env_geo:marine')
     # tmp_df = df[df['env_tags'].str.contains('env_tax:freshwater;env_tax:terrestrial;env_geo:marine')]
@@ -872,11 +880,13 @@ def detailed_environmental_analysis(df):
 
     df['env_prediction_hl'] = df['env_prediction'].apply(actually_assign_env_info_pred_hl)
     print()
-    logger.info("\n" + df.groupby(['env_prediction', 'env_confidence']).size().to_frame().to_string())
+    tmp_df = df.groupby(['env_prediction', 'env_confidence']).size().reset_index(name = 'count')
+    logger.info("\n" + tmp_df.to_string())
+    obj_print_and_display_md(tmp_df, "ena_aquatic_environment_predictions")
+    print()
     print_value_count_table(df['env_prediction_hl'])
-
+    # sys.exit("'env_prediction', 'env_confidence'")
     #
-
 
     path = ['env_prediction_hl', 'env_prediction', 'env_confidence']
     value_field = 'record_count'
@@ -941,7 +951,6 @@ def analyse_checklists(df):
     outfile = "../data/out/aquatic_combined_insdc_checklists_read_run_counts.tsv"
     logger.info(f"Writing to: {outfile}")
     df_combined_checklist_counts.to_csv(outfile, sep='\t', index=False)
-    # sys.exit()
 
     print_value_count_table(df.ena_checklist_name)
 
@@ -994,11 +1003,12 @@ def analyse_readrun_detail(df):
     # logger.info(outfile)
     # df.sample_accession.to_csv(outfile)
 
-    # uncomment when running for real
-    # target_gene_analysis(df)
-
-    df = clean_dates_in_df(df)
     analyse_checklists(df)
+
+    # uncomment when running for real
+    target_gene_analysis(df)
+    df = clean_dates_in_df(df)
+
     analyse_dates(df)
 
     logger.info(f"before experimental_analysis_inc_filtering filtered: rownum={len(df)}")
@@ -1006,13 +1016,10 @@ def analyse_readrun_detail(df):
     logger.info(f"after experimental_analysis_inc_filtering filtered: rownum={len(df)}")
 
     # logger.info("-------------about to do geographical------------------------")
-    # df = do_geographical(df)
+    df = do_geographical(df)
+
     logger.info("-------------about to do taxonomic_analysis------------------------")
     df = taxonomic_analysis(df)
-
-    # sys.exit("exiting after taxonomic_analysis")
-    # logger.info(df)
-    # logger.info(df.dtypes)
 
     logger.info("-------------about to do detailed_environmental_analysis------------------------")
     df = detailed_environmental_analysis(df)
@@ -1022,7 +1029,6 @@ def analyse_readrun_detail(df):
 
 def main():
 
-    # df_all_study_details = analyse_barcode_study_details(get_all_study_details())
     # logger.info(len(df_all_study_details))
     #
     # sample_ids = get_env_sample_ids()
@@ -1039,6 +1045,8 @@ def main():
         pickle_file = 'df_aquatic_env_readrun_detail.pickle'
     else:
         sys.exit(f"args.type_of_data is unknown = {args.type_of_data}")
+
+    # df_all_study_details = analyse_barcode_study_details(get_all_study_details())
 
     df_env_readrun_detail = pd.read_pickle(pickle_file)
     # df_env_readrun_detail = df_env_readrun_detail.sample(1000000)
