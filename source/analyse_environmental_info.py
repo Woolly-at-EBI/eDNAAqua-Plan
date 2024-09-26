@@ -268,13 +268,19 @@ def taxonomic_analysis(df):
     df['lineage_1'] = df['lineage_list'].str[0]
     df['lineage_2'] = df['lineage_list'].str[1]
     df['lineage_3'] = df['lineage_list'].str[2]
+    df['lineage_8'] = df['lineage_list'].str[8]
+    df['lineage_9'] = df['lineage_list'].str[9]
 
     logger.info(f"\n{df.sample(3)}")
+    print_value_count_table(df.lineage_2)
 
     # print_value_count_table(df.lineage_3)
     df['lineage_minus2'] = df['lineage_list'].str[-2] # as the lineage ends ;$
     df['lineage_minus3'] = df['lineage_list'].str[-3]
+    print("lineage_minus2")
     print_value_count_table(df.lineage_minus2)
+    print("lineage_minus3")
+    print_value_count_table(df.lineage_minus3)
     tax_id_list = df['tax_id'].unique()
     logger.info(len(tax_id_list))
 
@@ -284,11 +290,13 @@ def taxonomic_analysis(df):
     plot_df = df.groupby(path_list).size().to_frame('record_count').reset_index()
     plotfile = "../images/taxonomic_analysis_sunburst.png"
     plot_sunburst(plot_df, 'Figure: ENA "Environmental" readrun records, tax lineage(select)', path_list, 'record_count', plotfile)
-
-    path_list = ['lineage_2', 'lineage_minus3', 'lineage_minus2', 'scientific_name', 'lineage']
+    logger.info("-----------------------------------------------------------------------------------------------------")
+    path_list = ['lineage_1', 'lineage_minus3', 'lineage_minus2', 'scientific_name', 'lineage']
     plot_df = df.groupby(path_list).size().to_frame('record_count').reset_index()
-    plot_df = plot_df[plot_df['lineage_2'] == 'Eukaryota']
-    # logger.info(f"\n{plot_df.head(3)}")
+    logger.info(f"\n{plot_df.head(3)}")
+    logger.info(f"\n{plot_df['lineage_1'].value_counts()}")
+    plot_df = plot_df[plot_df['lineage_1'] == 'Eukaryota']
+    logger.info(f"\n{plot_df.head(3)}")
     obj_print_and_display_md(plot_df,   "ena_lineage_eukaryota")
     path_list = ['lineage_minus3', 'lineage_minus2', 'scientific_name']
     plotfile = "../images/taxonomic_analysis_euk_sunburst.png"
@@ -298,10 +306,15 @@ def taxonomic_analysis(df):
     path_list = ['lineage_2', 'lineage_minus3', 'lineage_minus2', 'scientific_name', 'lineage']
     plot_df = df.groupby(path_list).size().to_frame('record_count').reset_index()
     plot_df = plot_df[plot_df['lineage'].str.contains('Vertebrata')]
-    path_list = ['lineage_minus3', 'lineage_minus2', 'scientific_name']
-    plotfile = "../images/taxonomic_analysis_euk_sunburst.png"
+    obj_print_and_display_md(plot_df, "ena_lineage_vertebrata")
+    plotfile = "../images/taxonomic_analysis_vertebrata_sunburst.png"
     plot_sunburst(plot_df, 'Figure: ENA "Environmental" readrun records, Vertebrata', path_list,
               'record_count', plotfile)
+
+    path_list = ["lineage_9"]
+    plot_df = df[df['lineage'].str.contains('Vertebrata')]
+    plot_df = plot_df.groupby(path_list).size().to_frame('record_count').reset_index().sort_values(by='record_count', ascending=False)
+    obj_print_and_display_md(plot_df, "ena_lineage_vertebrata")
 
     path_list = ['library_source', 'library_strategy', 'lineage_1']
     plot_df = df.groupby(path_list).size().to_frame('record_count').reset_index()
