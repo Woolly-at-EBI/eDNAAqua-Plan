@@ -1,0 +1,33 @@
+[
+  {
+    "study_accession": "PRJEB4419",
+    "study_title": "Shotgun Sequencing of Tara Oceans DNA samples from size fractions containing mainly DNA viruses",
+    "breed": "",
+    "broker_name": "",
+    "center_name": "Genoscope;GSC",
+    "cultivar": "",
+    "datahub": "dcc_metagenome;dcc_tara",
+    "description": "Seawater from different depths was precipitaded then filtered to retain small particle sizes (Virus particles). The DNA was extracted and submitted to high throughput sequencing.",
+    "first_public": "2013-08-01",
+    "geo_accession": "",
+    "isolate": "",
+    "keywords": "",
+    "last_updated": "2025-03-12",
+    "parent_study_accession": "PRJEB402",
+    "project_name": "Shotgun Sequencing of Tara Oceans DNA samples from size fractions containing mainly DNA viruses",
+    "scientific_name": "",
+    "secondary_study_accession": "ERP003708",
+    "secondary_study_alias": "study_APX",
+    "secondary_study_center_name": "Genoscope;GSC",
+    "status": "public",
+    "strain": "",
+    "study_alias": "study_APX",
+    "study_description": "Seawater from different depths was precipitaded then filtered to retain small particle sizes (Virus particles). The DNA was extracted and submitted to high throughput sequencing.",
+    "study_name": "Shotgun Sequencing of Tara Oceans DNA samples from size fractions containing mainly DNA viruses",
+    "submission_tool": "",
+    "tag": "xref:EuropePMC:PMC6775973;xref:EuropePMC:PMC10078663;xref:EuropePMC:PMC11460016;xref:EuropePMC:PMC7213576;xref:EuropePMC:PMC9665871;xref:EuropePMC:PMC9051138;xref:EuropePMC:PMC6425642;xref:EuropePMC:PMC10614762",
+    "tax_division": "",
+    "tax_id": "",
+    "tax_lineage": ""
+  }
+]
